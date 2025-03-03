@@ -3,4 +3,3 @@
 #elif defined(STM32F4)
 #include <stm32/f4/clock.hpp>
 #endif
-//TODO F4 missing

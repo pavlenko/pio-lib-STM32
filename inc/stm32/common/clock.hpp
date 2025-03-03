@@ -40,22 +40,22 @@ namespace STM32::Clock
         }
     }
 
-    uint32_t LSIClock::getFrequency()
+    constexpr uint32_t LSIClock::getFrequency()
     {
         return LSI_VALUE;
     }
 
-    uint32_t LSEClock::getFrequency()
+    constexpr uint32_t LSEClock::getFrequency()
     {
         return LSE_VALUE;
     }
 
-    uint32_t HSIClock::getFrequency()
+    constexpr uint32_t HSIClock::getFrequency()
     {
         return HSI_VALUE;
     }
 
-    uint32_t HSEClock::getFrequency()
+    constexpr uint32_t HSEClock::getFrequency()
     {
         return HSE_VALUE;
     }

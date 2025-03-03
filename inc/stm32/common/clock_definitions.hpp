@@ -22,7 +22,7 @@ namespace STM32::Clock
          * @return true
          * @return false
          */
-        template <volatile uint32_t RCC_TypeDef::*tReg, uint32_t tTurnMask, uint32_t tWaitMask = 0u>
+        template <volatile uint32_t RCC_TypeDef::*tReg, uint32_t tTurnMask, uint32_t tWaitMask>
         static inline bool enable();
 
         /**
@@ -34,7 +34,7 @@ namespace STM32::Clock
          * @return true
          * @return false
          */
-        template <volatile uint32_t RCC_TypeDef::*tReg, uint32_t tTurnMask, uint32_t tWaitMask = 0u>
+        template <volatile uint32_t RCC_TypeDef::*tReg, uint32_t tTurnMask, uint32_t tWaitMask>
         static inline bool disable();
     };
 
