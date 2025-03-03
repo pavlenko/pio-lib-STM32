@@ -1,0 +1,9 @@
+{
+    "$schema": "https://raw.githubusercontent.com/platformio/platformio-core/develop/platformio/assets/schema/library.json",
+    "name": "stm32",
+    "build": {
+        "includeDir": "inc",
+        "srcDir": "src"
+    },
+    "version": "0.0.1"
+}
