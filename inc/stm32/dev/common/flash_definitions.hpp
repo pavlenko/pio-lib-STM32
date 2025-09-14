@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <stm32/dev/common/_cmsis.hpp>
 
 namespace STM32
 {
@@ -28,7 +29,7 @@ namespace STM32
          *
          * @return Size in bytes
          */
-        static constexpr uint32_t getSize();
+        static inline constexpr uint32_t getSize();
 
         /**
          * @brief Get page size
@@ -37,7 +38,7 @@ namespace STM32
          *
          * @return Size in bytes
          */
-        static constexpr uint32_t getPageSize(uint16_t page);
+        static inline constexpr uint32_t getPageSize(uint16_t page);
 
         /**
          * @brief Get page start address
@@ -46,7 +47,7 @@ namespace STM32
          *
          * @return Address
          */
-        static constexpr uint32_t getPageAddress(uint16_t page);
+        static inline constexpr uint32_t getPageAddress(uint16_t page);
 
         /**
          * @brief Lock flash for writing
@@ -62,10 +63,8 @@ namespace STM32
          * @brief Erase single page
          *
          * @param page Page number
-         *
-         * @return Success state
          */
-        static inline bool erasePage(uint16_t page);
+        static inline void erasePage(uint16_t page);
 
         /**
          * @brief Write data to flash
