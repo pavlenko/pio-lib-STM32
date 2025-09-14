@@ -1,6 +1,6 @@
 #pragma once
 
-#include <stm32/common/clock.hpp>
+#include <stm32/dev/common/clock.hpp>
 
 namespace STM32::Clock
 {
@@ -169,7 +169,7 @@ namespace STM32::Clock
         }
 
         template <Prescaller tPrescaller>
-        static inline void setPrescaller()
+        static inline void setPrescaler()
         {
             RCC->CFGR = (RCC->CFGR & ~RCC_CFGR_PPRE1) | (static_cast<uint32_t>(tPrescaller) << RCC_CFGR_PPRE1_Pos;
 
@@ -199,7 +199,7 @@ namespace STM32::Clock
         }
 
         template <Prescaller tPrescaller>
-        static inline void setPrescaller()
+        static inline void setPrescaler()
         {
             RCC->CFGR = (RCC->CFGR & ~RCC_CFGR_PPRE2) | (static_cast<uint32_t>(tPrescaller) << RCC_CFGR_PPRE2_Pos);
 

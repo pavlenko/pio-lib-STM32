@@ -1,4 +1,4 @@
-#include <stm32/clock.hpp>
+#include <stm32/dev/clock.hpp>
 
 /**
  * @brief Dummy main function

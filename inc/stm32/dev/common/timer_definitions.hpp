@@ -1,6 +1,6 @@
 #pragma once
 
-#include <stm32/_cmsis.hpp>
+#include <stm32/dev/common/_cmsis.hpp>
 
 namespace STM32::Timer
 {
@@ -60,7 +60,7 @@ namespace STM32::Timer
     {
         template <typename tConfig>
         static inline void configure();
-        static inline void setPrescaller(uint16_t prescaller);
+        static inline void setPrescaler(uint16_t prescaller);
         static inline void setAutoReload(uint16_t autoReload);
         static inline void setCounter(uint16_t conter);
         static inline void enable();

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <stdint.h>
-#include <stm32/_cmsis.hpp>
+#include <stm32/dev/common/_cmsis.hpp>
 
 namespace STM32::Clock
 {
@@ -344,7 +344,7 @@ namespace STM32::Clock
     class BusClock
     {
     public:
-        enum class Prescaller;
+        enum class Prescaler;
 
     public:
         /**
@@ -359,8 +359,8 @@ namespace STM32::Clock
          *
          * @tparam tPrescaller
          */
-        template <Prescaller tPrescaller>
-        static inline void setPrescaller();
+        template <Prescaler tPrescaller>
+        static inline void setPrescaler();
     };
 
     /**

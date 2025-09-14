@@ -1,6 +1,6 @@
 #pragma once
 
-#include <stm32/common/clock_definitions.hpp>
+#include <stm32/dev/common/clock_definitions.hpp>
 
 namespace STM32::Clock
 {
