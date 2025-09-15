@@ -370,8 +370,8 @@ namespace STM32::Clock
      * @tparam Register address
      * @tparam Enable bit mask
      */
-    template <typename tSourceClock, volatile uint32_t RCC_TypeDef::*tReg, uint32_t tMask>
-    class ClockControl : public tSourceClock
+    template </*typename tSourceClock, */volatile uint32_t RCC_TypeDef::*tReg, uint32_t tMask>
+    class ClockControl/* : public tSourceClock*/
     {
     public:
         /**

@@ -15,7 +15,7 @@ namespace STM32
 #endif
     }
 
-    inline uint32_t Flash::getSize()
+    inline constexpr uint32_t Flash::getSize()
     {
 #if defined(FLASH_SIZE)
         return FLASH_SIZE;
