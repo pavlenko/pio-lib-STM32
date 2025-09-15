@@ -22,4 +22,28 @@ namespace STM32::IO
     {
         tClock::disable();
     }
+
+    template <class tPort, uint8_t tNumber>
+    inline bool IOPin<tPort, tNumber>::get()
+    {
+        return tPort::regs()->IDR & (1u << tNumber);
+    }
+
+    template <class tPort, uint8_t tNumber>
+    inline void IOPin<tPort, tNumber>::set()
+    {
+        tPort::regs()->BSRR |= (1u << tNumber);
+    }
+
+    template <class tPort, uint8_t tNumber>
+    inline void IOPin<tPort, tNumber>::clr()
+    {
+        tPort::regs()->BSRR |= ((1u << tNumber) << 16u);
+    }
+
+    template <class tPort, uint8_t tNumber>
+    inline void IOPin<tPort, tNumber>::tog()
+    {
+        tPort::regs()->ODR ^= (1u << tNumber);
+    }
 }

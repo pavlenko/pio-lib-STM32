@@ -107,7 +107,7 @@ namespace STM32::IO
     /**
      * @brief IO pin API
      */
-    template <class tPort, uint32_t tRegsAddr, uint8_t tNumber>
+    template <class tPort, uint8_t tNumber>
     class IOPin
     {
     private:
@@ -115,8 +115,6 @@ namespace STM32::IO
 
         static constexpr const uint8_t _2bit_pos = tNumber * 2u;
         static constexpr const uint8_t _4bit_pos = (tNumber & 0x7u) * 4u;
-
-        static inline GPIO_TypeDef *_regs();
 
     public:
         using port = tPort;
