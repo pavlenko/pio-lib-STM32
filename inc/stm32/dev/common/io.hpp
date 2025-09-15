@@ -23,7 +23,12 @@ namespace STM32::IO
         tClock::disable();
     }
 
-    //TODO configure, exti dummy methods
+    template <class tPort, uint8_t tNumber>
+    inline GPIO_TypeDef *IOPin<tPort, tNumber>::_regs()
+    {
+        return tPort::template regs();
+    }
+
     template <class tPort, uint8_t tNumber>
     inline bool IOPin<tPort, tNumber>::get()
     {

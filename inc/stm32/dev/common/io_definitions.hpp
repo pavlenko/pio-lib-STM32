@@ -146,6 +146,11 @@ namespace STM32::IO
         static constexpr const uint8_t _2bit_pos = tNumber * 2u;
         static constexpr const uint8_t _4bit_pos = (tNumber & 0x7u) * 4u;
 
+        /**
+         * @brief Access port registers
+         */
+        static inline GPIO_TypeDef *_regs();
+
     public:
         using port = tPort;
 
@@ -157,15 +162,33 @@ namespace STM32::IO
         template <class tConfig>
         static inline void configure();
 
+        template <Mode mode>
         static inline void setMode();
+
+        static inline void setMode(Mode mode);
+        
+        template <OType type>
         static inline void setOType();
+
+        static inline void setOType(OType type);
+        
+        template <Pull pull>
         static inline void setPull();
+
+        static inline void setPull(Pull pull);
+
+        template <Speed speed>
         static inline void setSpeed();
+        
+        static inline void setSpeed(Speed speed);
+
+        template <AF af>
+        static inline void setAltFunction();
 
         /**
          * @brief Set pin AF number (if supported)
          */
-        static inline void setAltFunction(uint8_t number);
+        static inline void setAltFunction(AF af);
 
         /**
          * @brief Get pin value
