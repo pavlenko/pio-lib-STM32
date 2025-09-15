@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <stm32/dev/common/_cmsis.hpp>
 
 namespace STM32::IO
 {
@@ -86,7 +87,7 @@ namespace STM32::IO
     class IOPort
     {
     public:
-        using name = tName;
+        static constexpr const auto name = tName;
 
         /**
          * @brief Access port registers
@@ -118,7 +119,8 @@ namespace STM32::IO
 
     public:
         using port = tPort;
-        using number = tNumber;
+
+        static constexpr const auto number = tNumber;
 
         /**
          * @brief Configure pin mode, pull, speed...
@@ -158,3 +160,21 @@ namespace STM32::IO
     // PA12::configure<Mode::ANALOG>(void);
     // PA::get|set|clr<mask>(uint16_t value);
 }
+
+#define IO_PORT_DEFINITION(__ALIAS__, __PORT__) \
+    using __ALIAS__##0 = IOPin<__PORT__, 0>;    \
+    using __ALIAS__##1 = IOPin<__PORT__, 1>;    \
+    using __ALIAS__##2 = IOPin<__PORT__, 2>;    \
+    using __ALIAS__##3 = IOPin<__PORT__, 3>;    \
+    using __ALIAS__##4 = IOPin<__PORT__, 4>;    \
+    using __ALIAS__##5 = IOPin<__PORT__, 5>;    \
+    using __ALIAS__##6 = IOPin<__PORT__, 6>;    \
+    using __ALIAS__##7 = IOPin<__PORT__, 7>;    \
+    using __ALIAS__##8 = IOPin<__PORT__, 8>;    \
+    using __ALIAS__##9 = IOPin<__PORT__, 9>;    \
+    using __ALIAS__##10 = IOPin<__PORT__, 10>;  \
+    using __ALIAS__##11 = IOPin<__PORT__, 11>;  \
+    using __ALIAS__##12 = IOPin<__PORT__, 12>;  \
+    using __ALIAS__##13 = IOPin<__PORT__, 13>;  \
+    using __ALIAS__##14 = IOPin<__PORT__, 14>;  \
+    using __ALIAS__##15 = IOPin<__PORT__, 15>;
