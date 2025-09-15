@@ -55,7 +55,7 @@ namespace STM32::IO
     {
         INPUT,
         OUTPUT,
-        ALTERNATE,
+        FUNCTION,
         ANALOG,
     };
 
@@ -77,7 +77,36 @@ namespace STM32::IO
         LOW,
         MEDIUM,
         FAST,
-        FASTEST,
+        HIGH,
+    };
+
+    enum class AF
+    {
+        AF0,
+        AF1,
+        AF2,
+        AF3,
+        AF4,
+        AF5,
+        AF6,
+        AF7,
+        AF8,
+        AF9,
+        AF10,
+        AF11,
+        AF12,
+        AF13,
+        AF14,
+        AF15,
+    };
+
+    template <Mode tMode, Speed tSpeed = Speed::LOW, OType tOType = OType::PP, Pull tPull = Pull::NO_PULL>
+    struct Config
+    {
+        static constexpr const auto mode = tMode;
+        static constexpr const auto speed = tSpeed;
+        static constexpr const auto oType = tOType;
+        static constexpr const auto pull = tPull;
     };
 
     /**
@@ -125,12 +154,18 @@ namespace STM32::IO
         /**
          * @brief Configure pin mode, pull, speed...
          */
-        static inline void configure();//<-- arguments or pass type depends on family
+        template <class tConfig>
+        static inline void configure();
+
+        static inline void setMode();
+        static inline void setOType();
+        static inline void setPull();
+        static inline void setSpeed();
 
         /**
          * @brief Set pin AF number (if supported)
          */
-        static inline void setAlternate(uint8_t number);
+        static inline void setAltFunction(uint8_t number);
 
         /**
          * @brief Get pin value
