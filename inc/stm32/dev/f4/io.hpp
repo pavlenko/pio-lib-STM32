@@ -27,60 +27,52 @@ namespace STM32::IO
     template <Mode mode>
     inline void IOPin<tPort, tNumber>::setMode()
     {
-        _regs()->MODER &= ~(0x3u << _2bit_pos);
-        _regs()->MODER |= static_cast<uint8_t>(mode) << _2bit_pos;
+        _regs()->MODER = (_regs()->MODER & ~(0x3u << _2bit_pos)) | (static_cast<uint8_t>(mode) << _2bit_pos);
     }
 
     template <class tPort, uint8_t tNumber>
     inline void IOPin<tPort, tNumber>::setMode(Mode mode)
     {
-        _regs()->MODER &= ~(0x3u << _2bit_pos);
-        _regs()->MODER |= static_cast<uint8_t>(mode) << _2bit_pos;
+        _regs()->MODER = (_regs()->MODER & ~(0x3u << _2bit_pos)) | (static_cast<uint8_t>(mode) << _2bit_pos);
     }
 
     template <class tPort, uint8_t tNumber>
     template <OType otype>
     inline void IOPin<tPort, tNumber>::setOType()
     {
-        _regs()->OTYPER &= ~(1u << tNumber);
-        _regs()->OTYPER |= (static_cast<uint8_t>(otype) << tNumber);
+       _regs()->OTYPER = (_regs()->OTYPER & ~(1u << tNumber)) | (static_cast<uint8_t>(otype) << tNumber);
     }
 
     template <class tPort, uint8_t tNumber>
     inline void IOPin<tPort, tNumber>::setOType(OType otype)
     {
-        _regs()->OTYPER &= ~(1u << tNumber);
-        _regs()->OTYPER |= (static_cast<uint8_t>(otype) << tNumber);
+        _regs()->OTYPER = (_regs()->OTYPER & ~(1u << tNumber)) | (static_cast<uint8_t>(otype) << tNumber);
     }
 
     template <class tPort, uint8_t tNumber>
     template <Pull pull>
     inline void IOPin<tPort, tNumber>::setPull()
     {
-        _regs()->PUPDR &= ~(0x3u << _2bit_pos);
-        _regs()->PUPDR |= static_cast<uint8_t>(pull) << _2bit_pos;
+        _regs()->PUPDR = (_regs()->PUPDR & ~(0x3u << _2bit_pos)) | (static_cast<uint8_t>(pull) << _2bit_pos);
     }
 
     template <class tPort, uint8_t tNumber>
     inline void IOPin<tPort, tNumber>::setPull(Pull pull)
     {
-        _regs()->PUPDR &= ~(0x3u << _2bit_pos);
-        _regs()->PUPDR |= static_cast<uint8_t>(pull) << _2bit_pos;
+        _regs()->PUPDR = (_regs()->PUPDR & ~(0x3u << _2bit_pos)) | (static_cast<uint8_t>(pull) << _2bit_pos);
     }
 
     template <class tPort, uint8_t tNumber>
     template <Speed speed>
     inline void IOPin<tPort, tNumber>::setSpeed()
     {
-        _regs()->OSPEEDR &= ~(0x3u << _2bit_pos);
-        _regs()->OSPEEDR |= (static_cast<uint8_t>(speed) << _2bit_pos);
+        _regs()->OSPEEDR = (_regs()->OSPEEDR & ~(0x3u << _2bit_pos)) | (static_cast<uint8_t>(speed) << _2bit_pos);
     }
 
     template <class tPort, uint8_t tNumber>
     inline void IOPin<tPort, tNumber>::setSpeed(Speed speed)
     {
-        _regs()->OSPEEDR &= ~(0x3u << _2bit_pos);
-        _regs()->OSPEEDR |= (static_cast<uint8_t>(speed) << _2bit_pos);
+        _regs()->OSPEEDR = (_regs()->OSPEEDR & ~(0x3u << _2bit_pos)) | (static_cast<uint8_t>(speed) << _2bit_pos);
     }
 
     template <class tPort, uint8_t tNumber>
@@ -89,13 +81,11 @@ namespace STM32::IO
     {
         if constexpr (tNumber < 8)
         {
-            _regs()->AFR[0] &= ~(0xFu << _4bit_pos);
-            _regs()->AFR[0] |= (static_cast<uint8_t>(af) << _4bit_pos);
+            _regs()->AFR[0] = ( _regs()->AFR[0] & ~(0xFu << _4bit_pos)) | (static_cast<uint8_t>(af) << _4bit_pos);
         }
         else
         {
-            _regs()->AFR[1] &= ~(0xFu << _4bit_pos);
-            _regs()->AFR[1] |= (static_cast<uint8_t>(af) << _4bit_pos);
+            _regs()->AFR[1] = ( _regs()->AFR[1] & ~(0xFu << _4bit_pos)) | (static_cast<uint8_t>(af) << _4bit_pos);
         }
     }
 
@@ -104,13 +94,11 @@ namespace STM32::IO
     {
         if constexpr (tNumber < 8)
         {
-            _regs()->AFR[0] &= ~(0xFu << _4bit_pos);
-            _regs()->AFR[0] |= (static_cast<uint8_t>(af) << _4bit_pos);
+            _regs()->AFR[0] = ( _regs()->AFR[0] & ~(0xFu << _4bit_pos)) | (static_cast<uint8_t>(af) << _4bit_pos);
         }
         else
         {
-            _regs()->AFR[1] &= ~(0xFu << _4bit_pos);
-            _regs()->AFR[1] |= (static_cast<uint8_t>(af) << _4bit_pos);
+            _regs()->AFR[1] = ( _regs()->AFR[1] & ~(0xFu << _4bit_pos)) | (static_cast<uint8_t>(af) << _4bit_pos);
         }
     }
 
