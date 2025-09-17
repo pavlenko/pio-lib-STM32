@@ -2,8 +2,6 @@
 
 #include <stm32/dev/common/clock.hpp>
 
-volatile uint32_t PLLClockFrequency{0};
-
 namespace STM32::Clock
 {
     bool LSIClock::on() { return ClockBase::enable<&RCC_TypeDef::CSR, RCC_CSR_LSION, RCC_CSR_LSIRDY>(); }
@@ -22,7 +20,7 @@ namespace STM32::Clock
 
     bool HSEClock::off() { return ClockBase::disable<&RCC_TypeDef::CR, RCC_CR_HSEON, RCC_CR_HSERDY>(); }
 
-    // static volatile uint32_t PLLClockFrequency{0};
+    static volatile uint32_t PLLClockFrequency{0};
 
     enum class PLLClock::Source
     {
@@ -125,7 +123,6 @@ namespace STM32::Clock
 
         while (((RCC->CFGR & RCC_CFGR_SWS) != statusMask) && --timeout)
             asm volatile("nop");
-        //SystemCoreClock >>= AHBPrescTable[((RCC->CFGR & RCC_CFGR_HPRE) >> 4)];
     }
 
     static volatile uint32_t AHBClockFrequency{0};
