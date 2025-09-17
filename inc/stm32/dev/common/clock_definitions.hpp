@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <stm32/dev/common/_cmsis.hpp>
+#include <stm32/dev/common/flash.hpp>
 
 namespace STM32::Clock
 {
@@ -283,18 +284,9 @@ namespace STM32::Clock
         static inline uint32_t getFrequency();
 
         /**
-         * @brief Select system clock source
-         *
-         * @tparam source
-         * @deprecated
-         */
-        template <Source tSource>
-        static inline void selectSource();
-
-        /**
          * @brief Configure system clock source & bus dividers
          */
-        template <Source tSource, class tConfig>
+        template <Source tSource, Flash::Latency tLatency, class tConfig>
         static inline void configure();
     };
 
@@ -351,7 +343,7 @@ namespace STM32::Clock
     class BusClock
     {
     public:
-        enum class Prescaler;
+        enum class Divider;
 
     public:
         /**
@@ -362,12 +354,12 @@ namespace STM32::Clock
         static inline uint32_t getFrequency();
 
         /**
-         * @brief Set bus specific Prescaller
+         * @brief Set bus specific Divider
          *
-         * @tparam tPrescaller
+         * @tparam tDivider
          */
-        template <Prescaler tPrescaller>
-        static inline void setPrescaler();
+        template <Divider tDivider>
+        static inline void setDivider();
     };
 
     /**

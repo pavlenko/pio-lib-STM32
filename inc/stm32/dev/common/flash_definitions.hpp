@@ -17,6 +17,8 @@ namespace STM32
         static inline void wait();
 
     public:
+        enum class Latency : uint8_t;
+
         /**
          * @brief Configure flash
          *
@@ -27,7 +29,7 @@ namespace STM32
         /**
          * @brief Get flash latency
          */
-        static inline uint32_t getLatency();
+        static inline uint8_t getLatency();
 
         /**
          * @brief Set flash latency

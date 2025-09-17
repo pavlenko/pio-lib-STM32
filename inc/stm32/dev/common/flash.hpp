@@ -15,7 +15,7 @@ namespace STM32
 #endif
     }
 
-    inline uint32_t Flash::getLatency()
+    inline uint8_t Flash::getLatency()
     {
         return FLASH->ACR & FLASH_ACR_LATENCY;
     }

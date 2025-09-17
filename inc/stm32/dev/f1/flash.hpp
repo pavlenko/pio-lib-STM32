@@ -2,6 +2,13 @@
 
 namespace STM32
 {
+    enum class Flash::Latency : uint8_t
+    {
+        WS0,
+        WS1,
+        WS2,
+    };
+
     inline void Flash::configure(uint32_t frequency)
     {
         uint32_t ws = (frequency - 1) / 24000000;

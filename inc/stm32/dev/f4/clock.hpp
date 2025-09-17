@@ -96,38 +96,6 @@ namespace STM32::Clock
         return SystemCoreClock;
     }
 
-    template <SysClock::Source tSource>
-    void SysClock::selectSource()
-    {
-        uint32_t selectMask;
-        uint32_t statusMask;
-
-        if constexpr (tSource == SysClock::Source::HSI)
-        {
-            selectMask = RCC_CFGR_SW_HSI;
-            statusMask = RCC_CFGR_SWS_HSI;
-            SystemCoreClock = HSIClock::getFrequency();
-        }
-        else if constexpr (tSource == SysClock::Source::HSE)
-        {
-            selectMask = RCC_CFGR_SW_HSE;
-            statusMask = RCC_CFGR_SWS_HSE;
-            SystemCoreClock = HSEClock::getFrequency();
-        }
-        else if constexpr (tSource == SysClock::Source::PLL)
-        {
-            selectMask = RCC_CFGR_SW_PLL;
-            statusMask = RCC_CFGR_SWS_PLL;
-            SystemCoreClock = PLLClock::getFrequency();
-        }
-
-        uint32_t timeout = 10000;
-        RCC->CFGR = (RCC->CFGR & ~RCC_CFGR_SW) | selectMask;
-
-        while (((RCC->CFGR & RCC_CFGR_SWS) != statusMask) && --timeout)
-            asm volatile("nop");
-    }
-
     class AHBClock : public BusClock<SysClock>
     {
     public:
@@ -216,13 +184,58 @@ namespace STM32::Clock
         }
     };
 
-    template <>
+    template <AHBClock::Divider tHPRE, APB1Clock::Divider tPPRE1, APB2Clock::Divider tPPRE2>
     struct SysClockConfig
-    {};
+    {
+        static constexpr auto HPRE = tHPRE;
+        static constexpr auto PPRE1 = tPPRE1;
+        static constexpr auto PPRE2 = tPPRE2;
+    };
 
-    template <SysClock::Source tSource, class tConfig>
+    template <SysClock::Source tSource, Flash::Latency tLatency, class tConfig>
     inline void SysClock::configure()
     {
-        //TODO flash increase, ahb, sys, decrease, apbn, update frequencies
+        if (static_cast<uint8_t>(tLatency) > Flash::getLatency())
+        {
+            Flash::setLatency(static_cast<uint8_t>(tLatency));
+        }
+
+        uint32_t selectMask;
+        uint32_t statusMask;
+
+        if constexpr (tSource == SysClock::Source::HSI)
+        {
+            selectMask = RCC_CFGR_SW_HSI;
+            statusMask = RCC_CFGR_SWS_HSI;
+            SystemCoreClock = HSIClock::getFrequency();
+        }
+        else if constexpr (tSource == SysClock::Source::HSE)
+        {
+            selectMask = RCC_CFGR_SW_HSE;
+            statusMask = RCC_CFGR_SWS_HSE;
+            SystemCoreClock = HSEClock::getFrequency();
+        }
+        else if constexpr (tSource == SysClock::Source::PLL)
+        {
+            selectMask = RCC_CFGR_SW_PLL;
+            statusMask = RCC_CFGR_SWS_PLL;
+            SystemCoreClock = PLLClock::getFrequency();
+        }
+
+        AHBClock::setDivider<tConfig::HPRE>();
+
+        uint32_t timeout = 10000;
+        RCC->CFGR = (RCC->CFGR & ~RCC_CFGR_SW) | selectMask;
+
+        while (((RCC->CFGR & RCC_CFGR_SWS) != statusMask) && --timeout)
+            asm volatile("nop");
+
+        if (static_cast<uint8_t>(tLatency) < Flash::getLatency())
+        {
+            Flash::setLatency(static_cast<uint8_t>(tLatency));
+        }
+
+        APB1Clock::setDivider<tConfig::PPRE1>();
+        APB2Clock::setDivider<tConfig::PPRE2>();
     }
 }
