@@ -26,30 +26,30 @@ namespace STM32::IO
     template <class tPort, uint8_t tNumber>
     inline GPIO_TypeDef *IOPin<tPort, tNumber>::_regs()
     {
-        return tPort::template regs();
+        return port::regs();
     }
 
     template <class tPort, uint8_t tNumber>
     inline bool IOPin<tPort, tNumber>::get()
     {
-        return tPort::regs()->IDR & (1u << tNumber);
+        return _regs()->IDR & (1u << tNumber);
     }
 
     template <class tPort, uint8_t tNumber>
     inline void IOPin<tPort, tNumber>::set()
     {
-        tPort::regs()->BSRR |= (1u << tNumber);
+        _regs()->BSRR |= (1u << tNumber);
     }
 
     template <class tPort, uint8_t tNumber>
     inline void IOPin<tPort, tNumber>::clr()
     {
-        tPort::regs()->BSRR |= ((1u << tNumber) << 16u);
+        _regs()->BSRR |= ((1u << tNumber) << 16u);
     }
 
     template <class tPort, uint8_t tNumber>
     inline void IOPin<tPort, tNumber>::tog()
     {
-        tPort::regs()->ODR ^= (1u << tNumber);
+        _regs()->ODR ^= (1u << tNumber);
     }
 }

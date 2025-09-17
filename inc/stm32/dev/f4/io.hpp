@@ -6,6 +6,24 @@
 namespace STM32::IO
 {
     template <class tPort, uint8_t tNumber>
+    template <class tConfig>
+    inline void IOPin<tPort, tNumber>::configure()
+    {
+        if constexpr (tConfig::mode == Mode::OUTPUT || tConfig::mode == Mode::FUNCTION)
+        {
+            setSpeed<tConfig::speed>();
+            setOType<tConfig::oType>();
+        }
+
+        if constexpr (tConfig::mode != Mode::ANALOG)
+        {
+            setPull<tConfig::pull>();
+        }
+
+        setMode<tConfig::mode>();
+    }
+
+    template <class tPort, uint8_t tNumber>
     template <Mode mode>
     inline void IOPin<tPort, tNumber>::setMode()
     {
@@ -25,14 +43,14 @@ namespace STM32::IO
     inline void IOPin<tPort, tNumber>::setOType()
     {
         _regs()->OTYPER &= ~(1u << tNumber);
-        _regs()->OTYPER != (static_cast<uint8_t>(otype) << tNumber);
+        _regs()->OTYPER |= (static_cast<uint8_t>(otype) << tNumber);
     }
 
     template <class tPort, uint8_t tNumber>
     inline void IOPin<tPort, tNumber>::setOType(OType otype)
     {
         _regs()->OTYPER &= ~(1u << tNumber);
-        _regs()->OTYPER != (static_cast<uint8_t>(otype) << tNumber);
+        _regs()->OTYPER |= (static_cast<uint8_t>(otype) << tNumber);
     }
 
     template <class tPort, uint8_t tNumber>

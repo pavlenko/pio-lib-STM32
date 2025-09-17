@@ -61,13 +61,13 @@ namespace STM32::Clock
     }
 
     template <volatile uint32_t RCC_TypeDef::*tReg, uint32_t tMask>
-    void ClockControl<tReg, tMask>::enable()
+    inline void ClockControl<tReg, tMask>::enable()
     {
         reinterpret_cast<RCC_TypeDef *>(RCC_BASE)->*tReg |= tMask;
     }
 
     template <volatile uint32_t RCC_TypeDef::*tReg, uint32_t tMask>
-    void ClockControl<tReg, tMask>::disable()
+    inline void ClockControl<tReg, tMask>::disable()
     {
         reinterpret_cast<RCC_TypeDef *>(RCC_BASE)->*tReg &= ~tMask;
     }

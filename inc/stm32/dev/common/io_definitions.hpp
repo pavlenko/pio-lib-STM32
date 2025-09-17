@@ -157,31 +157,58 @@ namespace STM32::IO
         static constexpr const auto number = tNumber;
 
         /**
-         * @brief Configure pin mode, pull, speed...
+         * @brief Configure pin
          */
         template <class tConfig>
         static inline void configure();
 
+        /**
+         * @brief Set pin mode
+         */
         template <Mode mode>
         static inline void setMode();
 
+        /**
+         * @brief Set pin mode
+         */
         static inline void setMode(Mode mode);
-        
+
+        /**
+         * @brief Set pin output mode push-pull or open-drain
+         */
         template <OType type>
         static inline void setOType();
 
+        /**
+         * @brief Set pin output mode push-pull or open-drain
+         */
         static inline void setOType(OType type);
-        
+
+        /**
+         * @brief Set pin internal pull up/down resistors state
+         */
         template <Pull pull>
         static inline void setPull();
 
+        /**
+         * @brief Set pin internal pull up/down resistors state
+         */
         static inline void setPull(Pull pull);
 
+        /**
+         * @brief Set pin speed
+         */
         template <Speed speed>
         static inline void setSpeed();
-        
+
+        /**
+         * @brief Set pin speed
+         */
         static inline void setSpeed(Speed speed);
 
+        /**
+         * @brief Set pin AF number (if supported)
+         */
         template <AF af>
         static inline void setAltFunction();
 

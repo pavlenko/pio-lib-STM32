@@ -2,6 +2,8 @@
 
 #include <stm32/dev/common/clock.hpp>
 
+volatile uint32_t PLLClockFrequency{0};
+
 namespace STM32::Clock
 {
     bool LSIClock::on() { return ClockBase::enable<&RCC_TypeDef::CSR, RCC_CSR_LSION, RCC_CSR_LSIRDY>(); }
@@ -20,7 +22,7 @@ namespace STM32::Clock
 
     bool HSEClock::off() { return ClockBase::disable<&RCC_TypeDef::CR, RCC_CR_HSEON, RCC_CR_HSERDY>(); }
 
-    static volatile uint32_t PLLClockFrequency{0};
+    // static volatile uint32_t PLLClockFrequency{0};
 
     enum class PLLClock::Source
     {
@@ -53,18 +55,31 @@ namespace STM32::Clock
         static_assert(2 <= tConfig::PLLQ && tConfig::PLLQ <= 15, "Invalid PLLQ");
         static_assert(2 <= tConfig::PLLR && tConfig::PLLR <= 7, "Invalid PLLR");
 
-        // TODO: intermediate vars
+        // PLLM conversion: 2...63 -> 2...63 << pos
+        constexpr uint32_t PLLMMsk = tConfig::PLLM << RCC_PLLCFGR_PLLM_Pos;
+        // PLLN conversion: 50...432 -> 50...432 << pos
+        constexpr uint32_t PLLNMsk = tConfig::PLLN << RCC_PLLCFGR_PLLN_Pos;
+        // PLLP conversion: 2,4,6,8 -> 0...3 << pos
         constexpr uint32_t PLLPMsk = ((tConfig::PLLP / 2) - 1) << RCC_PLLCFGR_PLLP_Pos;
+        // PLLQ conversion: 2...15 -> 2...15 << pos
+        constexpr uint32_t PLLQMsk = tConfig::PLLQ << RCC_PLLCFGR_PLLQ_Pos;
 
-        RCC->PLLCFGR = (tConfig::PLLM << RCC_PLLCFGR_PLLM_Pos) | (tConfig::PLLN << RCC_PLLCFGR_PLLN_Pos) | PLLPMsk | (tConfig::PLLQ << RCC_PLLCFGR_PLLQ_Pos);
+#if defined(RCC_PLLCFGR_PLLR_Pos)
+        // PLLR conversion: 2...7 -> 2...7 << pos
+        constexpr uint32_t PLLRMsk = tConfig::PLLR << RCC_PLLCFGR_PLLR_Pos;
+
+        RCC->PLLCFGR = (static_cast<uint8_t>(tSource) << RCC_PLLCFGR_PLLSRC_Pos) | PLLMMsk | PLLNMsk | PLLPMsk | PLLQMsk | PLLRMsk;
+#else
+        RCC->PLLCFGR = (static_cast<uint8_t>(tSource) << RCC_PLLCFGR_PLLSRC_Pos) | PLLMMsk | PLLNMsk | PLLPMsk | PLLQMsk;
+#endif
 
         if constexpr (tSource == PLLClock::Source::HSI)
         {
-            PLLClockFrequency = HSIClock::getFrequency() * tConfig::PLLN / tConfig::PLLM;
+            PLLClockFrequency = (HSIClock::getFrequency() * tConfig::PLLN) / (tConfig::PLLM * tConfig::PLLP);
         }
         else
         {
-            PLLClockFrequency = HSEClock::getFrequency() * tConfig::PLLN / tConfig::PLLM;
+            PLLClockFrequency = (HSEClock::getFrequency() * tConfig::PLLN) / (tConfig::PLLM * tConfig::PLLP);
         }
     }
 
@@ -110,6 +125,7 @@ namespace STM32::Clock
 
         while (((RCC->CFGR & RCC_CFGR_SWS) != statusMask) && --timeout)
             asm volatile("nop");
+        //SystemCoreClock >>= AHBPrescTable[((RCC->CFGR & RCC_CFGR_HPRE) >> 4)];
     }
 
     static volatile uint32_t AHBClockFrequency{0};
