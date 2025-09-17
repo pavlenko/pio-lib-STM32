@@ -286,9 +286,16 @@ namespace STM32::Clock
          * @brief Select system clock source
          *
          * @tparam source
+         * @deprecated
          */
         template <Source tSource>
         static inline void selectSource();
+
+        /**
+         * @brief Configure system clock source & bus dividers
+         */
+        template <Source tSource, class tConfig>
+        static inline void configure();
     };
 
     /**

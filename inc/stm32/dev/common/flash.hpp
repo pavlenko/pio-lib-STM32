@@ -15,6 +15,16 @@ namespace STM32
 #endif
     }
 
+    inline uint32_t Flash::getLatency()
+    {
+        return FLASH->ACR & FLASH_ACR_LATENCY;
+    }
+
+    inline void Flash::setLatency(uint8_t latency)
+    {
+        *(__IO uint8_t *)ACR_BYTE0_ADDRESS = (latency);
+    }
+
     inline constexpr uint32_t Flash::getSize()
     {
 #if defined(FLASH_SIZE)
@@ -37,7 +47,7 @@ namespace STM32
 
         FLASH->KEYR = key1;
         FLASH->KEYR = key2;
-        
+
         wait();
     }
 

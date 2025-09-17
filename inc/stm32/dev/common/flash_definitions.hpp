@@ -6,7 +6,7 @@
 namespace STM32
 {
     /**
-     * @brief Flash API 
+     * @brief Flash API
      */
     class Flash
     {
@@ -23,6 +23,16 @@ namespace STM32
          * @param uint32_t System clock frequency
          */
         static inline void configure(uint32_t frequency);
+
+        /**
+         * @brief Get flash latency
+         */
+        static inline uint32_t getLatency();
+
+        /**
+         * @brief Set flash latency
+         */
+        static inline void setLatency(uint8_t latency);
 
         /**
          * @brief Get flash total size
@@ -82,7 +92,7 @@ namespace STM32
         /**
          * @brief Write data buffer to flash
          *
-         * @param address Flash address 
+         * @param address Flash address
          * @patam data    Data buffer ptr
          * @patam size    Data size in bytes
          *

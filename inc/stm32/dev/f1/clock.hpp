@@ -126,7 +126,7 @@ namespace STM32::Clock
     class AHBClock : public BusClock<SysClock>
     {
     public:
-        enum class Prescaler : uint32_t
+        enum class Divider : uint32_t
         {
             DIV1 = RCC_CFGR_HPRE_DIV1 >> RCC_CFGR_HPRE_Pos,
             DIV2 = RCC_CFGR_HPRE_DIV2 >> RCC_CFGR_HPRE_Pos,
@@ -144,13 +144,13 @@ namespace STM32::Clock
             return AHBClockFrequency;
         }
 
-        template <Prescaler tPrescaler>
-        static inline void setPrescaler()
+        template <Divider tDivider>
+        static inline void setDivider()
         {
-            RCC->CFGR = (RCC->CFGR & ~RCC_CFGR_HPRE) | (static_cast<uint32_t>(tPrescaler) << RCC_CFGR_HPRE_Pos);
-            
+            RCC->CFGR = (RCC->CFGR & ~RCC_CFGR_HPRE) | (static_cast<uint32_t>(tDivider) << RCC_CFGR_HPRE_Pos);
+
             static constexpr uint8_t shiftMap[] = {0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 6, 7, 8, 9};
-            static constexpr uint8_t shiftBits = shiftMap[static_cast<uint32_t>(tPrescaler)];
+            static constexpr uint8_t shiftBits = shiftMap[static_cast<uint32_t>(tDivider)];
             AHBClockFrequency = SysClock::getFrequency() >> shiftBits;
         }
     };
@@ -160,7 +160,7 @@ namespace STM32::Clock
     class APB1Clock : public BusClock<AHBClock>
     {
     public:
-        enum class Prescaler : uint32_t
+        enum class Divider : uint32_t
         {
             DIV1 = RCC_CFGR_PPRE1_DIV1 >> RCC_CFGR_PPRE1_Pos,
             DIV2 = RCC_CFGR_PPRE1_DIV2 >> RCC_CFGR_PPRE1_Pos,
@@ -174,13 +174,13 @@ namespace STM32::Clock
             return APB1ClockFrequency;
         }
 
-        template <Prescaler tPrescaler>
-        static inline void setPrescaler()
+        template <Divider tDivider>
+        static inline void setDivider()
         {
-            RCC->CFGR = (RCC->CFGR & ~RCC_CFGR_PPRE1) | (static_cast<uint32_t>(tPrescaler) << RCC_CFGR_PPRE1_Pos);
+            RCC->CFGR = (RCC->CFGR & ~RCC_CFGR_PPRE1) | (static_cast<uint32_t>(tDivider) << RCC_CFGR_PPRE1_Pos);
 
             static constexpr uint8_t shiftMap[] = {0, 0, 0, 0, 1, 2, 3, 4};
-            static constexpr uint8_t shiftBits = shiftMap[static_cast<uint32_t>(tPrescaler)];
+            static constexpr uint8_t shiftBits = shiftMap[static_cast<uint32_t>(tDivider)];
             APB1ClockFrequency = AHBClock::getFrequency() >> shiftBits;
         }
     };
@@ -190,7 +190,7 @@ namespace STM32::Clock
     class APB2Clock : public BusClock<AHBClock>
     {
     public:
-        enum class Prescaler : uint32_t
+        enum class Divider : uint32_t
         {
             DIV1 = RCC_CFGR_PPRE2_DIV1 >> RCC_CFGR_PPRE2_Pos,
             DIV2 = RCC_CFGR_PPRE2_DIV2 >> RCC_CFGR_PPRE2_Pos,
@@ -204,13 +204,13 @@ namespace STM32::Clock
             return APB2ClockFrequency;
         }
 
-        template <Prescaler tPrescaler>
-        static inline void setPrescaler()
+        template <Divider tDivider>
+        static inline void setDivider()
         {
-            RCC->CFGR = (RCC->CFGR & ~RCC_CFGR_PPRE2) | (static_cast<uint32_t>(tPrescaler) << RCC_CFGR_PPRE2_Pos);
+            RCC->CFGR = (RCC->CFGR & ~RCC_CFGR_PPRE2) | (static_cast<uint32_t>(tDivider) << RCC_CFGR_PPRE2_Pos);
 
             static constexpr uint8_t shiftMap[] = {0, 0, 0, 0, 1, 2, 3, 4};
-            static constexpr uint8_t shiftBits = shiftMap[static_cast<uint32_t>(tPrescaler)];
+            static constexpr uint8_t shiftBits = shiftMap[static_cast<uint32_t>(tDivider)];
             APB2ClockFrequency = AHBClock::getFrequency() >> shiftBits;
         }
     };
