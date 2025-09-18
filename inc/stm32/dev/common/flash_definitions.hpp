@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <type_traits>
 #include <stm32/dev/common/_cmsis.hpp>
 
 namespace STM32
@@ -14,10 +15,17 @@ namespace STM32
         /**
          * @brief Wait while flash is busy
          */
-        static inline void wait();
+        static inline void _wait();
+
+        /**
+         * @brief Internal write data to flash
+         */
+        template <typename T>
+        static inline void _program(uint32_t address, T data);
 
     public:
         enum class Latency : uint8_t;
+        enum class DataSize : uint8_t;
 
         /**
          * @brief Configure flash
@@ -85,21 +93,8 @@ namespace STM32
          *
          * @param address Flash address
          * @param data    Data to write
-         *
-         * @return Success or not
          */
         template <typename T>
-        static inline bool write(uint32_t address, T data);
-
-        /**
-         * @brief Write data buffer to flash
-         *
-         * @param address Flash address
-         * @patam data    Data buffer ptr
-         * @patam size    Data size in bytes
-         *
-         * @return Success or not
-         */
-        static inline bool write(uint32_t address, void *data, uint32_t size);
+        static inline void program(uint32_t address, T data);
     };
 }

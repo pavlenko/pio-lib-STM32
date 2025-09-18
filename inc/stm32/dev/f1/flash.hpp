@@ -69,4 +69,12 @@ namespace STM32
     }
 
     // TODO write
+    // private:
+    void _write(uint32_t address, uint8_t data);//<-- not supported
+    void _write(uint32_t address, uint16_t data);
+    void _write(uint32_t address, uint32_t data);//<-- not supported, but can call sequentilly u16 method
+    void _write(uint32_t address, uint64_t data);//<-- not supported, but can call sequentilly u16 method
+    // public:
+    template <typename size>
+    void write(uint32_t address, uint64_t data);
 }

@@ -92,5 +92,37 @@ namespace STM32
         FLASH->CR &= ~(FLASH_CR_SER | FLASH_CR_SNB);
     }
 
-    // TODO write
+    template <typename T>
+    inline void Flash::_program(uint32_t address, T data)
+    {
+        FLASH->CR &= ~FLASH_CR_PSIZE;
+        FLASH->CR |= (sizeof(T) - 1) << FLASH_CR_PSIZE_Pos;
+        FLASH->CR |= FLASH_CR_PG;
+
+        if constexpr (std::is_same_v<T, uint64_t>)
+        {
+            *(__IO uint32_t *)address = (uint32_t)data;
+            __ISB();
+            *(__IO uint32_t *)(address + 4) = (uint32_t)(data >> 32);
+        }
+        else
+        {
+            *(__IO T *)address = data;
+        }
+    }
+
+    template <typename T>
+    inline void Flash::program(uint32_t address, T data)
+    {
+        static_assert(
+            std::is_same_v<T, uint8_t> || std::is_same_v<T, uint16_t> || std::is_same_v<T, uint32_t> || std::is_same_v<T, uint64_t>,
+            "Supported only uint8, uint16, uint32 and uint64 types");
+
+        _wait();
+        _program<T>(address, data);
+        _wait();
+        FLASH->CR &= (~FLASH_CR_PG);
+    }
+
+    //todo batch program
 }

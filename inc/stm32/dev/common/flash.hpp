@@ -4,7 +4,7 @@
 
 namespace STM32
 {
-    inline void Flash::wait()
+    inline void Flash::_wait()
     {
 #if defined(FLASH_SR_BSY1)
         while (FLASH->SR & FLASH_SR_BSY1)
@@ -48,7 +48,7 @@ namespace STM32
         FLASH->KEYR = key1;
         FLASH->KEYR = key2;
 
-        wait();
+        _wait();
     }
 
     inline void Flash::unlock()
