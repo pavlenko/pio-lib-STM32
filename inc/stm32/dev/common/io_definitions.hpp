@@ -62,7 +62,11 @@ namespace STM32::IO
     enum class OType
     {
         PP,
+#if defined(STM32F1)
+        OD = 0b0100,
+#else
         OD,
+#endif
     };
 
     enum class Pull
@@ -74,10 +78,16 @@ namespace STM32::IO
 
     enum class Speed
     {
+#if defined(STM32F1)
+        LOW = 0b0010,
+        MEDIUM = 0b0001,
+        FAST = 0b0011,
+#else
         LOW,
         MEDIUM,
         FAST,
         HIGH,
+#endif
     };
 
     enum class AF
