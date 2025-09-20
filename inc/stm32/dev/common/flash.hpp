@@ -22,7 +22,8 @@ namespace STM32
 
     inline void Flash::setLatency(uint8_t latency)
     {
-        *(__IO uint8_t *)ACR_BYTE0_ADDRESS = (latency);
+        // *(__IO uint8_t *)ACR_BYTE0_ADDRESS = (latency);
+        FLASH->ACR = (FLASH->ACR & ~FLASH_ACR_LATENCY) | (latency << FLASH_ACR_LATENCY_Pos);
     }
 
     inline constexpr uint32_t Flash::getSize()
