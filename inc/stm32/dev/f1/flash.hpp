@@ -38,39 +38,51 @@ namespace STM32
     {
         uint32_t address = getPageAddress(page);
 
-#if defined(FLASH_BANK_2)
-        if (address > FLASH_BANK1_END)
+#if defined(FLASH_BANK2_END)
+        if (address <= FLASH_BANK1_END)
         {
-            while ((FLASH->SR2 & FLASH_SR2_BSY) != 0u)
-                ;
-
+            _waitBank1();
+            FLASH->CR |= FLASH_CR_PER;
+            FLASH->AR = address;
+            FLASH->CR |= FLASH_CR_STRT;
+            _waitBank1();
+            FLASH->CR &= ~FLASH_CR_PER;
+        }
+        else
+        {
+            _waitBank2();
             FLASH->CR2 |= FLASH_CR2_PER;
             FLASH->AR2 = address;
             FLASH->CR2 |= FLASH_CR2_STRT;
-
-            while ((FLASH->SR2 & FLASH_SR2_BSY) != 0u)
-                ;
-
+            _waitBank2();
             FLASH->CR2 &= ~FLASH_CR2_PER;
-            return;
         }
-#endif
-        while ((FLASH->SR & FLASH_SR_BSY) != 0u)
-            ;
-
+#else
+        _wait();
         FLASH->CR |= FLASH_CR_PER;
         FLASH->AR = address;
         FLASH->CR |= FLASH_CR_STRT;
-
-        while ((FLASH->SR & FLASH_SR_BSY) != 0u)
-            ;
-
+        _wait();
         FLASH->CR &= ~FLASH_CR_PER;
+#endif
     }
 
     template <>
     inline void Flash::_program(uint32_t address, uint16_t data)
     {
+#if defined(FLASH_BANK2_END)
+        if (address <= FLASH_BANK1_END)
+        {
+            FLASH->CR |= FLASH_CR_PG;
+        }
+        else
+        {
+            FLASH->CR2 |= FLASH_CR2_PG;
+        }
+#else
+        FLASH->CR |= FLASH_CR_PG;
+#endif
+        *(__IO uint16_t *)address = data;
     }
 
     template <typename T>
@@ -80,7 +92,18 @@ namespace STM32
             std::is_same_v<T, uint16_t> || std::is_same_v<T, uint32_t> || std::is_same_v<T, uint64_t>,
             "Supported only uint16, uint32 and uint64 types");
 
-        _wait();//TODO <-- pass address for resolve banks if supported, else just ignore passed arg
+#if defined(FLASH_BANK2_END)
+        if (address <= FLASH_BANK1_END)
+        {
+            _waitBank1();
+        }
+        else
+        {
+            _waitBank2();
+        }
+#else
+        _wait();
+#endif
 
         uint32_t index;
         uint32_t iterations;
@@ -100,8 +123,21 @@ namespace STM32
         for (index = 0u; index < iterations; index++)
         {
             _program(address + (2u * index), reinterpret_cast<uint16_t>(data >> (16u * index)));
+#if defined(FLASH_BANK2_END)
+            if (address <= FLASH_BANK1_END)
+            {
+                _waitBank1();
+                FLASH->CR &= ~FLASH_CR_PG;
+            }
+            else
+            {
+                _waitBank2();
+                FLASH->CR2 &= ~FLASH_CR2_PG;
+            }
+#else
             _wait();
             FLASH->CR &= ~FLASH_CR_PG;
+#endif
         }
     }
 }

@@ -12,10 +12,22 @@ namespace STM32
     class Flash
     {
     private:
+#if defined (FLASH_BANK2_END)
+        /**
+         * @brief Wait while flash bank1 is busy
+         */
+        static inline void _waitBank1();
+
+        /**
+         * @brief Wait while flash bank2 is busy
+         */
+        static inline void _waitBank2();
+#else
         /**
          * @brief Wait while flash is busy
          */
         static inline void _wait();
+#endif
 
         /**
          * @brief Internal write data to flash

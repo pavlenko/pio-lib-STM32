@@ -4,16 +4,24 @@
 
 namespace STM32
 {
+#if defined(FLASH_BANK2_END)
+    inline void Flash::_waitBank1()
+    {
+        while (FLASH->SR & FLASH_SR_BSY)
+            asm volatile("nop");
+    }
+    inline void Flash::_waitBank2()
+    {
+        while (FLASH->SR2 & FLASH_SR2_BSY)
+            asm volatile("nop");
+    }
+#else
     inline void Flash::_wait()
     {
-#if defined(FLASH_SR_BSY1)
-        while (FLASH->SR & FLASH_SR_BSY1)
-            continue;
-#else
         while (FLASH->SR & FLASH_SR_BSY)
-            continue;
-#endif
+            asm volatile("nop");
     }
+#endif
 
     inline uint8_t Flash::getLatency()
     {
@@ -22,7 +30,6 @@ namespace STM32
 
     inline void Flash::setLatency(uint8_t latency)
     {
-        // *(__IO uint8_t *)ACR_BYTE0_ADDRESS = (latency);
         FLASH->ACR = (FLASH->ACR & ~FLASH_ACR_LATENCY) | (latency << FLASH_ACR_LATENCY_Pos);
     }
 
