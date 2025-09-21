@@ -68,13 +68,40 @@ namespace STM32
         FLASH->CR &= ~FLASH_CR_PER;
     }
 
-    // TODO write
-    // private:
-    void _write(uint32_t address, uint8_t data);//<-- not supported
-    void _write(uint32_t address, uint16_t data);
-    void _write(uint32_t address, uint32_t data);//<-- not supported, but can call sequentilly u16 method
-    void _write(uint32_t address, uint64_t data);//<-- not supported, but can call sequentilly u16 method
-    // public:
-    template <typename size>
-    void write(uint32_t address, uint64_t data);
+    template <>
+    inline void Flash::_program(uint32_t address, uint16_t data)
+    {
+    }
+
+    template <typename T>
+    inline void Flash::program(uint32_t address, T data)
+    {
+        static_assert(
+            std::is_same_v<T, uint16_t> || std::is_same_v<T, uint32_t> || std::is_same_v<T, uint64_t>,
+            "Supported only uint16, uint32 and uint64 types");
+
+        _wait();//TODO <-- pass address for resolve banks if supported, else just ignore passed arg
+
+        uint32_t index;
+        uint32_t iterations;
+        if constexpr (std::is_same_v<T, uint16_t>)
+        {
+            iterations = 1u;
+        }
+        else if constexpr (std::is_same_v<T, uint32_t>)
+        {
+            iterations = 2u;
+        }
+        else
+        {
+            iterations = 4u;
+        }
+
+        for (index = 0u; index < iterations; index++)
+        {
+            _program(address + (2u * index), reinterpret_cast<uint16_t>(data >> (16u * index)));
+            _wait();
+            FLASH->CR &= ~FLASH_CR_PG;
+        }
+    }
 }
