@@ -5,8 +5,8 @@
 - [x] Clock
 - [ ] Flash
 - [ ] DMA
-- [ ] EXTI
-- [ ] GPIO
+- [x] EXTI
+- [x] GPIO
 - [ ] I2C
 - [ ] SPI
 - [ ] UART
