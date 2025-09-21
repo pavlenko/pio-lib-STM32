@@ -247,13 +247,6 @@ namespace STM32::IO
          */
         static inline void tog();
     };
-
-    // PA::enable();
-    // PA12::configure<Mode::OUTPUT>(Speed, Pull);
-    // PA12::configure<Mode::ALTERNATE>(Speed, Pull);
-    // PA12::configure<Mode::INPUT>(Pull);
-    // PA12::configure<Mode::ANALOG>(void);
-    // PA::get|set|clr<mask>(uint16_t value);
 }
 
 #define IO_PORT_DEFINITION(__ALIAS__, __PORT__) \

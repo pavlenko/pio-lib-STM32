@@ -1,6 +1,5 @@
 #pragma once
 
-#include <stm32/dev/common/_cmsis.hpp>
 #include <stm32/dev/common/io_definitions.hpp>
 
 namespace STM32::IO
