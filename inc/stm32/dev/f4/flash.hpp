@@ -123,6 +123,4 @@ namespace STM32
         _wait();
         FLASH->CR &= (~FLASH_CR_PG);
     }
-
-    //todo batch program
 }

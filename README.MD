@@ -3,7 +3,7 @@
 ### Modules
 
 - [x] Clock
-- [ ] Flash
+- [x] Flash
 - [ ] DMA
 - [x] EXTI
 - [x] GPIO
