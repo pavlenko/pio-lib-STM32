@@ -58,20 +58,79 @@ namespace STM32::Timer
     template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock>
     class BasicTimer
     {
+    private:
+        /**
+         * @brief Access registers
+         */
+        static inline TIM_TypeDef *_regs();
+
+    public:
         template <typename tConfig>
         static inline void configure();
-        static inline void setPrescaler(uint16_t prescaller);
+
+        /**
+         * @brief Set prescaler
+         */
+        static inline void setPrescaler(uint16_t prescaler);
+
+        /**
+         * @brief Set auto-reload value
+         */
         static inline void setAutoReload(uint16_t autoReload);
-        static inline void setCounter(uint16_t conter);
+
+        /**
+         * @brief Set counter value
+         */
+        static inline void setCounter(uint16_t counter);
+
+        /**
+         * @brief Enable timer clock
+         */
         static inline void enable();
+
+        /**
+         * @brief Disable timer clock
+         */
         static inline void disable();
+
+        /**
+         * @brief Enable timer interrupts
+         */
         static inline void attachIRQ(IRQFlags flags);
+
+        /**
+         * @brief Disable timer interrupts
+         */
         static inline void detachIRQ(IRQFlags flags);
-        static inline void attachDMARequest();
-        static inline void detachDMARequest();
+
+        /**
+         * @brief Check interrupt flag
+         */
         static inline bool hasIRQFlag();
+
+        /**
+         * @brief Clear interrupt flag
+         */
         static inline void clrIRQFlag();
+
+        /**
+         * @brief Attach DMA
+         */
+        static inline void attachDMARequest();
+
+        /**
+         * @brief Detach DMA
+         */
+        static inline void detachDMARequest();
+
+        /**
+         * @brief Start timer
+         */
         static inline void start();
+
+        /**
+         * @brief Stop timer
+         */
         static inline void stop();
     };
 
