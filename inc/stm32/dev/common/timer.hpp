@@ -102,74 +102,74 @@ namespace STM32::Timer
     }
 
     // GP TIMER CHANNEL
-    template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock>
+    template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock, uint8_t tChannels>
     template <uint8_t tNumber>
-    inline void GPTimer<tRegsAddr, tIRQn, tClock>::Channel<tNumber>::enable()
+    inline void GPTimer<tRegsAddr, tIRQn, tClock, tChannels>::Channel<tNumber>::enable()
     {
         _regs()->CCER |= (TIM_CCER_CC1E << (tNumber * 4));
     }
 
-    template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock>
+    template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock, uint8_t tChannels>
     template <uint8_t tNumber>
-    inline void GPTimer<tRegsAddr, tIRQn, tClock>::Channel<tNumber>::disable()
+    inline void GPTimer<tRegsAddr, tIRQn, tClock, tChannels>::Channel<tNumber>::disable()
     {
         _regs()->CCER &= ~(TIM_CCER_CC1E << (tNumber * 4));
     }
 
-    template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock>
+    template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock, uint8_t tChannels>
     template <uint8_t tNumber>
-    inline bool GPTimer<tRegsAddr, tIRQn, tClock>::Channel<tNumber>::hasIRQFlag()
+    inline bool GPTimer<tRegsAddr, tIRQn, tClock, tChannels>::Channel<tNumber>::hasIRQFlag()
     {
         return _regs()->SR & (TIM_SR_CC1IF << tNumber);
     }
 
-    template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock>
+    template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock, uint8_t tChannels>
     template <uint8_t tNumber>
-    inline void GPTimer<tRegsAddr, tIRQn, tClock>::Channel<tNumber>::clrIRQFlag()
+    inline void GPTimer<tRegsAddr, tIRQn, tClock, tChannels>::Channel<tNumber>::clrIRQFlag()
     {
         _regs()->SR &= ~(TIM_SR_CC1IF << tNumber);
     }
 
-    template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock>
+    template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock, uint8_t tChannels>
     template <uint8_t tNumber>
-    inline void GPTimer<tRegsAddr, tIRQn, tClock>::Channel<tNumber>::attachIRQ()
+    inline void GPTimer<tRegsAddr, tIRQn, tClock, tChannels>::Channel<tNumber>::attachIRQ()
     {
         _regs()->DIER |= (TIM_DIER_CC1IE << tNumber);
         NVIC_EnableIRQ(tIRQn);
     }
 
-    template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock>
+    template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock, uint8_t tChannels>
     template <uint8_t tNumber>
-    inline void GPTimer<tRegsAddr, tIRQn, tClock>::Channel<tNumber>::detachIRQ()
+    inline void GPTimer<tRegsAddr, tIRQn, tClock, tChannels>::Channel<tNumber>::detachIRQ()
     {
         _regs()->DIER &= ~(TIM_DIER_CC1IE << tNumber);
     }
 
-    template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock>
+    template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock, uint8_t tChannels>
     template <uint8_t tNumber>
-    inline void GPTimer<tRegsAddr, tIRQn, tClock>::Channel<tNumber>::attachDMARequest()
+    inline void GPTimer<tRegsAddr, tIRQn, tClock, tChannels>::Channel<tNumber>::attachDMARequest()
     {
         _regs()->DIER |= (TIM_DIER_CC1DE << tNumber);
     }
 
-    template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock>
+    template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock, uint8_t tChannels>
     template <uint8_t tNumber>
-    inline void GPTimer<tRegsAddr, tIRQn, tClock>::Channel<tNumber>::detachDMARequest()
+    inline void GPTimer<tRegsAddr, tIRQn, tClock, tChannels>::Channel<tNumber>::detachDMARequest()
     {
         _regs()->DIER &= ~(TIM_DIER_CC1DE << tNumber);
     }
 
     // GP TIMER INPUT CAPTURE
-    template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock>
+    template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock, uint8_t tChannels>
     template <uint8_t tNumber>
-    inline void GPTimer<tRegsAddr, tIRQn, tClock>::ICapture<tNumber>::setPolarity(Polarity polarity)
+    inline void GPTimer<tRegsAddr, tIRQn, tClock, tChannels>::ICapture<tNumber>::setPolarity(Polarity polarity)
     {
         _regs()->CCER = (_regs()->CCER & ~((TIM_CCER_CC1E | TIM_CCER_CC1P | TIM_CCER_CC1NP) << _4bit_pos)) | (static_cast<uint32_t>(polarity) << _4bit_pos);
     }
 
-    template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock>
+    template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock, uint8_t tChannels>
     template <uint8_t tNumber>
-    inline void GPTimer<tRegsAddr, tIRQn, tClock>::ICapture<tNumber>::setMode(Mode mode)
+    inline void GPTimer<tRegsAddr, tIRQn, tClock, tChannels>::ICapture<tNumber>::setMode(Mode mode)
     {
         if constexpr (tNumber < 2)
         {
@@ -181,17 +181,31 @@ namespace STM32::Timer
         }
     }
 
-    // GP TIMER OUTPUT COMPARE
-    template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock>
+    template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock, uint8_t tChannels>
     template <uint8_t tNumber>
-    inline void GPTimer<tRegsAddr, tIRQn, tClock>::OCompare<tNumber>::setPolarity(Polarity polarity)
+    inline uint16_t GPTimer<tRegsAddr, tIRQn, tClock, tChannels>::ICapture<tNumber>::getValue()
+    {
+        if constexpr (tNumber == 0u)
+            return _regs()->CCR1;
+        else if constexpr (tNumber == 1u)
+            return _regs()->CCR2;
+        else if constexpr (tNumber == 2u)
+            return _regs()->CCR3;
+        else
+            return _regs()->CCR4;
+    }
+
+    // GP TIMER OUTPUT COMPARE
+    template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock, uint8_t tChannels>
+    template <uint8_t tNumber>
+    inline void GPTimer<tRegsAddr, tIRQn, tClock, tChannels>::OCompare<tNumber>::setPolarity(Polarity polarity)
     {
         _regs()->CCER = (_regs()->CCER & ~((TIM_CCER_CC1E | TIM_CCER_CC1P | TIM_CCER_CC1NP) << _4bit_pos)) | (static_cast<uint32_t>(polarity) << _4bit_pos);
     }
 
-    template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock>
+    template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock, uint8_t tChannels>
     template <uint8_t tNumber>
-    inline void GPTimer<tRegsAddr, tIRQn, tClock>::OCompare<tNumber>::setMode(Mode mode)
+    inline void GPTimer<tRegsAddr, tIRQn, tClock, tChannels>::OCompare<tNumber>::setMode(Mode mode)
     {
         _regs()->CCER = (_regs()->CCER & ~(TIM_CCER_CC1NP << _4bit_pos)) | (TIM_CCER_CC1E << _4bit_pos);
         if constexpr (tNumber < 2)
@@ -203,5 +217,33 @@ namespace STM32::Timer
             _regs()->CCMR2 = (_regs()->CCMR2 & ~(TIM_CCMR1_CC1S << _8bit_pos)) | (static_cast<uint32_t>(mode) << _8bit_pos);
         }
         _regs()->BDTR |= TIM_BDTR_MOE;
+    }
+
+    template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock, uint8_t tChannels>
+    template <uint8_t tNumber>
+    inline void GPTimer<tRegsAddr, tIRQn, tClock, tChannels>::OCompare<tNumber>::setPulse(uint16_t pulse)
+    {
+        if constexpr (tNumber == 0u)
+            _regs()->CCR1 = pulse;
+        else if constexpr (tNumber == 1u)
+            _regs()->CCR2 = pulse;
+        else if constexpr (tNumber == 2u)
+            _regs()->CCR3 = pulse;
+        else
+            _regs()->CCR4 = pulse;
+    }
+
+    template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock, uint8_t tChannels>
+    template <uint8_t tNumber>
+    inline uint16_t GPTimer<tRegsAddr, tIRQn, tClock, tChannels>::OCompare<tNumber>::getPulse()
+    {
+        if constexpr (tNumber == 0u)
+            return _regs()->CCR1;
+        else if constexpr (tNumber == 1u)
+            return _regs()->CCR2;
+        else if constexpr (tNumber == 2u)
+            return _regs()->CCR3;
+        else
+            return _regs()->CCR4;
     }
 }

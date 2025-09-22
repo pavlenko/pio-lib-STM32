@@ -134,7 +134,7 @@ namespace STM32::Timer
         static inline void stop();
     };
 
-    template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock>
+    template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock, uint8_t tChannels>
     class GPTimer : public BasicTimer<tRegsAddr, tIRQn, tClock>
     {
     private:
@@ -142,7 +142,7 @@ namespace STM32::Timer
         class Channel
         {
         protected:
-            static_assert(tNumber < 4u, "Invalid channel number");
+            static_assert(tNumber < tChannels, "Invalid channel number");
 
             static constexpr const uint8_t _4bit_pos = tNumber * 4u;
             static constexpr const uint8_t _8bit_pos = (tNumber & 0x1u) * 8u;
@@ -217,6 +217,7 @@ namespace STM32::Timer
             static inline void configure();
             static inline void setPolarity(Polarity polarity);
             static inline void setMode(Mode mode);
+            static inline uint16_t getValue();
         };
 
         template <uint8_t tNumber>
@@ -246,6 +247,8 @@ namespace STM32::Timer
             static inline void configure();
             static inline void setPolarity(Polarity polarity);
             static inline void setMode(Mode mode);
+            static inline void setPulse(uint16_t pulse);
+            static inline uint16_t getPulse();
         };
 
         template <uint8_t tNumber>
