@@ -214,9 +214,19 @@ namespace STM32::Timer
                 TRC = TIM_CCMR1_CC1S_0 | TIM_CCMR1_CC1S_1,
             };
 
-            static inline void configure();
+            /**
+             * @brief Set capture polarity
+             */
             static inline void setPolarity(Polarity polarity);
+
+            /**
+             * @brief Set capture mode
+             */
             static inline void setMode(Mode mode);
+
+            /**
+             * @brief Get captured value
+             */
             static inline uint16_t getValue();
         };
 
@@ -224,14 +234,18 @@ namespace STM32::Timer
         class OCompare : public Channel<tNumber>
         {
         public:
-            // Output polarity
+            /**
+             * @brief Output polarity
+             */
             enum Polarity : uint32_t
             {
                 HIGH = 0,
                 LOW  = TIM_CCER_CC1P,
             };
 
-            // Output mode
+            /**
+             * @brief Output mode
+             */
             enum Mode : uint32_t
             {
                 TIMING          = 0,
@@ -244,10 +258,24 @@ namespace STM32::Timer
                 FORCED_INACTIVE = TIM_CCMR1_OC1M_2,
             };
 
-            static inline void configure();
+            /**
+             * @brief Set compare polarity
+             */
             static inline void setPolarity(Polarity polarity);
+
+            /**
+             * @brief Set compare mode
+             */
             static inline void setMode(Mode mode);
+
+            /**
+             * @brief Set compare pulse
+             */
             static inline void setPulse(uint16_t pulse);
+
+            /**
+             * @brief Get compare pulse
+             */
             static inline uint16_t getPulse();
         };
 
@@ -255,14 +283,19 @@ namespace STM32::Timer
         class PWMGeneration : public OCompare<tNumber>
         {
         public:
-            // PWM Fast mod
+            /**
+             * @brief PWM Fast mode enabled
+             */
             enum class FastMode
             {
                 DISABLE = 0x00000000U,
                 ENABLE  = TIM_CCMR1_OC1FE,
             };
 
-            static inline void configure();
+            /**
+             * @brief Set fast mode enabled
+             */
+            static inline void setFastMode(FastMode mode);
         };
 
         class SlaveMode //TODO incomplete... need read docs

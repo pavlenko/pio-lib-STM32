@@ -246,4 +246,19 @@ namespace STM32::Timer
         else
             return _regs()->CCR4;
     }
+
+    // GP TIMER PWM
+    template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock, uint8_t tChannels>
+    template <uint8_t tNumber>
+    inline void GPTimer<tRegsAddr, tIRQn, tClock, tChannels>::PWMGeneration<tNumber>::setFastMode(FastMode mode)
+    {
+        if constexpr (tNumber < 2)
+        {
+            _regs()->CCMR1 = (_regs()->CCMR1 & ~(TIM_CCMR1_OC1FE << _8bit_pos)) | (static_cast<uint32_t>(mode) << _8bit_pos);
+        }
+        else
+        {
+            _regs()->CCMR2 = (_regs()->CCMR2 & ~(TIM_CCMR1_OC1FE << _8bit_pos)) | (static_cast<uint32_t>(mode) << _8bit_pos);
+        }
+    }
 }
