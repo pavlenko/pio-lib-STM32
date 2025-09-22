@@ -261,4 +261,16 @@ namespace STM32::Timer
             _regs()->CCMR2 = (_regs()->CCMR2 & ~(TIM_CCMR1_OC1FE << _8bit_pos)) | (static_cast<uint32_t>(mode) << _8bit_pos);
         }
     }
+
+    template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock, uint8_t tChannels>
+    inline void AdvancedTimer<tRegsAddr, tIRQn, tClock, tChannels>::setRepetitionCounter(uint8_t counter)
+    {
+        _regs()->RCR = counter;
+    }
+
+    template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock, uint8_t tChannels>
+    inline uint8_t AdvancedTimer<tRegsAddr, tIRQn, tClock, tChannels>::getRepetitionCounter()
+    {
+        return _regs()->RCR & 0xFF;
+    }
 }

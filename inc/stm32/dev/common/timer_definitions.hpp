@@ -65,8 +65,8 @@ namespace STM32::Timer
         static inline TIM_TypeDef *_regs();
 
     public:
-        template <typename tConfig>
-        static inline void configure();
+        static inline void setCounterMode(CounterMode mode);
+        static inline void setMasterMode(MasterMode mode);
 
         /**
          * @brief Set prescaler
@@ -298,10 +298,9 @@ namespace STM32::Timer
             static inline void setFastMode(FastMode mode);
         };
 
-        class SlaveMode //TODO incomplete... need read docs
+        class SlaveMode //TODO incomplete... need readdocs
         {
         public:
-            // TODO use single enum for full config options
             // Slave mode selection
             enum class Mode : uint16_t
             {
@@ -322,64 +321,72 @@ namespace STM32::Timer
                 INTERNAL_TRIGGER1 = 0x01 << TIM_SMCR_TS_Pos,
                 INTERNAL_TRIGGER2 = 0x02 << TIM_SMCR_TS_Pos,
                 INTERNAL_TRIGGER3 = 0x03 << TIM_SMCR_TS_Pos,
-                Ti1EdgeDetector = 0x04 << TIM_SMCR_TS_Pos,
-                FilteredTimerInput1 = 0x05 << TIM_SMCR_TS_Pos,
-                FilteredTimerInput2 = 0x06 << TIM_SMCR_TS_Pos,
-                ExternalTriggerInput = 0x07 << TIM_SMCR_TS_Pos,
+                INPUT1_EDGE_DETECT = 0x04 << TIM_SMCR_TS_Pos,
+                FILTERED_INPUT1 = 0x05 << TIM_SMCR_TS_Pos,
+                FILTERED_INPUT2 = 0x06 << TIM_SMCR_TS_Pos,
+                EXTERNAL_INPUT = 0x07 << TIM_SMCR_TS_Pos,
             };
 
             /// External trigger filter selection
             enum class ExternalTriggerFilter : uint16_t
             {
-                NoFilter = 0x00 << TIM_SMCR_ETF_Pos,
-                NoDivideFilter2 = 0x01 << TIM_SMCR_ETF_Pos,
-                NoDivideFilter4 = 0x02 << TIM_SMCR_ETF_Pos,
-                NoDivideFilter8 = 0x03 << TIM_SMCR_ETF_Pos,
-                Divide2Filter6 = 0x04 << TIM_SMCR_ETF_Pos,
-                Divide2Filter8 = 0x05 << TIM_SMCR_ETF_Pos,
-                Divide4Filter6 = 0x06 << TIM_SMCR_ETF_Pos,
-                Divide4Filter8 = 0x07 << TIM_SMCR_ETF_Pos,
-                Divide8Filter6 = 0x08 << TIM_SMCR_ETF_Pos,
-                Divide8Filter8 = 0x09 << TIM_SMCR_ETF_Pos,
-                Divide16Filter5 = 0x0a << TIM_SMCR_ETF_Pos,
-                Divide16Filter6 = 0x0b << TIM_SMCR_ETF_Pos,
-                Divide16Filter8 = 0x0c << TIM_SMCR_ETF_Pos,
-                Divide32Filter5 = 0x0d << TIM_SMCR_ETF_Pos,
-                Divide32Filter6 = 0x0e << TIM_SMCR_ETF_Pos,
-                Divide32Filter8 = 0x0f << TIM_SMCR_ETF_Pos,
+                NO_FILTER = 0x00 << TIM_SMCR_ETF_Pos,
+                N2 = 0x01 << TIM_SMCR_ETF_Pos,
+                N4 = 0x02 << TIM_SMCR_ETF_Pos,
+                N8 = 0x03 << TIM_SMCR_ETF_Pos,
+                DIV2_N6 = 0x04 << TIM_SMCR_ETF_Pos,
+                DIV2_N8 = 0x05 << TIM_SMCR_ETF_Pos,
+                DIV4_N6 = 0x06 << TIM_SMCR_ETF_Pos,
+                DIV4_N8 = 0x07 << TIM_SMCR_ETF_Pos,
+                DIV8_N6 = 0x08 << TIM_SMCR_ETF_Pos,
+                DIV8_N8 = 0x09 << TIM_SMCR_ETF_Pos,
+                DIV16_N5 = 0x0a << TIM_SMCR_ETF_Pos,
+                DIV16_N6 = 0x0b << TIM_SMCR_ETF_Pos,
+                DIV16_N8 = 0x0c << TIM_SMCR_ETF_Pos,
+                DIV32_N5 = 0x0d << TIM_SMCR_ETF_Pos,
+                DIV32_N6 = 0x0e << TIM_SMCR_ETF_Pos,
+                DIV32_N8 = 0x0f << TIM_SMCR_ETF_Pos,
             };
 
             /// External trigger filter selection
             enum class ExternalTriggerPrescaler : uint16_t
             {
-                PrescalerOff = 0x00 << TIM_SMCR_ETPS_Pos,
-                Divide2 = 0x01 << TIM_SMCR_ETPS_Pos,
-                Divide4 = 0x02 << TIM_SMCR_ETPS_Pos,
-                Divide8 = 0x03 << TIM_SMCR_ETPS_Pos,
+                OFF = 0x00 << TIM_SMCR_ETPS_Pos,
+                DIV2 = 0x01 << TIM_SMCR_ETPS_Pos,
+                DIV4 = 0x02 << TIM_SMCR_ETPS_Pos,
+                DIV8 = 0x03 << TIM_SMCR_ETPS_Pos,
             };
 
             /// External clock mode 2 enable
             enum class ExternalClockMode2 : uint16_t
             {
-                Disabled = 0x00 << TIM_SMCR_ECE_Pos,
-                Enabled = 0x01 << TIM_SMCR_ECE_Pos,
+                DISABLED = 0x00 << TIM_SMCR_ECE_Pos,
+                ENABLED = 0x01 << TIM_SMCR_ECE_Pos,
             };
 
             /// External trigger polarity
             enum class ExternalTriggerPolarity : uint16_t
             {
-                NonInverted = 0x00 << TIM_SMCR_ETP_Pos,
-                Inverted = 0x01 << TIM_SMCR_ETP_Pos,
+                NORMAL = 0x00 << TIM_SMCR_ETP_Pos,
+                INVERTED = 0x01 << TIM_SMCR_ETP_Pos,
             };
 
+            //TODO methods: enable(mode),disable(),setTrigger(),setTriggerFilter(),setTriggerPolarity(),setTriggerPrescaler()
         };
     };
 
-    template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock>
-    class AdvancedTimer : public GPTimer<tRegsAddr, tIRQn, tClock>
+    template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock, uint8_t tChannels>
+    class AdvancedTimer : public GPTimer<tRegsAddr, tIRQn, tClock, tChannels>
     {
     public:
+        /**
+         * @brief Set repetition counter value
+         */
         static inline void setRepetitionCounter(uint8_t counter);
+
+        /**
+         * @brief Get repetition counter value
+         */
         static inline uint8_t getRepetitionCounter();
     };
 }
