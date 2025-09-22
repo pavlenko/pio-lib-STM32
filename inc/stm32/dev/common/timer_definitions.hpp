@@ -58,7 +58,7 @@ namespace STM32::Timer
     template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock>
     class BasicTimer
     {
-    private:
+    protected:
         /**
          * @brief Access registers
          */
@@ -142,13 +142,44 @@ namespace STM32::Timer
         class Channel
         {
         public:
+            /**
+             * @brief Enable channel ouput
+             */
             static inline void enable();
+
+            /**
+             * @brief Disable channel output
+             */
             static inline void disable();
+
+            /**
+             * @brief Check channel interrupt flag
+             */
             static inline bool hasIRQFlag();
+
+            /**
+             * @brief Clear channel interrupt flag
+             */
             static inline void clrIRQFlag();
+
+            /**
+             * @brief Enable channel interrupt
+             */
             static inline void attachIRQ();
+
+            /**
+             * @brief Disable channel interrupt
+             */
             static inline void detachIRQ();
+
+            /**
+             * @brief Enable channel DMA
+             */
             static inline void attachDMARequest();
+
+            /**
+             * @brief Disable channel DMA
+             */
             static inline void detachDMARequest();
         };
 
