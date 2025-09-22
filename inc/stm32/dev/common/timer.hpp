@@ -158,4 +158,50 @@ namespace STM32::Timer
     {
         _regs()->DIER &= ~(TIM_DIER_CC1DE << tNumber);
     }
+
+    // GP TIMER INPUT CAPTURE
+    template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock>
+    template <uint8_t tNumber>
+    inline void GPTimer<tRegsAddr, tIRQn, tClock>::ICapture<tNumber>::setPolarity(Polarity polarity)
+    {
+        _regs()->CCER = (_regs()->CCER & ~((TIM_CCER_CC1E | TIM_CCER_CC1P | TIM_CCER_CC1NP) << _4bit_pos)) | (static_cast<uint32_t>(polarity) << _4bit_pos);
+    }
+
+    template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock>
+    template <uint8_t tNumber>
+    inline void GPTimer<tRegsAddr, tIRQn, tClock>::ICapture<tNumber>::setMode(Mode mode)
+    {
+        if constexpr (tNumber < 2)
+        {
+            _regs()->CCMR1 = (_regs()->CCMR1 & ~(TIM_CCMR1_CC1S << _8bit_pos)) | (static_cast<uint32_t>(mode) << _8bit_pos);
+        }
+        else
+        {
+            _regs()->CCMR2 = (_regs()->CCMR2 & ~(TIM_CCMR1_CC1S << _8bit_pos)) | (static_cast<uint32_t>(mode) << _8bit_pos);
+        }
+    }
+
+    // GP TIMER OUTPUT COMPARE
+    template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock>
+    template <uint8_t tNumber>
+    inline void GPTimer<tRegsAddr, tIRQn, tClock>::OCompare<tNumber>::setPolarity(Polarity polarity)
+    {
+        _regs()->CCER = (_regs()->CCER & ~((TIM_CCER_CC1E | TIM_CCER_CC1P | TIM_CCER_CC1NP) << _4bit_pos)) | (static_cast<uint32_t>(polarity) << _4bit_pos);
+    }
+
+    template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock>
+    template <uint8_t tNumber>
+    inline void GPTimer<tRegsAddr, tIRQn, tClock>::OCompare<tNumber>::setMode(Mode mode)
+    {
+        _regs()->CCER = (_regs()->CCER & ~(TIM_CCER_CC1NP << _4bit_pos)) | (TIM_CCER_CC1E << _4bit_pos);
+        if constexpr (tNumber < 2)
+        {
+            _regs()->CCMR1 = (_regs()->CCMR1 & ~(TIM_CCMR1_CC1S << _8bit_pos)) | (static_cast<uint32_t>(mode) << _8bit_pos);
+        }
+        else
+        {
+            _regs()->CCMR2 = (_regs()->CCMR2 & ~(TIM_CCMR1_CC1S << _8bit_pos)) | (static_cast<uint32_t>(mode) << _8bit_pos);
+        }
+        _regs()->BDTR |= TIM_BDTR_MOE;
+    }
 }

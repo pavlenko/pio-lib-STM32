@@ -141,6 +141,12 @@ namespace STM32::Timer
         template <uint8_t tNumber>
         class Channel
         {
+        protected:
+            static_assert(tNumber < 4u, "Invalid channel number");
+
+            static constexpr const uint8_t _4bit_pos = tNumber * 4u;
+            static constexpr const uint8_t _8bit_pos = (tNumber & 0x1u) * 8u;
+
         public:
             /**
              * @brief Enable channel ouput
@@ -188,16 +194,20 @@ namespace STM32::Timer
         class ICapture : public Channel<tNumber>
         {
         public:
-            // Capture polarity
-            enum class Polarity
+            /**
+             * @brief Capture polarity
+             */
+            enum class Polarity : uint32_t
             {
                 RISING = 0,
                 FALLING = TIM_CCER_CC1P,
                 BOTH = TIM_CCER_CC1P | TIM_CCER_CC1NP,
             };
 
-            // Capture mode
-            enum class Mode
+            /**
+             * @brief Capture mode
+             */
+            enum class Mode : uint32_t
             {
                 DIRECT = TIM_CCMR1_CC1S_0,
                 INDIRECT = TIM_CCMR1_CC1S_1,
@@ -205,6 +215,8 @@ namespace STM32::Timer
             };
 
             static inline void configure();
+            static inline void setPolarity(Polarity polarity);
+            static inline void setMode(Mode mode);
         };
 
         template <uint8_t tNumber>
@@ -212,14 +224,14 @@ namespace STM32::Timer
         {
         public:
             // Output polarity
-            enum Polarity
+            enum Polarity : uint32_t
             {
                 HIGH = 0,
                 LOW  = TIM_CCER_CC1P,
             };
 
             // Output mode
-            enum Mode
+            enum Mode : uint32_t
             {
                 TIMING          = 0,
                 ACTIVE          = TIM_CCMR1_OC1M_0,
@@ -232,6 +244,8 @@ namespace STM32::Timer
             };
 
             static inline void configure();
+            static inline void setPolarity(Polarity polarity);
+            static inline void setMode(Mode mode);
         };
 
         template <uint8_t tNumber>
