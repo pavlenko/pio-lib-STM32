@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <type_traits>
 
-#include <stm32/_cmsis.hpp>
+#include <stm32/dev/common/_cmsis.hpp>
 
 namespace STM32::DMA
 {
@@ -98,11 +98,6 @@ namespace STM32::DMA
 #endif
     };
 
-    constexpr inline Config operator|(Config lft, Config rgt)
-    {
-        return Config(static_cast<uint32_t>(lft) | static_cast<uint32_t>(rgt));
-    }
-
     /**
      * @brief DMA channel APIs
      *
@@ -112,7 +107,7 @@ namespace STM32::DMA
      * @tparam tIRQn        Channel IRQ number
      */
     template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
-    class Channel 
+    class Channel
     {
     private:
         /**
@@ -161,7 +156,7 @@ namespace STM32::DMA
          * @return bool
          */
         static inline bool isCircular();
-        
+
         /**
          * @brief Get remaining data count
          *
