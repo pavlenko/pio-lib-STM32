@@ -28,6 +28,19 @@ namespace STM32::Timer
         TRIGGER = TIM_DIER_UDE,
     };
 
+    // Timer master mode
+    enum class MasterMode
+    {
+        RESET = 0x0 << TIM_CR2_MMS_Pos,///< Reset is used as TRGO
+        ENABLE = 0x1 << TIM_CR2_MMS_Pos,///< Counter enable is used as TRGO
+        UPDATE = 0x2 << TIM_CR2_MMS_Pos,///< Update event is used as TRGO
+        COMPARE_PULSE = 0x3 << TIM_CR2_MMS_Pos,///< CC1F set is used as TRGO
+        COMPARE_CH1 = 0x4 << TIM_CR2_MMS_Pos,///< OC1REF signal is used as TRGO
+        COMPARE_CH2 = 0x5 << TIM_CR2_MMS_Pos,///< OC2REF signal is used as TRGO
+        COMPARE_CH3 = 0x6 << TIM_CR2_MMS_Pos,///< OC3REF signal is used as TRGO
+        COMPARE_CH4 = 0x7 << TIM_CR2_MMS_Pos,///< OC4REF signal is used as TRGO
+    };
+
     // Timer counter mode
     enum class CounterMode
     {
@@ -42,19 +55,6 @@ namespace STM32::Timer
         CENTER_ALIGNED3 = TIM_CR1_CMS,
     };
 
-    // Timer master mode
-    enum class MasterMode
-    {
-        RESET = 0x0 << TIM_CR2_MMS_Pos,///< Reset is used as TRGO
-        ENABLE = 0x1 << TIM_CR2_MMS_Pos,///< Counter enable is used as TRGO
-        UPDATE = 0x2 << TIM_CR2_MMS_Pos,///< Update event is used as TRGO
-        ComparePulse = 0x3 << TIM_CR2_MMS_Pos,///< CC1F set is used as TRGO
-        CompareCh1 = 0x4 << TIM_CR2_MMS_Pos,///< OC1REF signal is used as TRGO
-        CompareCh2 = 0x5 << TIM_CR2_MMS_Pos,///< OC2REF signal is used as TRGO
-        CompareCh3 = 0x6 << TIM_CR2_MMS_Pos,///< OC3REF signal is used as TRGO
-        CompareCh4 = 0x7 << TIM_CR2_MMS_Pos,///< OC4REF signal is used as TRGO
-    };
-
     template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock>
     class BasicTimer
     {
@@ -65,8 +65,15 @@ namespace STM32::Timer
         static inline TIM_TypeDef *_regs();
 
     public:
-        static inline void setCounterMode(CounterMode mode);
+        /**
+         * @brief Set master mode
+         */
         static inline void setMasterMode(MasterMode mode);
+
+        /**
+         * @brief Set counter mode
+         */
+        static inline void setCounterMode(CounterMode mode);
 
         /**
          * @brief Set prescaler

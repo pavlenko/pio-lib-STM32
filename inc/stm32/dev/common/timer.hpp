@@ -22,6 +22,18 @@ namespace STM32::Timer
     }
 
     template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock>
+    inline void BasicTimer<tRegsAddr, tIRQn, tClock>::setMasterMode(MasterMode mode)
+    {
+        _regs()->CR2 = (_regs()->CR2 & ~TIM_CR2_MMS) | static_cast<uint32_t>(mode);
+    }
+
+    template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock>
+    inline void BasicTimer<tRegsAddr, tIRQn, tClock>::setCounterMode(CounterMode mode)
+    {
+        _regs()->CR1 = (_regs()->CR1 & ~TIM_CR1_CMS) | static_cast<uint16_t>(mode);
+    }
+
+    template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock>
     inline void BasicTimer<tRegsAddr, tIRQn, tClock>::setPrescaler(uint16_t prescaler)
     {
         _regs()->PSC = prescaler;
