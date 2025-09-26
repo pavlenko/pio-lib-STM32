@@ -103,17 +103,19 @@ namespace STM32::DMA
      *
      * @tparam tDriver      Bus driver
      * @tparam tRegsAddress Base address of channel registers
-     * @tparam tChannel     Channel number
+     * @tparam tChannel     Channel number 0-baseed
      * @tparam tIRQn        Channel IRQ number
      */
     template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
     class Channel
     {
     private:
+        static_assert(tChannel < 8u, "Invalid channel number");
+
         /**
          * @brief Callback for success/error transfer
          */
-        static inline CallbackT cb;
+        static inline CallbackT _cb;
 
         /**
          * @brief Get ptr to DMA channel registers

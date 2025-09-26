@@ -9,6 +9,7 @@ namespace STM32::DMA
         return Config(static_cast<uint32_t>(lft) | static_cast<uint32_t>(rgt));
     }
 
+    // CHANNEL
 #ifdef DMA_CCR_EN
     template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
     inline DMA_Channel_TypeDef *Channel<tDriver, tRegsAddress, tChannel, tIRQn>::_regs()
@@ -28,10 +29,10 @@ namespace STM32::DMA
     inline void Channel<tDriver, tRegsAddress, tChannel, tIRQn>::enable()
     {
 #ifdef DMA_CCR_EN
-        _regs->CCR |= DMA_CCR_EN;
+        _regs()->CCR |= DMA_CCR_EN;
 #endif
 #ifdef DMA_SxCR_EN
-        _regs->CR |= DMA_SxCR_EN;
+        _regs()->CR |= DMA_SxCR_EN;
 #endif
     }
 
@@ -39,22 +40,157 @@ namespace STM32::DMA
     inline void Channel<tDriver, tRegsAddress, tChannel, tIRQn>::disable()
     {
 #ifdef DMA_CCR_EN
-        _regs->CCR &= ~DMA_CCR_EN;
+        _regs()->CCR &= ~DMA_CCR_EN;
 #endif
 #ifdef DMA_SxCR_EN
-        _regs->CR &= ~DMA_SxCR_EN;
+        _regs()->CR &= ~DMA_SxCR_EN;
 #endif
     }
 
     template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
     inline bool Channel<tDriver, tRegsAddress, tChannel, tIRQn>::isEnabled()
     {
-        return (_regs->CR & DMA_SxCR_EN) != 0u;
+#ifdef DMA_CCR_EN
+        return (_regs()->CCR & DMA_CCR_EN) != 0u;
+#endif
+#ifdef DMA_SxCR_EN
+        return (_regs()->CR & DMA_SxCR_EN) != 0u;
+#endif
     }
 
     template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
     inline bool Channel<tDriver, tRegsAddress, tChannel, tIRQn>::isReady()
     {
-        //TODO return RemainingTransfers() == 0 || !Enabled() || TransferComplete();
+        return getRemaining() == 0 || !isEnabled() || TransferComplete();
+    }
+
+    template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
+    inline bool Channel<tDriver, tRegsAddress, tChannel, tIRQn>::isCircular()
+    {
+#ifdef DMA_CCR_EN
+        return (_regs()->CCR & DMA_CCR_CIRC) != 0u;
+#endif
+#ifdef DMA_SxCR_EN
+        return (_regs()->CR & DMA_SxCR_CIRC) != 0u;
+#endif
+    }
+
+    template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
+    inline uint32_t Channel<tDriver, tRegsAddress, tChannel, tIRQn>::getRemaining()
+    {
+#ifdef DMA_CCR_EN
+        return _regs()->CNDTR;
+#endif
+#ifdef DMA_SxCR_EN
+        return _regs()->NDTR;
+#endif
+    }
+
+    template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
+    inline void Channel<tDriver, tRegsAddress, tChannel, tIRQn>::setTransferCallback(CallbackT cb)
+    {
+        _cb = cb;
+    }
+
+    template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
+    inline void Channel<tDriver, tRegsAddress, tChannel, tIRQn>::transfer(Config config, const void *buffer, volatile void *periph, uint32_t size)
+    {
+        // TODO
+    }
+
+    template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
+    inline void Channel<tDriver, tRegsAddress, tChannel, tIRQn>::abort()
+    {
+        // TODO
+    }
+
+    template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
+    template <Flag tFlag>
+    inline bool Channel<tDriver, tRegsAddress, tChannel, tIRQn>::hasFlag()
+    {
+        return tDriver::template hasChannelFlag<tChannel, tFlag>();
+    }
+
+    template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
+    template <Flag tFlag>
+    inline void Channel<tDriver, tRegsAddress, tChannel, tIRQn>::clrFlag()
+    {
+        tDriver::template clrChannelFlag<tChannel, tFlag>();
+    }
+
+    template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
+    inline void Channel<tDriver, tRegsAddress, tChannel, tIRQn>::clrFlags()
+    {
+        tDriver::template clrChannelFlags<tChannel>();
+    }
+
+    template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
+    inline void Channel<tDriver, tRegsAddress, tChannel, tIRQn>::dispatchIRQ()
+    {
+        // TODO
+    }
+
+    // DRIVER
+    template <uint32_t tRegsAddress, typename tClock>
+    inline DMA_TypeDef *Driver<tRegsAddress, tClock>::_regs()
+    {
+        return reinterpret_cast<DMA_TypeDef *>(tRegsAddress);
+    }
+
+    template <uint32_t tRegsAddress, typename tClock>
+    inline void Driver<tRegsAddress, tClock>::enable()
+    {
+        tClock::enable();
+    }
+
+    template <uint32_t tRegsAddress, typename tClock>
+    inline void Driver<tRegsAddress, tClock>::disable()
+    {
+        tClock::disable();
+    }
+
+    template <uint32_t tRegsAddress, typename tClock>
+    template <uint8_t tChannel, Flag tFlag>
+    inline bool Driver<tRegsAddress, tClock>::hasChannelFlag()
+    {
+#if defined(DMA_CCR_EN)
+        return _regs()->ISR & (static_cast<uint32_t>(tFlag) << (tChannel * 4));
+#endif
+#if defined(DMA_SxCR_EN)
+        //TODO check...
+        // 0-1: (ch * 6)
+        // 2-3: ((ch - 2) * 6)
+        // 4-5: ((ch - 4) * 6) + 16
+        // 6-7: ((ch - 6) * 6) + 16
+        if constexpr (tChannel <= 1)
+        {
+            return _DmaRegs()->LISR & (static_cast<uint32_t>(tFlag) << (tChannel * 6));
+        }
+        if constexpr (2 <= tChannel && tChannel <= 3)
+        {
+            return _DmaRegs()->LISR & (static_cast<uint32_t>(tFlag) << (4 + tChannel * 6));
+        }
+        if constexpr (4 <= tChannel && tChannel <= 5)
+        {
+            return _DmaRegs()->HISR & (static_cast<uint32_t>(tFlag) << ((tChannel - 4) * 6));
+        }
+        if constexpr (6 <= tChannel && tChannel <= 7)
+        {
+            return _DmaRegs()->HISR & (static_cast<uint32_t>(tFlag) << (4 + (tChannel - 4) * 6));
+        }
+        return false;
+#endif
+    }
+
+    template <uint32_t tRegsAddress, typename tClock>
+    template <uint8_t tChannel, Flag tFlag>
+    inline void Driver<tRegsAddress, tClock>::clrChannelFlag()
+    {
+    }
+
+    template <uint32_t tRegsAddress, typename tClock>
+    template <uint8_t tChannel>
+    inline void Driver<tRegsAddress, tClock>::clrChannelFlags()
+    {
     }
 }
