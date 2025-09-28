@@ -93,9 +93,47 @@ namespace STM32::DMA
     }
 
     template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
+#if defined(DMA_SxCR_EN) || defined(DMA_CSELR_C1S)
+    inline void Channel<tDriver, tRegsAddress, tChannel, tIRQn>::transfer(Config config, const void *buffer, volatile void *periph, uint32_t size, uint8_t channel = 0)
+#else
     inline void Channel<tDriver, tRegsAddress, tChannel, tIRQn>::transfer(Config config, const void *buffer, volatile void *periph, uint32_t size)
+#endif
     {
         // TODO
+        tDriver::enable();
+        if (!hasFlag<Flag::TRANSFER_ERROR>())
+        {
+            while (!isReady())
+                ;
+        }
+
+#ifdef DMA_CCR_EN
+        _regs()->CCR = 0;
+        _regs()->CNDTR = size;
+        _regs()->CMAR = reinterpret_cast<uint32_t>(buffer);
+        _regs()->CPAR = reinterpret_cast<uint32_t>(periph);
+#endif
+#ifdef DMA_SxCR_EN
+        _regs()->CR = 0;
+        _regs()->NDTR = size;
+        _regs()->M0AR = reinterpret_cast<uint32_t>(buffer);
+        _regs()->PAR = reinterpret_cast<uint32_t>(periph);
+#endif
+
+        if (_cb)
+        {
+            config = config | Config::IE_TRANSFER_COMPLETE | Config::IE_TRANSFER_ERROR;
+        }
+
+        NVIC_EnableIRQ(tIRQn);
+
+#ifdef DMA_CCR_EN
+        //TODO stream channel
+        _regs()->CCR = static_cast<uint32_t>(config) | DMA_CCR_EN;
+#endif
+#ifdef DMA_SxCR_EN
+        _regs()->CR = static_cast<uint32_t>(config) | ((channel & 0x07) << 25) | DMA_SxCR_EN;
+#endif
     }
 
     template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
@@ -109,7 +147,7 @@ namespace STM32::DMA
         _regs()->FCR &= DMA_SxFCR_FEIE;
 #endif
         disable();
-        tDriver::template clrChannelFlags<tChannel>();
+        clrFlags();
     }
 
     template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
