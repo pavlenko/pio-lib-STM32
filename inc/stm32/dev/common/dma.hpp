@@ -101,7 +101,15 @@ namespace STM32::DMA
     template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
     inline void Channel<tDriver, tRegsAddress, tChannel, tIRQn>::abort()
     {
-        // TODO
+#ifdef DMA_CCR_EN
+        _regs()->CCR &= ~static_cast<uint32_t>(Config::IE_TRANSFER_COMPLETE | Config::IE_TRANSFER_ERROR | Config::IE_HALF_TRANSFER);
+#endif
+#ifdef DMA_SxCR_EN
+        _regs()->CR &= ~static_cast<uint32_t>(Config::IE_TRANSFER_COMPLETE | Config::IE_TRANSFER_ERROR | Config::IE_HALF_TRANSFER | Config::IE_DIRECT_MODE_ERROR);
+        _regs()->FCR &= DMA_SxFCR_FEIE;
+#endif
+        disable();
+        tDriver::template clrChannelFlags<tChannel>();
     }
 
     template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
@@ -154,31 +162,17 @@ namespace STM32::DMA
     inline bool Driver<tRegsAddress, tClock>::hasChannelFlag()
     {
 #if defined(DMA_CCR_EN)
-        return _regs()->ISR & (static_cast<uint32_t>(tFlag) << (tChannel * 4));
+        return _regs()->ISR & (static_cast<uint32_t>(tFlag) << _4bit_pos);
 #endif
 #if defined(DMA_SxCR_EN)
-        //TODO check...
-        // 0-1: (ch * 6)
-        // 2-3: ((ch - 2) * 6)
-        // 4-5: ((ch - 4) * 6) + 16
-        // 6-7: ((ch - 6) * 6) + 16
-        if constexpr (tChannel <= 1)
+        if (tChannel < 4)
         {
-            return _DmaRegs()->LISR & (static_cast<uint32_t>(tFlag) << (tChannel * 6));
+            return _regs()->LISR & (static_cast<uint32_t>(tFlag) << _6bit_pos);
         }
-        if constexpr (2 <= tChannel && tChannel <= 3)
+        else
         {
-            return _DmaRegs()->LISR & (static_cast<uint32_t>(tFlag) << (4 + tChannel * 6));
+            return _regs()->HISR & (static_cast<uint32_t>(tFlag) << _6bit_pos);
         }
-        if constexpr (4 <= tChannel && tChannel <= 5)
-        {
-            return _DmaRegs()->HISR & (static_cast<uint32_t>(tFlag) << ((tChannel - 4) * 6));
-        }
-        if constexpr (6 <= tChannel && tChannel <= 7)
-        {
-            return _DmaRegs()->HISR & (static_cast<uint32_t>(tFlag) << (4 + (tChannel - 4) * 6));
-        }
-        return false;
 #endif
     }
 
@@ -186,11 +180,37 @@ namespace STM32::DMA
     template <uint8_t tChannel, Flag tFlag>
     inline void Driver<tRegsAddress, tClock>::clrChannelFlag()
     {
+#if defined(DMA_CCR_EN)
+        _regs()->IFCR = (static_cast<uint32_t>(tFlag) << _4bit_pos);
+#endif
+#if defined(DMA_SxCR_EN)
+        if (tChannel < 4)
+        {
+            _regs()->LIFCR = (static_cast<uint32_t>(tFlag) << _6bit_pos);
+        }
+        else
+        {
+            _regs()->HIFCR = (static_cast<uint32_t>(tFlag) << _6bit_pos);
+        }
+#endif
     }
 
     template <uint32_t tRegsAddress, typename tClock>
     template <uint8_t tChannel>
     inline void Driver<tRegsAddress, tClock>::clrChannelFlags()
     {
+#if defined(DMA_CCR_EN)
+        _regs()->IFCR = (static_cast<uint32_t>(Flag::ALL) << _4bit_pos);
+#endif
+#if defined(DMA_SxCR_EN)
+        if (tChannel < 4)
+        {
+            _regs()->LIFCR = (static_cast<uint32_t>(Flag::ALL) << _6bit_pos);
+        }
+        else
+        {
+            _regs()->HIFCR = (static_cast<uint32_t>(Flag::ALL) << _6bit_pos);
+        }
+#endif
     }
 }
