@@ -1,16 +1,9 @@
 #pragma once
 
-#include <stdint.h>
-#include <stm32/_cmsis.hpp>
-#include <type_traits>
+#include <stm32/dev/common/_cmsis.hpp>
 
-namespace STM32::UART
+namespace STM32::USART
 {
-   /**
-     * @brief UART callback type, allow lambdas
-     */
-    using CallbackT = std::add_pointer_t<void(bool success)>;
-
     enum class Config : uint32_t
     {
         // Mode bits
@@ -32,11 +25,6 @@ namespace STM32::UART
         ENABLE_CTS = USART_CR3_CTSE << 16,
         ENABLE_RTS_CTS = ENABLE_RTS | ENABLE_CTS,
     };
-
-    inline constexpr Config operator|(Config l, Config r)
-    {
-        return Config(static_cast<uint32_t>(l) | static_cast<uint32_t>(r));
-    }
 
     enum class Flag : uint32_t
     {
@@ -77,22 +65,11 @@ namespace STM32::UART
         ALL = ERRORS | TX_EMPTY | TX_COMPLETE | RX_NOT_EMPTY | IDLE | LINE_BREAK | CTS
     };
 
-    inline constexpr Flag operator|(Flag l, Flag r)
-    {
-        return Flag(static_cast<uint32_t>(l) | static_cast<uint32_t>(r));
-    }
-
-    template <
-        uint32_t tRegsAddr,
-        IRQn_Type tIRQn,
-        typename tClock,
-        typename tDMATx,
-        typename tDMARx
-    >
+    template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock, typename tDMATx, typename tDMARx>
     class Driver
     {
     private:
-        static constexpr USART_TypeDef* regs();
+        static constexpr USART_TypeDef *_regs();
 
     public:
         using DMATx = tDMATx;
