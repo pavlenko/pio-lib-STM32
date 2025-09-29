@@ -310,4 +310,24 @@ namespace STM32::Clock
 #if defined(TIM7)
     using Timer7Clock = ClockControl<&RCC_TypeDef::APB1ENR, RCC_APB1ENR_TIM7EN>;
 #endif
+
+    // U(S)ART clocks
+    using UART1Clock = ClockControl<&RCC_TypeDef::APB2ENR, RCC_APB2ENR_USART1EN>;
+    using UART2Clock = ClockControl<&RCC_TypeDef::APB1ENR, RCC_APB1ENR_USART2EN>;
+#if defined(USART3_BASE)
+    using UART3Clock = ClockControl<&RCC_TypeDef::APB1ENR, RCC_APB1ENR_USART3EN>;
+#endif
+#if defined(UART4_BASE)
+    using UART4Clock = ClockControl<&RCC_TypeDef::APB1ENR, RCC_APB1ENR_UART4EN>;
+#endif
+#if defined(UART5_BASE)
+    using UART5Clock = ClockControl<&RCC_TypeDef::APB1ENR, RCC_APB1ENR_UART5EN>;
+#endif
+    using UART6Clock = ClockControl<&RCC_TypeDef::APB2ENR, RCC_APB2ENR_USART6EN>;
+#if defined(UART7_BASE)
+    using UART7Clock = ClockControl<&RCC_TypeDef::APB1ENR, RCC_APB1ENR_UART7EN>;
+#endif
+#if defined(UART8_BASE)
+    using UART8Clock = ClockControl<&RCC_TypeDef::APB1ENR, RCC_APB1ENR_UART8EN>;
+#endif
 }
