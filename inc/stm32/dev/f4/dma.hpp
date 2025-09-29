@@ -1,7 +1,8 @@
 #pragma once
 
-#include <stm32/dev/common/clock.hpp>
 #include <stm32/dev/common/dma.hpp>
+
+#include <stm32/dev/clock.hpp>
 
 // Remove struct pointers
 #ifdef DMA1
@@ -28,7 +29,7 @@ namespace STM32::DMA
     template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
     using Stream = Channel<tDriver, tRegsAddress, tChannel, tIRQn>;
 
-    using DMA1 = Driver<DMA1_BASE, Clock::ClockControl<&RCC_TypeDef::AHB1ENR, RCC_AHB1ENR_DMA1EN>>;
+    using DMA1 = Driver<DMA1_BASE, Clock::DMA1Clock>;
     using DMA1Stream0 = Stream<DMA1, DMA1_Stream0_BASE, 0, DMA1_Stream0_IRQn>;
     using DMA1Stream1 = Stream<DMA1, DMA1_Stream1_BASE, 0, DMA1_Stream1_IRQn>;
     using DMA1Stream2 = Stream<DMA1, DMA1_Stream2_BASE, 0, DMA1_Stream2_IRQn>;
@@ -38,7 +39,7 @@ namespace STM32::DMA
     using DMA1Stream6 = Stream<DMA1, DMA1_Stream6_BASE, 0, DMA1_Stream6_IRQn>;
     using DMA1Stream7 = Stream<DMA1, DMA1_Stream7_BASE, 0, DMA1_Stream7_IRQn>;
 
-    using DMA2 = Driver<DMA2_BASE, Clock::ClockControl<&RCC_TypeDef::AHB1ENR, RCC_AHB1ENR_DMA2EN>>;
+    using DMA2 = Driver<DMA2_BASE, Clock::DMA2Clock>;
     using DMA2Stream0 = Stream<DMA2, DMA2_Stream0_BASE, 0, DMA2_Stream0_IRQn>;
     using DMA2Stream1 = Stream<DMA2, DMA2_Stream1_BASE, 0, DMA2_Stream1_IRQn>;
     using DMA2Stream2 = Stream<DMA2, DMA2_Stream2_BASE, 0, DMA2_Stream2_IRQn>;

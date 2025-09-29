@@ -5,8 +5,6 @@
 
 namespace STM32
 {
-    using EXTIClock = Clock::ClockControl<&RCC_TypeDef::APB2ENR, RCC_APB2ENR_AFIOEN>;
-
     template <uint8_t tNumber, IRQn_Type tIRQn>
     template <IO::Port tPort>
     inline void EXTILine<tNumber, tIRQn>::setPort()

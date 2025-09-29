@@ -234,4 +234,68 @@ namespace STM32::Clock
         APB1Clock::setDivider<tConfig::PPRE1>();
         APB2Clock::setDivider<tConfig::PPRE2>();
     }
+
+    // DMA Controller clocks
+    using DMA1Clock = ClockControl<&RCC_TypeDef::AHBENR, RCC_AHBENR_DMA1EN>;
+#if defined(DMA2_BASE)
+    using DMA2Clock = ClockControl<&RCC_TypeDef::AHBENR, RCC_AHBENR_DMA2EN>;
+#endif
+
+    // External interrupt clocks
+    using EXTIClock = Clock::ClockControl<&RCC_TypeDef::APB2ENR, RCC_APB2ENR_AFIOEN>;
+
+    // GPIO clocks
+    using IOPAClock = ClockControl<&RCC_TypeDef::APB2ENR, RCC_APB2ENR_IOPAEN>;
+    using IOPBClock = ClockControl<&RCC_TypeDef::APB2ENR, RCC_APB2ENR_IOPBEN>;
+    using IOPCClock = ClockControl<&RCC_TypeDef::APB2ENR, RCC_APB2ENR_IOPCEN>;
+#if defined(GPIOD_BASE)
+    using IOPDClock = ClockControl<&RCC_TypeDef::APB2ENR, RCC_APB2ENR_IOPDEN>;
+#endif
+#if defined(GPIOE_BASE)
+    using IOPEClock = ClockControl<&RCC_TypeDef::APB2ENR, RCC_APB2ENR_IOPEEN>;
+#endif
+#if defined(GPIOF_BASE)
+    using IOPFClock = ClockControl<&RCC_TypeDef::APB2ENR, RCC_APB2ENR_IOPFEN>;
+#endif
+#if defined(GPIOG_BASE)
+    using IOPGClock = ClockControl<&RCC_TypeDef::APB2ENR, RCC_APB2ENR_IOPGEN>;
+#endif
+
+    // Advanced timers clocks
+    using Timer1Clock = ClockControl<&RCC_TypeDef::APB2ENR, RCC_APB2ENR_TIM1EN>;
+#if defined(TIM8)
+    using Timer8Clock = ClockControl<&RCC_TypeDef::APB2ENR, RCC_APB2ENR_TIM8EN>;
+#endif
+
+    // General timers (4-channel) clocks
+    using Timer2Clock = ClockControl<&RCC_TypeDef::APB1ENR, RCC_APB1ENR_TIM2EN>;
+    using Timer3Clock = ClockControl<&RCC_TypeDef::APB1ENR, RCC_APB1ENR_TIM3EN>;
+    using Timer4Clock = ClockControl<&RCC_TypeDef::APB1ENR, RCC_APB1ENR_TIM4EN>;
+#if defined(TIM5)
+    using Timer5Clock = ClockControl<&RCC_TypeDef::APB1ENR, RCC_APB1ENR_TIM5EN>;
+#endif
+
+    // General timers (2-channel) clocks
+    using Timer9Clock = ClockControl<&RCC_TypeDef::APB2ENR, RCC_APB2ENR_TIM9EN>;
+#if defined(TIM12)
+    using Timer12Clock = ClockControl<&RCC_TypeDef::APB1ENR, RCC_APB1ENR_TIM12EN>;
+#endif
+
+    // General timers (1-channel) clocks
+    using Timer10Clock = ClockControl<&RCC_TypeDef::APB2ENR, RCC_APB2ENR_TIM10EN>;
+    using Timer11Clock = ClockControl<&RCC_TypeDef::APB2ENR, RCC_APB2ENR_TIM11EN>;
+#if defined(TIM13)
+    using Timer13Clock = ClockControl<&RCC_TypeDef::APB1ENR, RCC_APB1ENR_TIM13EN>;
+#endif
+#if defined(TIM14)
+    using Timer14Clock = ClockControl<&RCC_TypeDef::APB1ENR, RCC_APB1ENR_TIM14EN>;
+#endif
+
+    // Basic timers clocks
+#if defined(TIM6)
+    using Timer6Clock = ClockControl<&RCC_TypeDef::APB1ENR, RCC_APB1ENR_TIM6EN>;
+#endif
+#if defined(TIM7)
+    using Timer7Clock = ClockControl<&RCC_TypeDef::APB1ENR, RCC_APB1ENR_TIM7EN>;
+#endif
 }

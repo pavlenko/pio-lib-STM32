@@ -54,29 +54,29 @@ namespace STM32::IO
         }
     }
 
-    using PA = IOPort<Port::A, GPIOA_BASE, Clock::ClockControl<&RCC_TypeDef::APB2ENR, RCC_APB2ENR_IOPAEN>>;
+    using PA = IOPort<Port::A, GPIOA_BASE, Clock::IOPAClock>;
     IO_PORT_DEFINITION(PA, PA);
 
-    using PB = IOPort<Port::B, GPIOB_BASE, Clock::ClockControl<&RCC_TypeDef::APB2ENR, RCC_APB2ENR_IOPBEN>>;
+    using PB = IOPort<Port::B, GPIOB_BASE, Clock::IOPBClock>;
     IO_PORT_DEFINITION(PB, PB);
 
-    using PC = IOPort<Port::C, GPIOC_BASE, Clock::ClockControl<&RCC_TypeDef::APB2ENR, RCC_APB2ENR_IOPCEN>>;
+    using PC = IOPort<Port::C, GPIOC_BASE, Clock::IOPCClock>;
     IO_PORT_DEFINITION(PC, PC);
 
 #if defined(GPIOD_BASE)
-    using PD = IOPort<Port::D, GPIOD_BASE, Clock::ClockControl<&RCC_TypeDef::APB2ENR, RCC_APB2ENR_IOPDEN>>;
+    using PD = IOPort<Port::D, GPIOD_BASE, Clock::IOPDClock>;
     IO_PORT_DEFINITION(PD, PD);
 #endif
 #if defined(GPIOE_BASE)
-    using PE = IOPort<Port::E, GPIOE_BASE, Clock::ClockControl<&RCC_TypeDef::APB2ENR, RCC_APB2ENR_IOPEEN>>;
+    using PE = IOPort<Port::E, GPIOE_BASE, Clock::IOPEClock>;
     IO_PORT_DEFINITION(PE, PE);
 #endif
 #if defined(GPIOF_BASE)
-    using PF = IOPort<Port::F, GPIOF_BASE, Clock::ClockControl<&RCC_TypeDef::APB2ENR, RCC_APB2ENR_IOPFEN>>;
+    using PF = IOPort<Port::F, GPIOF_BASE, Clock::IOPFClock>;
     IO_PORT_DEFINITION(PF, PF);
 #endif
 #if defined(GPIOG_BASE)
-    using PG = IOPort<Port::G, GPIOG_BASE, Clock::ClockControl<&RCC_TypeDef::APB2ENR, RCC_APB2ENR_IOPGEN>>;
+    using PG = IOPort<Port::G, GPIOG_BASE, Clock::IOPGClock>;
     IO_PORT_DEFINITION(PG, PG);
 #endif
 }

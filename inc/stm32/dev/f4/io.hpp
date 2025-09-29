@@ -102,45 +102,45 @@ namespace STM32::IO
         }
     }
 
-    using PA = IOPort<Port::A, GPIOA_BASE, Clock::ClockControl<&RCC_TypeDef::AHB1ENR, RCC_AHB1ENR_GPIOAEN>>;
+    using PA = IOPort<Port::A, GPIOA_BASE, Clock::IOPAClock>;
     IO_PORT_DEFINITION(PA, PA);
 
-    using PB = IOPort<Port::B, GPIOB_BASE, Clock::ClockControl<&RCC_TypeDef::AHB1ENR, RCC_AHB1ENR_GPIOBEN>>;
+    using PB = IOPort<Port::B, GPIOB_BASE, Clock::IOPBClock>;
     IO_PORT_DEFINITION(PB, PB);
 
-    using PC = IOPort<Port::C, GPIOC_BASE, Clock::ClockControl<&RCC_TypeDef::AHB1ENR, RCC_AHB1ENR_GPIOCEN>>;
+    using PC = IOPort<Port::C, GPIOC_BASE, Clock::IOPCClock>;
     IO_PORT_DEFINITION(PC, PC);
 
 #if defined(GPIOD_BASE)
-    using PD = IOPort<Port::D, GPIOD_BASE, Clock::ClockControl<&RCC_TypeDef::AHB1ENR, RCC_AHB1ENR_GPIODEN>>;
+    using PD = IOPort<Port::D, GPIOD_BASE, Clock::IOPDClock>;
     IO_PORT_DEFINITION(PD, PD);
 #endif
 #if defined(GPIOE_BASE)
-    using PE = IOPort<Port::E, GPIOE_BASE, Clock::ClockControl<&RCC_TypeDef::AHB1ENR, RCC_AHB1ENR_GPIOEEN>>;
+    using PE = IOPort<Port::E, GPIOE_BASE, Clock::IOPEClock>;
     IO_PORT_DEFINITION(PE, PE);
 #endif
 #if defined(GPIOF_BASE)
-    using PF = IOPort<Port::F, GPIOF_BASE, Clock::ClockControl<&RCC_TypeDef::AHB1ENR, RCC_AHB1ENR_GPIOFEN>>;
+    using PF = IOPort<Port::F, GPIOF_BASE, Clock::IOPFClock>;
     IO_PORT_DEFINITION(PF, PF);
 #endif
 #if defined(GPIOG_BASE)
-    using PG = IOPort<Port::G, GPIOG_BASE, Clock::ClockControl<&RCC_TypeDef::AHB1ENR, RCC_AHB1ENR_GPIOGEN>>;
+    using PG = IOPort<Port::G, GPIOG_BASE, Clock::IOPGClock>;
     IO_PORT_DEFINITION(PG, PG);
 #endif
 #if defined(GPIOH_BASE)
-    using PH = IOPort<Port::H, GPIOH_BASE, Clock::ClockControl<&RCC_TypeDef::AHB1ENR, RCC_AHB1ENR_GPIOHEN>>;
+    using PH = IOPort<Port::H, GPIOH_BASE, Clock::IOPHClock>;
     IO_PORT_DEFINITION(PH, PH);
 #endif
 #if defined(GPIOI_BASE)
-    using PI = IOPort<Port::I, GPIOI_BASE, Clock::ClockControl<&RCC_TypeDef::AHB1ENR, RCC_AHB1ENR_GPIOIEN>>;
+    using PI = IOPort<Port::I, GPIOI_BASE, Clock::IOPIClock>;
     IO_PORT_DEFINITION(PI, PI);
 #endif
 #if defined(GPIOJ_BASE)
-    using PJ = IOPort<Port::J, GPIOJ_BASE, Clock::ClockControl<&RCC_TypeDef::AHB1ENR, RCC_AHB1ENR_GPIOJEN>>;
+    using PJ = IOPort<Port::J, GPIOJ_BASE, Clock::IOPJClock>;
     IO_PORT_DEFINITION(PJ, PJ);
 #endif
 #if defined(GPIOK_BASE)
-    using PK = IOPort<Port::K, GPIOK_BASE, Clock::ClockControl<&RCC_TypeDef::AHB1ENR, RCC_AHB1ENR_GPIOKEN>>;
+    using PK = IOPort<Port::K, GPIOK_BASE, Clock::IOPKClock>;
     IO_PORT_DEFINITION(PK, PK);
 #endif
 }
