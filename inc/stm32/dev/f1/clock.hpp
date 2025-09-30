@@ -317,7 +317,7 @@ namespace STM32::Clock
 #if defined(UART5_BASE)
     using UART5Clock = ClockControl<APB1Clock, &RCC_TypeDef::APB1ENR, RCC_APB1ENR_UART5EN>;
 #endif
-#if defined(UsART6_BASE)
+#if defined(USART6_BASE)
     using UART6Clock = ClockControl<APB2Clock, &RCC_TypeDef::APB2ENR, RCC_APB2ENR_USART6EN>;
 #endif
 #if defined(UART7_BASE)
