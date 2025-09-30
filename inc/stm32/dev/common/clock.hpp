@@ -60,15 +60,21 @@ namespace STM32::Clock
         return HSE_VALUE;
     }
 
-    template <volatile uint32_t RCC_TypeDef::*tReg, uint32_t tMask>
-    inline void ClockControl<tReg, tMask>::enable()
+    template <typename tClock, volatile uint32_t RCC_TypeDef::*tReg, uint32_t tMask>
+    inline void ClockControl<tClock, tReg, tMask>::enable()
     {
         reinterpret_cast<RCC_TypeDef *>(RCC_BASE)->*tReg |= tMask;
     }
 
-    template <volatile uint32_t RCC_TypeDef::*tReg, uint32_t tMask>
-    inline void ClockControl<tReg, tMask>::disable()
+    template <typename tClock, volatile uint32_t RCC_TypeDef::*tReg, uint32_t tMask>
+    inline void ClockControl<tClock, tReg, tMask>::disable()
     {
         reinterpret_cast<RCC_TypeDef *>(RCC_BASE)->*tReg &= ~tMask;
+    }
+
+    template <typename tClock, volatile uint32_t RCC_TypeDef::*tReg, uint32_t tMask>
+    inline uint32_t ClockControl<tClock, tReg, tMask>::getFrequency()
+    {
+        return tClock::getFrequency();
     }
 }

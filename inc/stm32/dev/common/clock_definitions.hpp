@@ -369,7 +369,7 @@ namespace STM32::Clock
      * @tparam Register address
      * @tparam Enable bit mask
      */
-    template <volatile uint32_t RCC_TypeDef::*tReg, uint32_t tMask>
+    template <typename tClock, volatile uint32_t RCC_TypeDef::*tReg, uint32_t tMask>
     class ClockControl
     {
     public:
@@ -382,5 +382,10 @@ namespace STM32::Clock
          * @brief Disable peripheral clock
          */
         static inline void disable();
+
+        /**
+         * @brief Get clock frequency
+         */
+        static inline uint32_t getFrequency();
     };
 }

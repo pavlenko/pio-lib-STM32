@@ -55,8 +55,6 @@ namespace STM32
 
         FLASH->KEYR = key1;
         FLASH->KEYR = key2;
-
-        _wait();
     }
 
     inline void Flash::unlock()
