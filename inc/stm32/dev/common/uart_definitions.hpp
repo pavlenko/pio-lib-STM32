@@ -2,7 +2,7 @@
 
 #include <stm32/dev/common/_cmsis.hpp>
 
-namespace STM32::USART
+namespace STM32::UART
 {
     enum class Config : uint32_t
     {

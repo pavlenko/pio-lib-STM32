@@ -1,3 +1,5 @@
+#pragma once
+
 #include <stm32/dev/common/flash.hpp>
 
 namespace STM32

@@ -1,8 +1,8 @@
 #pragma once
 
-#include <stm32/dev/common/usart_definitions.hpp>
+#include <stm32/dev/common/uart_definitions.hpp>
 
-namespace STM32::USART
+namespace STM32::UART
 {
     inline constexpr Config operator|(Config l, Config r)
     {

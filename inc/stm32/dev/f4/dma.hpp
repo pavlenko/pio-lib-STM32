@@ -51,13 +51,13 @@ namespace STM32::DMA
 
 #define DMA_STREAM_CHANNEL_DEFINITION(__BUS__, __STREAM__) \
     using DMA##__BUS__##Stream##__STREAM__##Channel0 = StreamChannel<DMA##__BUS__##Stream##__STREAM__, 0>; \
-    using DMA##__BUS__##Stream##__STREAM__##Channel0 = StreamChannel<DMA##__BUS__##Stream##__STREAM__, 1>; \
-    using DMA##__BUS__##Stream##__STREAM__##Channel0 = StreamChannel<DMA##__BUS__##Stream##__STREAM__, 2>; \
-    using DMA##__BUS__##Stream##__STREAM__##Channel0 = StreamChannel<DMA##__BUS__##Stream##__STREAM__, 3>; \
-    using DMA##__BUS__##Stream##__STREAM__##Channel0 = StreamChannel<DMA##__BUS__##Stream##__STREAM__, 4>; \
-    using DMA##__BUS__##Stream##__STREAM__##Channel0 = StreamChannel<DMA##__BUS__##Stream##__STREAM__, 5>; \
-    using DMA##__BUS__##Stream##__STREAM__##Channel0 = StreamChannel<DMA##__BUS__##Stream##__STREAM__, 6>; \
-    using DMA##__BUS__##Stream##__STREAM__##Channel0 = StreamChannel<DMA##__BUS__##Stream##__STREAM__, 7>;
+    using DMA##__BUS__##Stream##__STREAM__##Channel1 = StreamChannel<DMA##__BUS__##Stream##__STREAM__, 1>; \
+    using DMA##__BUS__##Stream##__STREAM__##Channel2 = StreamChannel<DMA##__BUS__##Stream##__STREAM__, 2>; \
+    using DMA##__BUS__##Stream##__STREAM__##Channel3 = StreamChannel<DMA##__BUS__##Stream##__STREAM__, 3>; \
+    using DMA##__BUS__##Stream##__STREAM__##Channel4 = StreamChannel<DMA##__BUS__##Stream##__STREAM__, 4>; \
+    using DMA##__BUS__##Stream##__STREAM__##Channel5 = StreamChannel<DMA##__BUS__##Stream##__STREAM__, 5>; \
+    using DMA##__BUS__##Stream##__STREAM__##Channel6 = StreamChannel<DMA##__BUS__##Stream##__STREAM__, 6>; \
+    using DMA##__BUS__##Stream##__STREAM__##Channel7 = StreamChannel<DMA##__BUS__##Stream##__STREAM__, 7>;
 
     DMA_STREAM_CHANNEL_DEFINITION(1, 0);
     DMA_STREAM_CHANNEL_DEFINITION(1, 1);

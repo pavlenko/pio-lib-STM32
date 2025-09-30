@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <type_traits>
+
 #include <stm32/dev/common/_cmsis.hpp>
 
 namespace STM32

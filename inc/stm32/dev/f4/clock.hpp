@@ -330,4 +330,10 @@ namespace STM32::Clock
 #if defined(UART8_BASE)
     using UART8Clock = ClockControl<APB1Clock, &RCC_TypeDef::APB1ENR, RCC_APB1ENR_UART8EN>;
 #endif
+#if defined(UART9_BASE)
+    using UART9Clock = ClockControl<APB2Clock, &RCC_TypeDef::APB2ENR, RCC_APB2ENR_UART9EN>;
+#endif
+#if defined(UART10_BASE)
+    using UART10Clock = ClockControl<APB2Clock, &RCC_TypeDef::APB2ENR, RCC_APB2ENR_UART10EN>;
+#endif
 }
