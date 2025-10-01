@@ -86,9 +86,10 @@ namespace STM32::UART
         /**
          * @brief Configure UART
          *
+         * @tparam tBaud   Baud rate in bods
          * @tparam tConfig Config
          */
-        template <Config tConfig>
+        template <uint32_t tBaud, Config tConfig>
         static inline void configure();
 
         /**
