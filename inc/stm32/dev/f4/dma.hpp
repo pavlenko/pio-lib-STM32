@@ -16,7 +16,7 @@
 namespace STM32::DMA
 {
     template <typename tStream, uint8_t tChannel>
-    class StreamChannel
+    class StreamChannel : public tStream
     {
     public:
         static inline void transfer(Config config, const void *buffer, volatile void *periph, uint32_t size)

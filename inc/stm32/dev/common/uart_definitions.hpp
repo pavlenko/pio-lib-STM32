@@ -1,5 +1,8 @@
 #pragma once
 
+#include <stdint.h>
+#include <type_traits>
+
 #include <stm32/dev/common/_cmsis.hpp>
 
 namespace STM32::UART
@@ -65,11 +68,16 @@ namespace STM32::UART
         ALL = ERRORS | TX_EMPTY | TX_COMPLETE | RX_NOT_EMPTY | IDLE | LINE_BREAK | CTS
     };
 
+    /**
+     * @brief Callback type, allow lambdas
+     */
+    using CallbackT = std::add_pointer_t<void(void* data, size_t size, bool success)>;
+
     template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock, typename tDMATx, typename tDMARx>
     class Driver
     {
     private:
-        static constexpr USART_TypeDef *_regs();
+        static inline USART_TypeDef *_regs();
 
     public:
         using DMATx = tDMATx;
