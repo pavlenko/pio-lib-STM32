@@ -4,6 +4,22 @@
 #include <stm32/dev/clock.hpp>
 #include <stm32/dev/dma.hpp>
 
+#if defined(USART1)
+#undef USART1
+#endif
+#if defined(USART2)
+#undef USART2
+#endif
+#if defined(USART3)
+#undef USART3
+#endif
+#if defined(UART4)
+#undef UART4
+#endif
+#if defined(UART5)
+#undef UART5
+#endif
+
 namespace STM32::UART
 {
     //TODO...
@@ -17,14 +33,5 @@ namespace STM32::UART
 #endif
 #if defined(UART5_BASE)
     using UART5 = Driver<UART5_BASE, UART5_IRQn, Clock::UART5Clock, DMA::DMA1Channel4, DMA::DMA1Channel4>;//???
-#endif
-#if defined(USART6_BASE)
-    using UART6 = Driver<USART6_BASE, USART6_IRQn, Clock::UART6Clock, DMA::DMA1Channel4, DMA::DMA1Channel4>;//???
-#endif
-#if defined(UART7_BASE)
-    using UART7 = Driver<UART7_BASE, UART7_IRQn, Clock::UART7Clock, DMA::DMA1Channel4, DMA::DMA1Channel4>;//???
-#endif
-#if defined(UART8_BASE)
-    using UART8 = Driver<UART8_BASE, UART8_IRQn, Clock::UART8Clock, DMA::DMA1Channel4, DMA::DMA1Channel4>;//???
 #endif
 }
