@@ -114,14 +114,14 @@ namespace STM32::UART
          *
          * @return Busy or not
          */
-        static inline bool busyTx();
+        static inline bool readyTx();
 
         /**
          * @brief Check if rx in progress
          *
          * @return Busy or not
          */
-        static inline bool busyRx();
+        static inline bool readyRx();
 
         /**
          * @brief Check IRQ flag(s) is set
