@@ -10,9 +10,32 @@ namespace STM32::UART
         return Config(static_cast<uint32_t>(l) | static_cast<uint32_t>(r));
     }
 
+    template <typename T>
+    inline constexpr T operator>>(Config l, T r)
+    {
+        return static_cast<uint32_t>(l) | r;
+    }
+
+    template <typename T>
+    inline constexpr T operator&&(Config l, T r)
+    {
+        return static_cast<uint32_t>(l) && r;
+    }
+
     inline constexpr Flag operator|(Flag l, Flag r)
     {
         return Flag(static_cast<uint32_t>(l) | static_cast<uint32_t>(r));
+    }
+
+    inline constexpr Flag operator&(Flag l, Flag r)
+    {
+        return Flag(static_cast<uint32_t>(l) & static_cast<uint32_t>(r));
+    }
+
+    template <typename T>
+    inline constexpr T operator&(T l, Flag r)
+    {
+        return T(static_cast<uint32_t>(l) & static_cast<uint32_t>(r));
     }
 
     template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock, typename tDMATx, typename tDMARx>
@@ -25,13 +48,18 @@ namespace STM32::UART
     template <uint32_t tBaud, Config tConfig>
     inline void Driver<tRegsAddr, tIRQn, tClock, tDMATx, tDMARx>::configure()
     {
-        //TODO configure...
+        tClock::enable();
+
+        _regs()->BRR = tClock::getFrequency() / tBaud;
+        _regs()->CR1 = (tConfig && 0xFFFF) | USART_CR1_UE;
+        _regs()->CR2 = (tConfig >> 16) & USART_CR2_STOP;
+        _regs()->CR3 = (tConfig >> 16) & (USART_CR3_CTSE | USART_CR3_RTSE);
     }
 
     template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock, typename tDMATx, typename tDMARx>
     inline void Driver<tRegsAddr, tIRQn, tClock, tDMATx, tDMARx>::send(void *data, uint16_t size, CallbackT cb)
     {
-        DMARx::clrFlag<DMA::Flag::TRANSFER_COMPLETE>();
+        DMARx::template clrFlag<DMA::Flag::TRANSFER_COMPLETE>();
         DMARx::setTransferCallback(cb);
 
         _regs()->CR3 |= USART_CR3_DMAR;
@@ -45,7 +73,7 @@ namespace STM32::UART
         while (readyTx())
             asm volatile("nop");
 
-        DMATx::clrFlag<DMA::Flag::TRANSFER_COMPLETE>();
+        DMATx::template clrFlag<DMA::Flag::TRANSFER_COMPLETE>();
         DMATx::setTransferCallback(cb);
 
         _regs()->CR3 |= USART_CR3_DMAT;
@@ -62,7 +90,7 @@ namespace STM32::UART
         if constexpr (!std::is_same_v<DMATx, void>)
         {
             bool dmaActive = (_regs()->CR3 & USART_CR3_DMAT) && DMATx::isEnabled();
-            return (!dmaActive || DMATx::hasFlag<DMA::Flag::TRANSFER_COMPLETE>()) && (_regs()->SR & Flag::TX_COMPLETE);
+            return (!dmaActive || DMATx::template hasFlag<DMA::Flag::TRANSFER_COMPLETE>()) && (_regs()->SR & Flag::TX_COMPLETE);
         }
         else
         {
