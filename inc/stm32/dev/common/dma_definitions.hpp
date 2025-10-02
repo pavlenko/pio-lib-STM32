@@ -112,13 +112,6 @@ namespace STM32::DMA
         private:
                 static_assert(tChannel < 8u, "Invalid channel number");
 
-#if defined(DMA_CCR_EN)
-                static constexpr const uint8_t _4bit_pos = tChannel * 4;
-#endif
-#if defined(DMA_SxCR_EN)
-                static constexpr const uint8_t _6bit_pos = ((tChannel & 0x1) * 6) + (((tChannel & 0x2) >> 1) * 16);
-#endif
-
                 /**
                  * @brief Callback for success/error transfer
                  */

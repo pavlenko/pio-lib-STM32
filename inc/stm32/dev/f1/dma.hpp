@@ -111,6 +111,31 @@ namespace STM32::DMA
         _regs()->IFCR = (static_cast<uint32_t>(Flag::ALL) << _4bit_pos);
     }
 
+    template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
+    inline void Channel<tDriver, tRegsAddress, tChannel, tIRQn>::dispatchIRQ()
+    {
+        if (hasFlag<Flag::TRANSFER_COMPLETE>())
+        {
+            clrFlags();
+
+            if ((_regs()->CCR & DMA_CCR_CIRC) == 0)
+                disable();
+
+            if (_cb)
+                _cb(true);
+        }
+        if (hasFlag<Flag::TRANSFER_ERROR>())
+        {
+            clrFlags();
+
+            if ((_regs()->CCR & DMA_CCR_CIRC) == 0)
+                disable();
+
+            if (_cb)
+                _cb(false);
+        }
+    }
+
     using DMA1 = Driver<DMA1_BASE, Clock::DMA1Clock>;
     using DMA1Channel1 = Channel<DMA1, DMA1_Channel1_BASE, 0, DMA1_Channel1_IRQn>;
     using DMA1Channel2 = Channel<DMA1, DMA1_Channel2_BASE, 0, DMA1_Channel2_IRQn>;

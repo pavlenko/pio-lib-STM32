@@ -42,12 +42,6 @@ namespace STM32::DMA
         tDriver::template clrChannelFlags<tChannel>();
     }
 
-    template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
-    inline void Channel<tDriver, tRegsAddress, tChannel, tIRQn>::dispatchIRQ()
-    {
-        // TODO
-    }
-
     // DRIVER
     template <uint32_t tRegsAddress, typename tClock>
     inline DMA_TypeDef *Driver<tRegsAddress, tClock>::_regs()

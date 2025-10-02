@@ -132,6 +132,31 @@ namespace STM32::DMA
         }
     }
 
+    template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
+    inline void Channel<tDriver, tRegsAddress, tChannel, tIRQn>::dispatchIRQ()
+    {
+        if (hasFlag<Flag::TRANSFER_COMPLETE>())
+        {
+            clrFlags();
+
+            if ((_regs()->CR & DMA_SxCR_CIRC) == 0)
+                disable();
+
+            if (_cb)
+                _cb(true);
+        }
+        if (hasFlag<Flag::TRANSFER_ERROR>())
+        {
+            clrFlags();
+
+            if ((_regs()->CR & DMA_SxCR_CIRC) == 0)
+                disable();
+
+            if (_cb)
+                _cb(false);
+        }
+    }
+
     template <typename tStream, uint8_t tChannel>
     class StreamChannel : public tStream
     {
