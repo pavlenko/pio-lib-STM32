@@ -15,6 +15,123 @@
 
 namespace STM32::DMA
 {
+    template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
+    inline DMA_Stream_TypeDef *Channel<tDriver, tRegsAddress, tChannel, tIRQn>::_regs()
+    {
+        return reinterpret_cast<DMA_Stream_TypeDef *>(tRegsAddress);
+    }
+
+    template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
+    inline void Channel<tDriver, tRegsAddress, tChannel, tIRQn>::enable()
+    {
+        _regs()->CR |= DMA_SxCR_EN;
+    }
+
+    template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
+    inline void Channel<tDriver, tRegsAddress, tChannel, tIRQn>::disable()
+    {
+        _regs()->CR &= ~DMA_SxCR_EN;
+    }
+
+    template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
+    inline bool Channel<tDriver, tRegsAddress, tChannel, tIRQn>::isEnabled()
+    {
+        return (_regs()->CR & DMA_SxCR_EN) != 0u;
+    }
+
+    template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
+    inline bool Channel<tDriver, tRegsAddress, tChannel, tIRQn>::isCircular()
+    {
+        return (_regs()->CR & DMA_SxCR_CIRC) != 0u;
+    }
+
+    template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
+    inline uint32_t Channel<tDriver, tRegsAddress, tChannel, tIRQn>::getRemaining()
+    {
+        return _regs()->NDTR;
+    }
+
+    template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
+    inline void Channel<tDriver, tRegsAddress, tChannel, tIRQn>::transfer(Config config, const void *buffer, volatile void *periph, uint32_t size, uint8_t channel)
+    {
+        // TODO
+        tDriver::enable();
+        if (!hasFlag<Flag::TRANSFER_ERROR>())
+        {
+            while (!isReady())
+                ;
+        }
+
+        _regs()->CR = 0;
+        _regs()->NDTR = size;
+        _regs()->M0AR = reinterpret_cast<uint32_t>(buffer);
+        _regs()->PAR = reinterpret_cast<uint32_t>(periph);
+
+        if (_cb)
+        {
+            config = config | Config::IE_TRANSFER_COMPLETE | Config::IE_TRANSFER_ERROR;
+        }
+
+        NVIC_EnableIRQ(tIRQn);
+
+        _regs()->CR = static_cast<uint32_t>(config) | ((channel & 0x07) << 25) | DMA_SxCR_EN;
+    }
+
+    template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
+    inline void Channel<tDriver, tRegsAddress, tChannel, tIRQn>::abort()
+    {
+        _regs()->CR &= ~static_cast<uint32_t>(Config::IE_TRANSFER_COMPLETE | Config::IE_TRANSFER_ERROR | Config::IE_HALF_TRANSFER | Config::IE_DIRECT_MODE_ERROR);
+        _regs()->FCR &= DMA_SxFCR_FEIE;
+
+        disable();
+        clrFlags();
+    }
+
+    template <uint32_t tRegsAddress, typename tClock>
+    template <uint8_t tChannel, Flag tFlag>
+    inline bool Driver<tRegsAddress, tClock>::hasChannelFlag()
+    {
+        static constexpr const uint8_t _6bit_pos = ((tChannel & 0x1) * 6) + (((tChannel & 0x2) >> 1) * 16);
+        if (tChannel < 4)
+        {
+            return _regs()->LISR & (static_cast<uint32_t>(tFlag) << _6bit_pos);
+        }
+        else
+        {
+            return _regs()->HISR & (static_cast<uint32_t>(tFlag) << _6bit_pos);
+        }
+    }
+
+    template <uint32_t tRegsAddress, typename tClock>
+    template <uint8_t tChannel, Flag tFlag>
+    inline void Driver<tRegsAddress, tClock>::clrChannelFlag()
+    {
+        static constexpr const uint8_t _6bit_pos = ((tChannel & 0x1) * 6) + (((tChannel & 0x2) >> 1) * 16);
+        if (tChannel < 4)
+        {
+            _regs()->LIFCR = (static_cast<uint32_t>(tFlag) << _6bit_pos);
+        }
+        else
+        {
+            _regs()->HIFCR = (static_cast<uint32_t>(tFlag) << _6bit_pos);
+        }
+    }
+
+    template <uint32_t tRegsAddress, typename tClock>
+    template <uint8_t tChannel>
+    inline void Driver<tRegsAddress, tClock>::clrChannelFlags()
+    {
+        static constexpr const uint8_t _6bit_pos = ((tChannel & 0x1) * 6) + (((tChannel & 0x2) >> 1) * 16);
+        if (tChannel < 4)
+        {
+            _regs()->LIFCR = (static_cast<uint32_t>(Flag::ALL) << _6bit_pos);
+        }
+        else
+        {
+            _regs()->HIFCR = (static_cast<uint32_t>(Flag::ALL) << _6bit_pos);
+        }
+    }
+
     template <typename tStream, uint8_t tChannel>
     class StreamChannel : public tStream
     {
@@ -49,7 +166,7 @@ namespace STM32::DMA
     using DMA2Stream6 = Stream<DMA2, DMA2_Stream6_BASE, 0, DMA2_Stream6_IRQn>;
     using DMA2Stream7 = Stream<DMA2, DMA2_Stream7_BASE, 0, DMA2_Stream7_IRQn>;
 
-#define DMA_STREAM_CHANNEL_DEFINITION(__BUS__, __STREAM__) \
+#define DMA_STREAM_CHANNEL_DEFINITION(__BUS__, __STREAM__)                                                 \
     using DMA##__BUS__##Stream##__STREAM__##Channel0 = StreamChannel<DMA##__BUS__##Stream##__STREAM__, 0>; \
     using DMA##__BUS__##Stream##__STREAM__##Channel1 = StreamChannel<DMA##__BUS__##Stream##__STREAM__, 1>; \
     using DMA##__BUS__##Stream##__STREAM__##Channel2 = StreamChannel<DMA##__BUS__##Stream##__STREAM__, 2>; \
