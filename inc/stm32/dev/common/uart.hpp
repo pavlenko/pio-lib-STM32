@@ -10,6 +10,11 @@ namespace STM32::UART
         return Config(static_cast<uint32_t>(l) | static_cast<uint32_t>(r));
     }
 
+    inline constexpr Config operator&(Config l, Config r)
+    {
+        return Config(static_cast<uint32_t>(l) & static_cast<uint32_t>(r));
+    }
+
     template <typename T>
     inline constexpr T operator>>(Config l, T r)
     {
@@ -20,22 +25,6 @@ namespace STM32::UART
     inline constexpr T operator&&(Config l, T r)
     {
         return static_cast<uint32_t>(l) && r;
-    }
-
-    inline constexpr Flag operator|(Flag l, Flag r)
-    {
-        return Flag(static_cast<uint32_t>(l) | static_cast<uint32_t>(r));
-    }
-
-    inline constexpr Flag operator&(Flag l, Flag r)
-    {
-        return Flag(static_cast<uint32_t>(l) & static_cast<uint32_t>(r));
-    }
-
-    template <typename T>
-    inline constexpr T operator&(T l, Flag r)
-    {
-        return T(static_cast<uint32_t>(l) & static_cast<uint32_t>(r));
     }
 
     template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock, typename tDMATx, typename tDMARx>
@@ -59,6 +48,9 @@ namespace STM32::UART
     template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock, typename tDMATx, typename tDMARx>
     inline void Driver<tRegsAddr, tIRQn, tClock, tDMATx, tDMARx>::send(void *data, uint16_t size, CallbackT cb)
     {
+        while (!readyTx())
+            asm volatile("nop");
+
         DMARx::template clrFlag<DMA::Flag::TRANSFER_COMPLETE>();
         DMARx::setTransferCallback(cb);
 
@@ -70,7 +62,7 @@ namespace STM32::UART
     template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock, typename tDMATx, typename tDMARx>
     inline void Driver<tRegsAddr, tIRQn, tClock, tDMATx, tDMARx>::recv(void *data, uint16_t size, CallbackT cb)
     {
-        while (readyTx())
+        while (!readyRx())
             asm volatile("nop");
 
         DMATx::template clrFlag<DMA::Flag::TRANSFER_COMPLETE>();
@@ -86,27 +78,21 @@ namespace STM32::UART
     template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock, typename tDMATx, typename tDMARx>
     inline bool Driver<tRegsAddr, tIRQn, tClock, tDMATx, tDMARx>::readyTx()
     {
-        // TODO refactor for allow different reg names & simplify somehow
         if constexpr (!std::is_same_v<DMATx, void>)
         {
             bool dmaActive = (_regs()->CR3 & USART_CR3_DMAT) && DMATx::isEnabled();
-            return (!dmaActive || DMATx::template hasFlag<DMA::Flag::TRANSFER_COMPLETE>()) && (_regs()->SR & Flag::TX_COMPLETE);
+            return (!dmaActive || DMATx::template hasFlag<DMA::Flag::TRANSFER_COMPLETE>()) && hasFlag<Flag::TX_COMPLETE>();
         }
         else
         {
-            return _regs()->SR & Flag::TX_COMPLETE;
+            return hasFlag<Flag::TX_COMPLETE>();
         }
     }
 
     template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock, typename tDMATx, typename tDMARx>
     inline bool Driver<tRegsAddr, tIRQn, tClock, tDMATx, tDMARx>::readyRx()
     {
-#if defined(USART_SR_PE)
-        return _regs()->SR & static_cast<uint32_t>(Flag::RX_NOT_EMPTY);
-#endif
-#if defined(USART_ISR_PE)
-        return _regs()->ISR & static_cast<uint32_t>(Flag::RX_NOT_EMPTY);
-#endif
+        return hasFlag<Flag::RX_NOT_EMPTY>();
     }
 
     template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock, typename tDMATx, typename tDMARx>
@@ -131,5 +117,30 @@ namespace STM32::UART
 #if defined(USART_ISR_PE)
         _regs()->ISR = static_cast<uint32_t>(tFlag);
 #endif
+    }
+
+    template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock, typename tDMATx, typename tDMARx>
+    template <Config tConfig>
+    inline void Driver<tRegsAddr, tIRQn, tClock, tDMATx, tDMARx>::attachIRQ()
+    {
+        static constexpr uint32_t CR1 = static_cast<uint32_t>(tConfig & Config::IE_ALL) & 0xFFFF;
+        static constexpr uint32_t CR3 = static_cast<uint32_t>(tConfig & Config::IE_ALL) >> 16;
+
+        _regs()->CR1 |= CR1;
+        _regs()->CR3 |= CR3;
+
+        if (CR1 != 0u || CR3 != 0u)
+            NVIC_EnableIRQ(tIRQn);
+    }
+
+    template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock, typename tDMATx, typename tDMARx>
+    template <Config tConfig>
+    inline void Driver<tRegsAddr, tIRQn, tClock, tDMATx, tDMARx>::detachIRQ()
+    {
+        static constexpr uint32_t CR1 = static_cast<uint32_t>(tConfig & Config::IE_ALL) & 0xFFFF;
+        static constexpr uint32_t CR3 = static_cast<uint32_t>(tConfig & Config::IE_ALL) >> 16;
+
+        _regs()->CR1 &= ~CR1;
+        _regs()->CR3 &= ~CR3;
     }
 }

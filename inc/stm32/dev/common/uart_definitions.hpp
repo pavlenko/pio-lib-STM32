@@ -27,6 +27,15 @@ namespace STM32::UART
         ENABLE_RTS = USART_CR3_RTSE << 16,
         ENABLE_CTS = USART_CR3_CTSE << 16,
         ENABLE_RTS_CTS = ENABLE_RTS | ENABLE_CTS,
+        // IRQ
+        IE_TX_COMPLETE = USART_CR1_TCIE,
+        IE_TX_EMPTY = USART_CR1_TXEIE,
+        IE_RX_NOT_EMPTY = USART_CR1_RXNEIE,
+        IE_IDLE = USART_CR1_IDLEIE,
+        IE_PARITY_ERROE = USART_CR1_PEIE,
+        IE_ERROR = USART_CR3_EIE << 16,
+        IE_CTS = USART_CR3_CTSIE << 16,
+        IE_ALL = IE_TX_COMPLETE | IE_TX_EMPTY | IE_RX_NOT_EMPTY | IE_IDLE | IE_PARITY_ERROE | IE_ERROR | IE_CTS,
     };
 
     enum class Flag : uint32_t
@@ -141,5 +150,11 @@ namespace STM32::UART
          */
         template <Flag tFlag>
         static inline void clrFlag();
+
+        template <Config tConfig>
+        static inline void attachIRQ();
+
+        template <Config tConfig>
+        static inline void detachIRQ();
     };
 }
