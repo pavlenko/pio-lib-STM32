@@ -15,16 +15,26 @@ namespace STM32::UART
         return Config(static_cast<uint32_t>(l) & static_cast<uint32_t>(r));
     }
 
-    template <typename T>
-    inline constexpr T operator>>(Config l, T r)
+    // template <typename T>
+    // inline constexpr T operator>>(Config l, T r)
+    // {
+    //     return static_cast<uint32_t>(l) | r;
+    // }
+
+    // template <typename T>
+    // inline constexpr T operator&&(Config l, T r)
+    // {
+    //     return static_cast<uint32_t>(l) && r;
+    // }
+
+    inline constexpr IRQEnable operator|(IRQEnable l, IRQEnable r)
     {
-        return static_cast<uint32_t>(l) | r;
+        return IRQEnable(static_cast<uint32_t>(l) | static_cast<uint32_t>(r));
     }
 
-    template <typename T>
-    inline constexpr T operator&&(Config l, T r)
+    inline constexpr IRQEnable operator&(IRQEnable l, IRQEnable r)
     {
-        return static_cast<uint32_t>(l) && r;
+        return IRQEnable(static_cast<uint32_t>(l) & static_cast<uint32_t>(r));
     }
 
     template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock, typename tDMATx, typename tDMARx>
@@ -40,9 +50,9 @@ namespace STM32::UART
         tClock::enable();
 
         _regs()->BRR = tClock::getFrequency() / tBaud;
-        _regs()->CR1 = (tConfig && 0xFFFF) | USART_CR1_UE;
-        _regs()->CR2 = (tConfig >> 16) & USART_CR2_STOP;
-        _regs()->CR3 = (tConfig >> 16) & (USART_CR3_CTSE | USART_CR3_RTSE);
+        _regs()->CR1 = static_cast<uint32_t>(tConfig & Config::CR1Mask) | USART_CR1_UE;
+        _regs()->CR2 = static_cast<uint32_t>(tConfig & Config::CR2Mask) >> 16;
+        _regs()->CR3 = static_cast<uint32_t>(tConfig & Config::CR3Mask) >> 16;
     }
 
     template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock, typename tDMATx, typename tDMARx>
@@ -120,27 +130,31 @@ namespace STM32::UART
     }
 
     template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    template <Config tConfig>
+    template <IRQEnable tEnable>
     inline void Driver<tRegsAddr, tIRQn, tClock, tDMATx, tDMARx>::attachIRQ()
     {
-        static constexpr uint32_t CR1 = static_cast<uint32_t>(tConfig & Config::IE_ALL) & 0xFFFF;
-        static constexpr uint32_t CR3 = static_cast<uint32_t>(tConfig & Config::IE_ALL) >> 16;
+        static constexpr uint32_t CR1 = static_cast<uint32_t>(tEnable & IRQEnable::CR1Mask);
+        static constexpr uint32_t CR2 = static_cast<uint32_t>(tEnable & IRQEnable::CR2Mask) >> 16u;
+        static constexpr uint32_t CR3 = static_cast<uint32_t>(tEnable & IRQEnable::CR3Mask) >> 16u;
 
         _regs()->CR1 |= CR1;
+        _regs()->CR2 |= CR2;
         _regs()->CR3 |= CR3;
 
-        if (CR1 != 0u || CR3 != 0u)
+        if (CR1 != 0u || CR2 != 0u || CR3 != 0u)
             NVIC_EnableIRQ(tIRQn);
     }
 
     template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    template <Config tConfig>
+    template <IRQEnable tEnable>
     inline void Driver<tRegsAddr, tIRQn, tClock, tDMATx, tDMARx>::detachIRQ()
     {
-        static constexpr uint32_t CR1 = static_cast<uint32_t>(tConfig & Config::IE_ALL) & 0xFFFF;
-        static constexpr uint32_t CR3 = static_cast<uint32_t>(tConfig & Config::IE_ALL) >> 16;
+        static constexpr uint32_t CR1 = static_cast<uint32_t>(tEnable & IRQEnable::CR1Mask);
+        static constexpr uint32_t CR2 = static_cast<uint32_t>(tEnable & IRQEnable::CR2Mask) >> 16u;
+        static constexpr uint32_t CR3 = static_cast<uint32_t>(tEnable & IRQEnable::CR3Mask) >> 16u;
 
         _regs()->CR1 &= ~CR1;
+        _regs()->CR2 &= ~CR2;
         _regs()->CR3 &= ~CR3;
     }
 }

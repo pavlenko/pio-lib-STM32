@@ -1,8 +1,7 @@
 #pragma once
 
 #include <stdint.h>
-#include <type_traits>
-
+#include <stm32/dev/common/_callback.hpp>
 #include <stm32/dev/common/_cmsis.hpp>
 
 namespace STM32::UART
@@ -27,15 +26,45 @@ namespace STM32::UART
         ENABLE_RTS = USART_CR3_RTSE << 16,
         ENABLE_CTS = USART_CR3_CTSE << 16,
         ENABLE_RTS_CTS = ENABLE_RTS | ENABLE_CTS,
-        // IRQ
-        IE_TX_COMPLETE = USART_CR1_TCIE,
-        IE_TX_EMPTY = USART_CR1_TXEIE,
-        IE_RX_NOT_EMPTY = USART_CR1_RXNEIE,
-        IE_IDLE = USART_CR1_IDLEIE,
-        IE_PARITY_ERROE = USART_CR1_PEIE,
-        IE_ERROR = USART_CR3_EIE << 16,
-        IE_CTS = USART_CR3_CTSIE << 16,
-        IE_ALL = IE_TX_COMPLETE | IE_TX_EMPTY | IE_RX_NOT_EMPTY | IE_IDLE | IE_PARITY_ERROE | IE_ERROR | IE_CTS,
+
+        CR1Mask = ENABLE_RX_TX | DATA_9BIT | USART_CR1_PCE | USART_CR1_PS,
+        CR2Mask = USART_CR2_STOP << 16u,
+        CR3Mask = ENABLE_RTS_CTS,
+    };
+
+    enum class IRQEnable
+    {
+        TX_COMPLETE = USART_CR1_TCIE,
+        TX_EMPTY = USART_CR1_TXEIE,
+        RX_NOT_EMPTY = USART_CR1_RXNEIE,
+        IDLE = USART_CR1_IDLEIE,
+        PARITY_ERROR = USART_CR1_PEIE,
+#if defined(USART_CR1_EOBIE)
+        END_OF_BLOCK = USART_CR1_EOBIE,
+#endif
+#if defined(USART_CR1_RTOIE)
+        RECEIVE_TIMEOUT = USART_CR1_RTOIE,
+#endif
+#if defined(USART_CR1_CMIE)
+        CHARACTER_MATCH = USART_CR1_CMIE,
+#endif
+        LINE_BREAK = USART_CR2_LBDIE << 16u,
+        ERROR = USART_CR3_EIE << 16u,
+        CTS = USART_CR3_CTSIE << 16u,
+
+        CR1Mask = TX_COMPLETE | TX_EMPTY | RX_NOT_EMPTY | IDLE | PARITY_ERROR
+#if defined(USART_CR1_EOBIE)
+        | END_OF_BLOCK
+#endif
+#if defined(USART_CR1_RTOIE)
+        | RECEIVE_TIMEOUT
+#endif
+#if defined(USART_CR1_CMIE)
+        | CHARACTER_MATCH
+#endif
+        ,
+        CR2Mask = LINE_BREAK,
+        CR3Mask = ERROR | CTS,
     };
 
     enum class Flag : uint32_t
@@ -76,11 +105,6 @@ namespace STM32::UART
 #endif
         ALL = ERRORS | TX_EMPTY | TX_COMPLETE | RX_NOT_EMPTY | IDLE | LINE_BREAK | CTS
     };
-
-    /**
-     * @brief Callback type, allow lambdas
-     */
-    using CallbackT = std::add_pointer_t<void(void* data, size_t size, bool success)>;
 
     template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock, typename tDMATx, typename tDMARx>
     class Driver
@@ -151,10 +175,20 @@ namespace STM32::UART
         template <Flag tFlag>
         static inline void clrFlag();
 
-        template <Config tConfig>
+        /**
+         * @brief Enable interrupts
+         *
+         * @tparam tEnable Interrupts mask
+         */
+        template <IRQEnable tEnable>
         static inline void attachIRQ();
 
-        template <Config tConfig>
+        /**
+         * @brief Disable interrupts
+         *
+         * @tparam tEnable Interrupts mask
+         */
+        template <IRQEnable tEnable>
         static inline void detachIRQ();
     };
 }
