@@ -147,7 +147,7 @@ namespace STM32::I2C
         tDriver::_regs()->CR1 |= I2C_CR1_ACK;
 
         if (!start())
-            return false; // wrong start or timed out
+            return false; // err or timed out
 
         if (!sendDevAddress(0, true))
             return false; // err or timed out
@@ -155,6 +155,13 @@ namespace STM32::I2C
         if (!sendRegAddress(reg))
             return false; // err or timed out
 
+        HAL_I2C_Mem_Write();
+        // if size > 0 -> loop
+        // - wait TXE to be 1 - else return
+        // - set data to DR
+        // - check BTF is set & size > 0 -> set data to DR
+        // - wait BTF to be 1 - else return
+        // stop
         for (uint16_t i = 0; i < size; ++i)
         {
             _regs()->DR = data[i];
