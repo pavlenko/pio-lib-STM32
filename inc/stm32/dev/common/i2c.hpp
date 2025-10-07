@@ -1,5 +1,6 @@
 #pragma once
 
+#include <type_traits>
 #include <stm32/dev/common/i2c_definitions.hpp>
 
 namespace STM32::I2C
@@ -39,29 +40,6 @@ namespace STM32::I2C
         return _regs()->SR1 & I2C_SR2_BUSY;
     }
 
-    template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    inline void Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::memSet(uint16_t reg, uint8_t *data, uint16_t size)
-    {
-        if (!wait0(Flag::BUSY))
-            return; // BUSY
-
-        _regs()->CR1 |= I2C_CR1_ACK; // enable ACK
-
-        _regs()->CR1 |= I2C_CR1_START; // send start -> func
-        if (!wait1(Flag::START_BIT))
-            return; // wrong start or timed out
-
-        _regs()->DR = _devAddress << 1; // send dev addres -> func
-        if (!wait1(Flag::ADDRESS_SENT | Flag::TX_EMPTY))
-            return; // err or timed out
-
-        _regs()->DR = static_cast<uint8_t>(reg); // send reg address -> func
-        if (!wait1(Flag::TX_EMPTY))
-            return; // err or timed out
-
-        // TODO data...
-    }
-
     // Driver (protected)
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
     inline uint32_t Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::getSR()
@@ -93,5 +71,75 @@ namespace STM32::I2C
         } while (!result && --timer > 0);
 
         return result;
+    }
+
+    // Master mode API:
+    template <typename tDriver>
+    inline bool Master<tDriver>::start()
+    {
+        tDriver::_regs()->SR1 = 0;
+        tDriver::_regs()->SR2 = 0;
+        tDriver::_regs()->CR1 |= I2C_CR1_START;
+
+        if (!tDriver::wait1(Flag::START_BIT))
+            return false;
+
+        return true;
+    }
+
+    template <typename tDriver>
+    template <typename T>
+    inline bool Master<tDriver>::sendDevAddress(T address, bool read)
+    {
+        // TODO support 10bit addressing
+        static_assert(std::is_same_v<T, uint8_t> || std::is_same_v<T, uint16_t>, "Allowed only 8 or 16 bit address");
+
+        tDriver::_regs()->DR = (address << 1) | (read ? 1u : 0u);
+
+        return true;
+    }
+
+    template <typename tDriver>
+    template <typename T>
+    inline bool Master<tDriver>::sendRegAddress(T address)
+    {
+        static_assert(std::is_same_v<T, uint8_t> || std::is_same_v<T, uint16_t>, "Allowed only 8 or 16 bit address");
+
+        if constexpr (std::is_same_v<T, uint8_t>)
+        {
+            tDriver::_regs()->DR = address;
+            return tDriver::_wait1(Flag::TX_EMPTY);
+        }
+        else
+        {
+            tDriver::_regs()->DR = static_cast<uint8_t>(address);
+            if (tDriver::_wait1(Flag::TX_EMPTY))
+                return false;
+
+            tDriver::_regs()->DR = static_cast<uint8_t>(address >> 8u);
+            return tDriver::_wait1(Flag::TX_EMPTY);
+        }
+
+        return true;
+    }
+
+    template <typename tDriver>
+    inline bool Master<tDriver>::memSet(uint16_t reg, uint8_t *data, uint16_t size)
+    {
+        if (!tDriver::wait0(Flag::BUSY))
+            return false; // BUSY
+
+        tDriver::_regs()->CR1 |= I2C_CR1_ACK; // enable ACK
+
+        if (!start())
+            return false; // wrong start or timed out
+
+        if (!sendDevAddress(0, true))
+            return false; // err or timed out
+
+        if (!sendRegAddress(reg))
+            return false; // err or timed out
+
+        // TODO data...
     }
 }

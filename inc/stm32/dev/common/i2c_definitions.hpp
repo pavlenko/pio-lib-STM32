@@ -31,6 +31,9 @@ namespace STM32::I2C
         DUAL_FLAG = I2C_SR2_DUALF << 16u,
     };
 
+    template <typename tDriver>
+    class Master;
+
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
     class Driver
     {
@@ -42,25 +45,13 @@ namespace STM32::I2C
         static inline uint8_t _devAddress{0};
 
     public:
+        template <typename tDriver>
+        friend class Master;
+
         using DMATx = tDMATx;
         using DMARx = tDMARx;
 
         static inline void configure();
-
-        // Example sync flow
-        // wait busy
-        // - timeout error if any
-        // enable ack
-        // send start
-        // - check success
-        // send dev address
-        // - check success
-        // send reg address (if needed)
-        // - check success
-        // send data by byte
-        // - check success
-        // disable ack
-        // send stop
 
         /**
          * @brief Listen address requests (automatically go to slave mode)
@@ -74,8 +65,6 @@ namespace STM32::I2C
 
         static void send(uint8_t *data, uint16_t size);
         static void recv(uint8_t *data, uint16_t size);
-        static void memSet(uint16_t reg, uint8_t *data, uint16_t size);
-        static void memGet(uint16_t reg, uint8_t *data, uint16_t size);
 
         /**
          * @brief Check busy
@@ -88,5 +77,33 @@ namespace STM32::I2C
 
         static inline bool wait0(Flag flags);
         static inline bool wait1(Flag flags);
+    };
+
+    template <typename tDriver>
+    class Master
+    {
+    private:
+        /**
+         * @brief Send start/restart condition
+         */
+        static inline bool start();
+
+        /**
+         * @brief Send device address & direction (7 or 10 bit)
+         */
+        template <typename T>
+        static inline bool sendDevAddress(T address, bool read);
+
+        /**
+         * @brief Send register address (8 or 16 bit)
+         */
+        template <typename T>
+        static inline bool sendRegAddress(T address);
+
+    public:
+        //TODO memSet(Address<uint8_t>(aa), bb, cc, dd);
+        //TODO template <typename DA, typename RA> memSet(DA dev, RA reg, data, size)
+        static inline bool memSet(uint16_t reg, uint8_t *data, uint16_t size);
+        static inline bool memGet(uint16_t reg, uint8_t *data, uint16_t size);
     };
 }
