@@ -91,10 +91,25 @@ namespace STM32::I2C
     template <typename T>
     inline bool Master<tDriver>::sendDevAddress(T address, bool read)
     {
-        // TODO support 10bit addressing
         static_assert(std::is_same_v<T, uint8_t> || std::is_same_v<T, uint16_t>, "Allowed only 8 or 16 bit address");
 
-        tDriver::_regs()->DR = (address << 1) | (read ? 1u : 0u);
+        if constexpr (std::is_same_v<T, uint16_t>)
+        {
+            tDriver::_regs()->DR = ((address & 0x0300u) >> 7) | (read ? 0x00F1u : 0x00F0u);
+            if (!tDriver::_wait1(read ? Flag::ADDRESS_SENT : Flag::ADDR_10_SENT))
+                return false;
+
+            if (!read)
+            {
+                tDriver::_regs()->DR = address;
+                return tDriver::_wait1(Flag::ADDRESS_SENT);
+            }
+        }
+        else
+        {
+            tDriver::_regs()->DR = address | (read ? 1u : 0u);
+            return tDriver::_wait1(Flag::ADDRESS_SENT);
+        }
 
         return true;
     }
@@ -129,7 +144,7 @@ namespace STM32::I2C
         if (!tDriver::wait0(Flag::BUSY))
             return false; // BUSY
 
-        tDriver::_regs()->CR1 |= I2C_CR1_ACK; // enable ACK
+        tDriver::_regs()->CR1 |= I2C_CR1_ACK;
 
         if (!start())
             return false; // wrong start or timed out
@@ -140,6 +155,17 @@ namespace STM32::I2C
         if (!sendRegAddress(reg))
             return false; // err or timed out
 
-        // TODO data...
+        for (uint16_t i = 0; i < size; ++i)
+        {
+            _regs()->DR = data[i];
+
+            if (!tDriver::_wait1(Flag::BYTE_TX_FINISHED | Flag::TX_EMPTY | Flag::MASTER | Flag::BUS_ERROR))
+                return false;
+        }
+
+        _regs()->CR1 &= ~I2C_CR1_ACK;
+        _regs()->CR1 |= I2C_CR1_STOP;
+
+        return true;
     }
 }
