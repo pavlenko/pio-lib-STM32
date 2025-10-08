@@ -66,44 +66,45 @@ namespace STM32::I2C
         static void send(uint8_t *data, uint16_t size);
         static void recv(uint8_t *data, uint16_t size);
 
+        static inline bool memSet(uint16_t reg, uint8_t *data, uint16_t size);
+        static inline bool memGet(uint16_t reg, uint8_t *data, uint16_t size);
+
         /**
          * @brief Check busy
          */
         static inline bool isBusy();
 
-    protected:
+    private:
         //TODO helper functions: start/stop; send dev addr; send reg addr; wait; busy check; service via irq, data via dma, state!!!
+        /**
+         * @brief Get SR1 & SR2 values
+         */
         static inline uint32_t getSR();
 
         static inline bool wait0(Flag flags);
-        static inline bool wait1(Flag flags);
-    };
+        static inline bool _waitFlag(Flag flags);
 
-    template <typename tDriver>
-    class Master
-    {
-    private:
         /**
          * @brief Send start/restart condition
          */
-        static inline bool start();
+        static inline bool _start();
 
         /**
          * @brief Send device address & direction (7 or 10 bit)
          */
         template <typename T>
-        static inline bool sendDevAddress(T address, bool read);
+        static inline bool _sendDevAddressW(T address);
+
+        /**
+         * @brief Send device address & direction (7 or 10 bit)
+         */
+        template <typename T>
+        static inline bool _sendDevAddressR(T address);
 
         /**
          * @brief Send register address (8 or 16 bit)
          */
         template <typename T>
-        static inline bool sendRegAddress(T address);
-
-    public:
-        //TODO memSet(Address<uint8_t>(aa), bb, cc, dd);
-        //TODO template <typename DA, typename RA> memSet(DA dev, RA reg, data, size)
-        static inline bool memSet(uint16_t reg, uint8_t *data, uint16_t size);
-        static inline bool memGet(uint16_t reg, uint8_t *data, uint16_t size);
+        static inline bool _sendRegAddress(T address);
     };
 }

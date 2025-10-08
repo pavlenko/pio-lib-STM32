@@ -61,7 +61,7 @@ namespace STM32::I2C
     }
 
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    inline bool Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::wait1(Flag flag)
+    inline bool Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::_waitFlag(Flag flag)
     {
         bool result = false;
         auto timer = _timeout;
@@ -73,105 +73,150 @@ namespace STM32::I2C
         return result;
     }
 
-    // Master mode API:
-    template <typename tDriver>
-    inline bool Master<tDriver>::start()
+    template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
+    inline bool Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::_start()
     {
-        tDriver::_regs()->SR1 = 0;
-        tDriver::_regs()->SR2 = 0;
-        tDriver::_regs()->CR1 |= I2C_CR1_START;
+        _regs()->SR1 = 0;
+        _regs()->SR2 = 0;
+        _regs()->CR1 |= I2C_CR1_START;
 
-        if (!tDriver::wait1(Flag::START_BIT))
+        if (!_waitFlag(Flag::START_BIT))
             return false;
 
         return true;
     }
 
-    template <typename tDriver>
+    template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
     template <typename T>
-    inline bool Master<tDriver>::sendDevAddress(T address, bool read)
+    inline bool Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::_sendDevAddressW(T address)
     {
         static_assert(std::is_same_v<T, uint8_t> || std::is_same_v<T, uint16_t>, "Allowed only 8 or 16 bit address");
 
         if constexpr (std::is_same_v<T, uint16_t>)
         {
-            tDriver::_regs()->DR = ((address & 0x0300u) >> 7) | (read ? 0x00F1u : 0x00F0u);
-            if (!tDriver::_wait1(read ? Flag::ADDRESS_SENT : Flag::ADDR_10_SENT))
+            _regs()->DR = ((address & 0x0300u) >> 7) | 0x00F0u;
+            if (!_waitFlag(Flag::ADDR_10_SENT))
                 return false;
 
-            if (!read)
-            {
-                tDriver::_regs()->DR = address;
-                return tDriver::_wait1(Flag::ADDRESS_SENT);
-            }
+            _regs()->DR = address;
+            return _waitFlag(Flag::ADDRESS_SENT);
         }
         else
         {
-            tDriver::_regs()->DR = address | (read ? 1u : 0u);
-            return tDriver::_wait1(Flag::ADDRESS_SENT);
+            _regs()->DR = address;
+            return _waitFlag(Flag::ADDRESS_SENT);
         }
 
         return true;
     }
 
-    template <typename tDriver>
+    template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
     template <typename T>
-    inline bool Master<tDriver>::sendRegAddress(T address)
+    inline bool Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::_sendDevAddressR(T address)
+    {
+        static_assert(std::is_same_v<T, uint8_t> || std::is_same_v<T, uint16_t>, "Allowed only 8 or 16 bit address");
+
+        if constexpr (std::is_same_v<T, uint16_t>)
+        {
+            _regs()->DR = ((address & 0x0300u) >> 7) | 0x00F1u;
+            if (!_waitFlag(Flag::ADDRESS_SENT))
+                return false;
+        }
+        else
+        {
+            _regs()->DR = address | 1u;
+            return _waitFlag(Flag::ADDRESS_SENT);
+        }
+
+        return true;
+    }
+
+    template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
+    template <typename T>
+    inline bool Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::_sendRegAddress(T address)
     {
         static_assert(std::is_same_v<T, uint8_t> || std::is_same_v<T, uint16_t>, "Allowed only 8 or 16 bit address");
 
         if constexpr (std::is_same_v<T, uint8_t>)
         {
-            tDriver::_regs()->DR = address;
-            return tDriver::_wait1(Flag::TX_EMPTY);
+            _regs()->DR = address;
+            return _waitFlag(Flag::TX_EMPTY);
         }
         else
         {
-            tDriver::_regs()->DR = static_cast<uint8_t>(address);
-            if (tDriver::_wait1(Flag::TX_EMPTY))
+            _regs()->DR = static_cast<uint8_t>(address);
+            if (_waitFlag(Flag::TX_EMPTY))
                 return false;
 
-            tDriver::_regs()->DR = static_cast<uint8_t>(address >> 8u);
-            return tDriver::_wait1(Flag::TX_EMPTY);
+            _regs()->DR = static_cast<uint8_t>(address >> 8u);
+            return _waitFlag(Flag::TX_EMPTY);
         }
 
         return true;
     }
 
-    template <typename tDriver>
-    inline bool Master<tDriver>::memSet(uint16_t reg, uint8_t *data, uint16_t size)
+    template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
+    inline bool Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::memSet(uint16_t reg, uint8_t *data, uint16_t size)
     {
-        if (!tDriver::wait0(Flag::BUSY))
+        if (!wait0(Flag::BUSY))
             return false; // BUSY
 
-        tDriver::_regs()->CR1 |= I2C_CR1_ACK;
+        _regs()->CR1 |= I2C_CR1_ACK;
 
-        if (!start())
+        if (!_start())
             return false; // err or timed out
 
-        if (!sendDevAddress(0, true))
+        if (!_sendDevAddressW(_devAddress))
             return false; // err or timed out
 
-        if (!sendRegAddress(reg))
+        if (!_sendRegAddress(reg))
             return false; // err or timed out
 
-        HAL_I2C_Mem_Write();
-        // if size > 0 -> loop
-        // - wait TXE to be 1 - else return
-        // - set data to DR
-        // - check BTF is set & size > 0 -> set data to DR
-        // - wait BTF to be 1 - else return
-        // stop
+        // HAL_I2C_Mem_Write();
+        //  if size > 0 -> loop
+        //  - wait TXE to be 1 - else return
+        //  - set data to DR
+        //  - check BTF is set & size > 0 -> set data to DR
+        //  - wait BTF to be 1 - else return
+        //  stop
         for (uint16_t i = 0; i < size; ++i)
         {
             _regs()->DR = data[i];
 
-            if (!tDriver::_wait1(Flag::BYTE_TX_FINISHED | Flag::TX_EMPTY | Flag::MASTER | Flag::BUS_ERROR))
+            if (!_waitFlag(Flag::BYTE_TX_FINISHED | Flag::TX_EMPTY | Flag::MASTER | Flag::BUS_ERROR))
                 return false;
         }
 
         _regs()->CR1 &= ~I2C_CR1_ACK;
         _regs()->CR1 |= I2C_CR1_STOP;
+
+        return true;
+    }
+
+    template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
+    inline bool Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::memGet(uint16_t reg, uint8_t *data, uint16_t size)
+    {
+        if (!wait0(Flag::BUSY))
+            return false; // BUSY
+
+        _regs()->CR1 |= I2C_CR1_ACK; // Enable ACK
+
+        if (!_start())
+            return false; // err or timed out
+
+        if (!_sendDevAddressW(_devAddress))
+            return false; // err or timed out
+
+        if (!_sendRegAddress(reg))
+            return false; // err or timed out
+
+        if (!_start())
+            return false; // err or timed out
+
+        if (!_sendDevAddressW(_devAddress))
+            return false; // err or timed out
+
+        // TODO data...
 
         return true;
     }
