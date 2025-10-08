@@ -82,6 +82,10 @@ namespace STM32::I2C
         static inline uint32_t getSR();
 
         static inline bool wait0(Flag flags);
+
+        /**
+         * @brief Wait for specific flag(s)
+         */
         static inline bool _waitFlag(Flag flags);
 
         /**

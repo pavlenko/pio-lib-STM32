@@ -216,7 +216,30 @@ namespace STM32::I2C
         if (!_sendDevAddressW(_devAddress))
             return false; // err or timed out
 
-        // TODO data...
+        DMARx::setTransferCallback(
+            [](void *data, size_t size, bool success)
+            {
+                _regs()->CR1 &= ~I2C_CR1_ACK;
+
+                if (!_waitFlag(Flag::RX_NOT_EMPTY))
+                {
+                    // if (_transferData.Callback != nullptr)
+                    // {
+                    //     _transferData.Callback(GetErorFromEvent(GetLastEvent()));
+                    // }
+                }
+
+                static_cast<uint8_t *>(data)[size] = static_cast<uint8_t>(_regs()->DR);
+
+                _regs()->CR1 |= I2C_CR1_STOP;
+
+                // if (_transferData.Callback != nullptr)
+                // {
+                //     _transferData.Callback(success ? I2cStatus::Success : GetErorFromEvent(GetLastEvent()));
+                // }
+            });
+
+        DMARx::transfer(DMA::Config::PER_2_MEM | DMA::Config::MINC | DMA::Config::CIRCULAR, data, &_regs()->DR, size - 1);
 
         return true;
     }
