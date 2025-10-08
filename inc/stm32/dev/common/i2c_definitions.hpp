@@ -40,6 +40,9 @@ namespace STM32::I2C
     private:
         static const uint16_t _timeout = 10000;
 
+        /**
+         * @brief Register access helper
+         */
         static inline I2C_TypeDef *_regs();
 
         static inline uint8_t _devAddress{0};
@@ -63,10 +66,24 @@ namespace STM32::I2C
          */
         static inline void select(uint8_t devAddress);
 
-        static void send(uint8_t *data, uint16_t size);
-        static void recv(uint8_t *data, uint16_t size);
+        /**
+         * @brief Send data
+         */
+        static inline void send(uint8_t *data, uint16_t size);
 
+        /**
+         * @brief Receive data
+         */
+        static inline void recv(uint8_t *data, uint16_t size);
+
+        /**
+         * @brief Set memory register value
+         */
         static inline bool memSet(uint16_t reg, uint8_t *data, uint16_t size);
+
+        /**
+         * @brief Get memory register value
+         */
         static inline bool memGet(uint16_t reg, uint8_t *data, uint16_t size);
 
         /**
