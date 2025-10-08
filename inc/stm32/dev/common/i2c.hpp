@@ -48,16 +48,12 @@ namespace STM32::I2C
     }
 
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    inline bool Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::wait0(Flag flag)
+    inline bool Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::_waitBusy()
     {
-        bool result = false;
         auto timer = _timeout;
-        do
-        {
-            result = (getSR() & static_cast<uint32_t>(flag)) == 0u;
-        } while (!result && --timer > 0);
+        while (isBusy() && --timer > 0);
 
-        return result;
+        return !isBusy();
     }
 
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
@@ -67,7 +63,7 @@ namespace STM32::I2C
         auto timer = _timeout;
         do
         {
-            result = (getSR() & static_cast<uint32_t>(flag)) != 0u;
+            result = (getSR() & static_cast<uint32_t>(flag)) == static_cast<uint32_t>(flag);
         } while (!result && --timer > 0);
 
         return result;
@@ -119,8 +115,7 @@ namespace STM32::I2C
         if constexpr (std::is_same_v<T, uint16_t>)
         {
             _regs()->DR = ((address & 0x0300u) >> 7) | 0x00F1u;
-            if (!_waitFlag(Flag::ADDRESS_SENT))
-                return false;
+            return _waitFlag(Flag::ADDRESS_SENT);
         }
         else
         {
@@ -158,37 +153,30 @@ namespace STM32::I2C
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
     inline bool Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::memSet(uint16_t reg, uint8_t *data, uint16_t size)
     {
-        if (!wait0(Flag::BUSY))
-            return false; // BUSY
+        if (!_waitBusy())
+            return false;
 
         _regs()->CR1 |= I2C_CR1_ACK;
 
         if (!_start())
-            return false; // err or timed out
+            return false;
 
         if (!_sendDevAddressW(_devAddress))
-            return false; // err or timed out
+            return false;
 
         if (!_sendRegAddress(reg))
-            return false; // err or timed out
+            return false;
 
-        // HAL_I2C_Mem_Write();
-        //  if size > 0 -> loop
-        //  - wait TXE to be 1 - else return
-        //  - set data to DR
-        //  - check BTF is set & size > 0 -> set data to DR
-        //  - wait BTF to be 1 - else return
-        //  stop
         for (uint16_t i = 0; i < size; ++i)
         {
             _regs()->DR = data[i];
 
-            if (!_waitFlag(Flag::BYTE_TX_FINISHED | Flag::TX_EMPTY | Flag::MASTER | Flag::BUS_ERROR))
+            if (!_waitFlag(Flag::TX_EMPTY))
                 return false;
         }
 
-        _regs()->CR1 &= ~I2C_CR1_ACK;
-        _regs()->CR1 |= I2C_CR1_STOP;
+        _regs()->CR1 &= ~I2C_CR1_ACK; // Disable ACK
+        _regs()->CR1 |= I2C_CR1_STOP; // Send STOP
 
         return true;
     }
@@ -196,50 +184,42 @@ namespace STM32::I2C
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
     inline bool Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::memGet(uint16_t reg, uint8_t *data, uint16_t size)
     {
-        if (!wait0(Flag::BUSY))
-            return false; // BUSY
+        if (!_waitBusy())
+            return false;
 
         _regs()->CR1 |= I2C_CR1_ACK; // Enable ACK
 
         if (!_start())
-            return false; // err or timed out
+            return false;
 
         if (!_sendDevAddressW(_devAddress))
-            return false; // err or timed out
+            return false;
 
         if (!_sendRegAddress(reg))
-            return false; // err or timed out
+            return false;
 
         if (!_start())
-            return false; // err or timed out
+            return false;
 
-        if (!_sendDevAddressW(_devAddress))
-            return false; // err or timed out
+        if (!_sendDevAddressR(_devAddress))
+            return false;
 
-        DMARx::setTransferCallback(
-            [](void *data, size_t size, bool success)
-            {
-                _regs()->CR1 &= ~I2C_CR1_ACK;
+        for (uint16_t i = 0; i < size - 1; i++)
+        {
+            if (!_waitFlag(Flag::RX_NOT_EMPTY))
+                return false;
 
-                if (!_waitFlag(Flag::RX_NOT_EMPTY))
-                {
-                    // if (_transferData.Callback != nullptr)
-                    // {
-                    //     _transferData.Callback(GetErorFromEvent(GetLastEvent()));
-                    // }
-                }
+            data[i] = static_cast<uint8_t>(_regs()->DR);
+        }
 
-                static_cast<uint8_t *>(data)[size] = static_cast<uint8_t>(_regs()->DR);
+        _regs()->CR1 &= ~I2C_CR1_ACK; // Disable ACK
 
-                _regs()->CR1 |= I2C_CR1_STOP;
+        if (!_waitFlag(Flag::RX_NOT_EMPTY))
+            return false;
 
-                // if (_transferData.Callback != nullptr)
-                // {
-                //     _transferData.Callback(success ? I2cStatus::Success : GetErorFromEvent(GetLastEvent()));
-                // }
-            });
+        data[size] = static_cast<uint8_t>(_regs()->DR);
 
-        DMARx::transfer(DMA::Config::PER_2_MEM | DMA::Config::MINC | DMA::Config::CIRCULAR, data, &_regs()->DR, size - 1);
+        _regs()->CR1 |= I2C_CR1_STOP;
 
         return true;
     }
