@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stm32/dev/common/_callback.hpp>
 #include <stm32/dev/common/_cmsis.hpp>
 
 namespace STM32::I2C
@@ -69,12 +70,12 @@ namespace STM32::I2C
         /**
          * @brief Send data
          */
-        static inline void send(uint8_t *data, uint16_t size);
+        static inline void send(uint8_t *data, uint16_t size, CallbackT cb);
 
         /**
          * @brief Receive data
          */
-        static inline void recv(uint8_t *data, uint16_t size);
+        static inline void recv(uint8_t *data, uint16_t size, CallbackT cb);
 
         /**
          * @brief Set memory register value

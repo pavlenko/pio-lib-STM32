@@ -2,6 +2,7 @@
 
 #include <type_traits>
 #include <stm32/dev/common/i2c_definitions.hpp>
+#include <stm32/dev/dma.hpp>
 
 namespace STM32::I2C
 {
@@ -148,6 +149,26 @@ namespace STM32::I2C
         }
 
         return true;
+    }
+
+    template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
+    inline void Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::send(uint8_t *data, uint16_t size, CallbackT cb)
+    {
+        // success (RX/TX):
+        // - disable ACK (if size==1)
+        // - disable IRQ (?)
+        // - send STOP (condition ?)
+        // - disable LAST DMA (?)
+        // - disable DMA (?)
+        // - execute callback
+        // error (RX/TX):
+        // - disable ACK
+        // - send STOP
+        // - maybe disable DMA
+        DMATx::setTransferCallback([](void* data, size_t size, bool success) {
+            // TODO
+        });
+        DMATx::transfer(DMA::Config::MEM_2_PER | DMA::Config::MINC, data, &_regs()->DR, size);
     }
 
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
