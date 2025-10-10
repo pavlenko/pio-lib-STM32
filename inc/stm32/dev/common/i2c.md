@@ -102,3 +102,33 @@ I2C1::memSet(0x00, initSequence, sizeof(initSequence));
   - check if success (RXNE & BTF flags)
 - wait stop
 - disable ACK
+
+### DMA TX
+
+- success:
+  - disable IRQ (?)
+  - disable ACK
+  - send STOP
+  - disable DMA (?)
+  - execute callaback
+- error:
+  - disable ACK
+  - send STOP
+  - disable DMA (?)
+  - execute callaback
+
+### DMA RX
+
+- send size - 1
+- success:
+  - disable IRQ (?)
+  - disable ACK
+  - disable DMA (?)
+  - receive last byte
+  - send STOP
+  - execute callback
+- error:
+  - disable ACK
+  - send STOP
+  - disable DMA (?)
+  - execute callaback

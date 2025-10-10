@@ -1,12 +1,11 @@
 #pragma once
 
-#include <stm32/dev/common/_callback.hpp>
 #include <stm32/dev/common/_cmsis.hpp>
+#include <type_traits>
 
 namespace STM32::I2C
 {
-    enum class Flag : uint32_t
-    {
+    enum class Flag : uint32_t {
         // SR1
         START_BIT = I2C_SR1_SB,
         ADDRESS_SENT = I2C_SR1_ADDR,
@@ -32,23 +31,25 @@ namespace STM32::I2C
         DUAL_FLAG = I2C_SR2_DUALF << 16u,
     };
 
+    using CallbackT = std::add_pointer_t<void(bool success)>;
+
     template <typename tDriver>
     class Master;
 
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
     class Driver
     {
-    private:
+      private:
         static const uint16_t _timeout = 10000;
 
         /**
          * @brief Register access helper
          */
-        static inline I2C_TypeDef *_regs();
+        static inline I2C_TypeDef* _regs();
 
-        static inline uint8_t _devAddress{0};
+        static inline uint8_t _devAddress{ 0 };
 
-    public:
+      public:
         template <typename tDriver>
         friend class Master;
 
@@ -70,30 +71,30 @@ namespace STM32::I2C
         /**
          * @brief Send data
          */
-        static inline void send(uint8_t *data, uint16_t size, CallbackT cb);
+        static inline void send(uint8_t* data, uint16_t size, CallbackT cb);
 
         /**
          * @brief Receive data
          */
-        static inline void recv(uint8_t *data, uint16_t size, CallbackT cb);
+        static inline void recv(uint8_t* data, uint16_t size, CallbackT cb);
 
         /**
          * @brief Set memory register value
          */
-        static inline bool memSet(uint16_t reg, uint8_t *data, uint16_t size);
+        static inline bool memSet(uint16_t reg, uint8_t* data, uint16_t size);
 
         /**
          * @brief Get memory register value
          */
-        static inline bool memGet(uint16_t reg, uint8_t *data, uint16_t size);
+        static inline bool memGet(uint16_t reg, uint8_t* data, uint16_t size);
 
         /**
          * @brief Check busy
          */
         static inline bool isBusy();
 
-    private:
-        //TODO helper functions: start/stop; send dev addr; send reg addr; wait; busy check; service via irq, data via dma, state!!!
+      private:
+        // TODO helper functions: start/stop; send dev addr; send reg addr; wait; busy check; service via irq, data via dma, state!!!
         /**
          * @brief Get SR1 & SR2 values
          */

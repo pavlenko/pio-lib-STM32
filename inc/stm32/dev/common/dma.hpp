@@ -45,8 +45,7 @@ namespace STM32::DMA
     template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
     inline void Channel<tDriver, tRegsAddress, tChannel, tIRQn>::dispatchIRQ()
     {
-        if (hasFlag<Flag::TRANSFER_COMPLETE>())
-        {
+        if (hasFlag<Flag::TRANSFER_COMPLETE>()) {
             clrFlags();
 
             if (!isCircular())
@@ -55,8 +54,7 @@ namespace STM32::DMA
             if (_cb)
                 _cb(true);
         }
-        if (hasFlag<Flag::TRANSFER_ERROR>())
-        {
+        if (hasFlag<Flag::TRANSFER_ERROR>()) {
             clrFlags();
 
             if (!isCircular())
@@ -69,9 +67,9 @@ namespace STM32::DMA
 
     // DRIVER
     template <uint32_t tRegsAddress, typename tClock>
-    inline DMA_TypeDef *Driver<tRegsAddress, tClock>::_regs()
+    inline DMA_TypeDef* Driver<tRegsAddress, tClock>::_regs()
     {
-        return reinterpret_cast<DMA_TypeDef *>(tRegsAddress);
+        return reinterpret_cast<DMA_TypeDef*>(tRegsAddress);
     }
 
     template <uint32_t tRegsAddress, typename tClock>

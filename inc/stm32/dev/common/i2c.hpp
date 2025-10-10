@@ -1,8 +1,8 @@
 #pragma once
 
-#include <type_traits>
 #include <stm32/dev/common/i2c_definitions.hpp>
 #include <stm32/dev/dma.hpp>
+#include <type_traits>
 
 namespace STM32::I2C
 {
@@ -17,9 +17,9 @@ namespace STM32::I2C
     }
 
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    inline I2C_TypeDef *Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::_regs()
+    inline I2C_TypeDef* Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::_regs()
     {
-        return reinterpret_cast<I2C_TypeDef *>(tRegsAddr);
+        return reinterpret_cast<I2C_TypeDef*>(tRegsAddr);
     }
 
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
@@ -52,7 +52,8 @@ namespace STM32::I2C
     inline bool Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::_waitBusy()
     {
         auto timer = _timeout;
-        while (isBusy() && --timer > 0);
+        while (isBusy() && --timer > 0)
+            ;
 
         return !isBusy();
     }
@@ -62,8 +63,7 @@ namespace STM32::I2C
     {
         bool result = false;
         auto timer = _timeout;
-        do
-        {
+        do {
             result = (getSR() & static_cast<uint32_t>(flag)) == static_cast<uint32_t>(flag);
         } while (!result && --timer > 0);
 
@@ -89,17 +89,14 @@ namespace STM32::I2C
     {
         static_assert(std::is_same_v<T, uint8_t> || std::is_same_v<T, uint16_t>, "Allowed only 8 or 16 bit address");
 
-        if constexpr (std::is_same_v<T, uint16_t>)
-        {
+        if constexpr (std::is_same_v<T, uint16_t>) {
             _regs()->DR = ((address & 0x0300u) >> 7) | 0x00F0u;
             if (!_waitFlag(Flag::ADDR_10_SENT))
                 return false;
 
             _regs()->DR = address;
             return _waitFlag(Flag::ADDRESS_SENT);
-        }
-        else
-        {
+        } else {
             _regs()->DR = address;
             return _waitFlag(Flag::ADDRESS_SENT);
         }
@@ -113,13 +110,10 @@ namespace STM32::I2C
     {
         static_assert(std::is_same_v<T, uint8_t> || std::is_same_v<T, uint16_t>, "Allowed only 8 or 16 bit address");
 
-        if constexpr (std::is_same_v<T, uint16_t>)
-        {
+        if constexpr (std::is_same_v<T, uint16_t>) {
             _regs()->DR = ((address & 0x0300u) >> 7) | 0x00F1u;
             return _waitFlag(Flag::ADDRESS_SENT);
-        }
-        else
-        {
+        } else {
             _regs()->DR = address | 1u;
             return _waitFlag(Flag::ADDRESS_SENT);
         }
@@ -133,13 +127,10 @@ namespace STM32::I2C
     {
         static_assert(std::is_same_v<T, uint8_t> || std::is_same_v<T, uint16_t>, "Allowed only 8 or 16 bit address");
 
-        if constexpr (std::is_same_v<T, uint8_t>)
-        {
+        if constexpr (std::is_same_v<T, uint8_t>) {
             _regs()->DR = address;
             return _waitFlag(Flag::TX_EMPTY);
-        }
-        else
-        {
+        } else {
             _regs()->DR = static_cast<uint8_t>(address);
             if (_waitFlag(Flag::TX_EMPTY))
                 return false;
@@ -152,27 +143,53 @@ namespace STM32::I2C
     }
 
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    inline void Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::send(uint8_t *data, uint16_t size, CallbackT cb)
+    inline void Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::send(uint8_t* data, uint16_t size, CallbackT cb)
     {
-        // success (RX/TX):
-        // - disable ACK (if size==1)
-        // - disable IRQ (?)
-        // - send STOP (condition ?)
-        // - disable LAST DMA (?)
-        // - disable DMA (?)
-        // - execute callback
-        // error (RX/TX):
-        // - disable ACK
-        // - send STOP
-        // - maybe disable DMA
-        DMATx::setTransferCallback([](void* data, size_t size, bool success) {
-            // TODO
+        DMATx::template clrFlag<DMA::Flag::TRANSFER_COMPLETE>();
+
+        _regs()->CR2 |= I2C_CR2_DMAEN;
+
+        DMATx::setTransferCallback([cb](void* data, size_t size, bool success) {
+            _regs()->CR1 &= ~I2C_CR1_ACK;
+            _regs()->CR1 |= I2C_CR1_STOP;
+
+            if (cb)
+                cb(success);
         });
+
         DMATx::transfer(DMA::Config::MEM_2_PER | DMA::Config::MINC, data, &_regs()->DR, size);
     }
 
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    inline bool Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::memSet(uint16_t reg, uint8_t *data, uint16_t size)
+    inline void Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::recv(uint8_t* data, uint16_t size, CallbackT cb)
+    {
+        DMATx::template clrFlag<DMA::Flag::TRANSFER_COMPLETE>();
+
+        _regs()->CR2 |= I2C_CR2_DMAEN;
+
+        DMATx::setTransferCallback([cb](void* data, size_t size, bool success) {
+            _regs()->CR1 &= ~I2C_CR1_ACK;
+
+            if (!_waitFlag(Flag::RX_NOT_EMPTY)) {
+                _regs()->CR1 |= I2C_CR1_STOP;
+                if (cb)
+                    cb(false);
+                return;
+            }
+
+            static_cast<uint8_t*>(data)[size] = static_cast<uint8_t>(_regs()->DR);
+
+            _regs()->CR1 |= I2C_CR1_STOP;
+
+            if (cb)
+                cb(success);
+        });
+
+        DMATx::transfer(DMA::Config::MEM_2_PER | DMA::Config::MINC, data, &_regs()->DR, size - 1);
+    }
+
+    template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
+    inline bool Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::memSet(uint16_t reg, uint8_t* data, uint16_t size)
     {
         if (!_waitBusy())
             return false;
@@ -188,8 +205,7 @@ namespace STM32::I2C
         if (!_sendRegAddress(reg))
             return false;
 
-        for (uint16_t i = 0; i < size; ++i)
-        {
+        for (uint16_t i = 0; i < size; ++i) {
             _regs()->DR = data[i];
 
             if (!_waitFlag(Flag::TX_EMPTY))
@@ -203,7 +219,7 @@ namespace STM32::I2C
     }
 
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    inline bool Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::memGet(uint16_t reg, uint8_t *data, uint16_t size)
+    inline bool Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::memGet(uint16_t reg, uint8_t* data, uint16_t size)
     {
         if (!_waitBusy())
             return false;
@@ -225,8 +241,7 @@ namespace STM32::I2C
         if (!_sendDevAddressR(_devAddress))
             return false;
 
-        for (uint16_t i = 0; i < size - 1; i++)
-        {
+        for (uint16_t i = 0; i < size - 1; i++) {
             if (!_waitFlag(Flag::RX_NOT_EMPTY))
                 return false;
 
