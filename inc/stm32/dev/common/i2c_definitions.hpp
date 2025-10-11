@@ -93,6 +93,16 @@ namespace STM32::I2C
          */
         static inline bool isBusy();
 
+        /**
+         * @brief Dispatch slave IRQ events
+         */
+        static inline void dispatchEventIRQ();
+
+        /**
+         * @brief Dispatch slave IRQ errors
+         */
+        static inline void dispatchErrorIRQ();
+
       private:
         // TODO helper functions: start/stop; send dev addr; send reg addr; wait; busy check; service via irq, data via dma, state!!!
         /**
