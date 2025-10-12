@@ -259,4 +259,39 @@ namespace STM32::I2C
 
         return true;
     }
+
+    template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
+    inline void Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::dispatchEventIRQ()
+    {
+        uint32_t SR1 = _regs()->SR1;
+        uint32_t SR2;
+
+        //TODO check addr first for handle slave execute dma...
+        if ((SR1 & I2C_SR1_ADDR) != 0u) {
+            // TODO: is slave & not started DMA -> start DMA TX/RX
+            SR2 = _regs()->SR2; // clear ADDR by reading SR2
+        }
+    }
+
+    template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
+    inline void Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::dispatchErrorIRQ()
+    {
+        uint32_t SR1 = _regs()->SR1;
+
+        if ((SR1 & I2C_SR1_BERR) != 0u) {
+            _regs()->SR1 &= ~I2C_SR1_BERR;
+        }
+        if ((SR1 & I2C_SR1_ARLO) != 0u) {
+            _regs()->SR1 &= ~I2C_SR1_ARLO;
+        }
+        if ((SR1 & I2C_SR1_AF) != 0u) {
+            // TODO: if slave TX -> stop transmission
+            // else: clear flag & in master send STOP
+            _regs()->SR1 &= ~I2C_SR1_AF;
+        }
+        if ((SR1 & I2C_SR1_OVR) != 0u) {
+            _regs()->SR1 &= ~I2C_SR1_OVR;
+        }
+        // TODO execute error callback
+    }
 }
