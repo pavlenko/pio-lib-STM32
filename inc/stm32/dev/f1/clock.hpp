@@ -305,6 +305,13 @@ namespace STM32::Clock
     using Timer7Clock = ClockControl<APB1Clock, &RCC_TypeDef::APB1ENR, RCC_APB1ENR_TIM7EN>;
 #endif
 
+    // I2C clocks
+    using I2C1Clock = ClockControl<APB1Clock, &RCC_TypeDef::APB1ENR, RCC_APB1ENR_I2C1EN>;
+    using I2C2Clock = ClockControl<APB1Clock, &RCC_TypeDef::APB1ENR, RCC_APB1ENR_I2C2EN>;
+#if defined(I2C3_BASE)
+    using I2C3Clock = ClockControl<APB1Clock, &RCC_TypeDef::APB1ENR, RCC_APB1ENR_I2C3EN>;
+#endif
+
     // U(S)ART clocks
     using UART1Clock = ClockControl<APB2Clock, &RCC_TypeDef::APB2ENR, RCC_APB2ENR_USART1EN>;
     using UART2Clock = ClockControl<APB1Clock, &RCC_TypeDef::APB1ENR, RCC_APB1ENR_USART2EN>;
