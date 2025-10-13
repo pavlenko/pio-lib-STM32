@@ -263,13 +263,35 @@ namespace STM32::I2C
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
     inline void Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::dispatchEventIRQ()
     {
-        uint32_t SR1 = _regs()->SR1;
-        uint32_t SR2;
+        //---SLAVE COMMON
+        __IO uint32_t SR2 = _regs()->SR2;
+        __IO uint32_t SR1 = _regs()->SR1;
 
-        //TODO check addr first for handle slave execute dma...
         if ((SR1 & I2C_SR1_ADDR) != 0u) {
             // TODO: is slave & not started DMA -> start DMA TX/RX
-            SR2 = _regs()->SR2; // clear ADDR by reading SR2
+            SR2 = _regs()->SR2; //<-- clear ADDR
+            SR1 = 0;
+        }
+        if ((SR1 & I2C_SR1_STOPF) != 0u) {
+            // TODO: stop RX/TX
+            _regs()->CR1 |= I2C_CR1_PE; //<-- clear STOPF
+            SR1 = 0;
+        }
+
+        //---SLAVE TX (no-DMA)
+        if ((SR1 & I2C_SR1_TXE) != 0u) {
+            // TODO: slave TX byte
+        }
+        if ((SR1 & I2C_SR1_BTF) != 0u) {
+            // TODO:
+        }
+
+        //---SLAVE RX (no-DMA)
+        if ((SR1 & I2C_SR1_RXNE) != 0u) {
+            // TODO: slave RX byte
+        }
+        if ((SR1 & I2C_SR1_BTF) != 0u) {
+            // TODO:
         }
     }
 
