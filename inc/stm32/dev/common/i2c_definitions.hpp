@@ -159,7 +159,7 @@ namespace STM32::I2C
         static inline Direction _dir;
         static inline uint8_t* buf;
         static inline uint16_t len;
-        static inline HandlerT _cb;//TODO: split to addr cb & data cb...
+        static inline HandlerT _cb; // TODO: split to addr cb & data cb???
 
     public:
         static inline void listen(uint16_t address, void (*cb)(uint8_t status) = nullptr);
@@ -190,6 +190,29 @@ namespace STM32::I2C
             }
         }
 
-        static inline void dispatchErrorIRQ();
+        static inline void dispatchErrorIRQ()
+        {
+            uint32_t SR1 = _regs()->SR1;
+
+            if ((SR1 & I2C_SR1_BERR) != 0u) {
+                _regs()->SR1 &= ~I2C_SR1_BERR;
+            }
+            if ((SR1 & I2C_SR1_ARLO) != 0u) {
+                _regs()->SR1 &= ~I2C_SR1_ARLO;
+            }
+            if ((SR1 & I2C_SR1_AF) != 0u) {
+                _regs()->CR2 &= ~(I2C_CR2_ITEVTEN | I2C_CR2_ITERREN | I2C_CR2_ITBUFEN); //<-- disable IRQ
+                _regs()->SR1 &= ~I2C_SR1_AF;                                            //<-- clear AF
+                _regs()->CR1 &= ~I2C_CR1_ACK;                                           //<-- disable ACK
+                // TODO if ADDR nack - listen complete cb
+                // TODO if data nack - flush DR & tx complete cb
+                // TODO else - just clear flag & error...
+            }
+            if ((SR1 & I2C_SR1_OVR) != 0u) {
+                _regs()->SR1 &= ~I2C_SR1_OVR;
+            }
+            if (_cb)
+                _cb(Status::ERROR);
+        }
     };
 }
