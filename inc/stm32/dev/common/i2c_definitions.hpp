@@ -146,6 +146,10 @@ namespace STM32::I2C
 
     enum class Direction : uint8_t { RX, TX };
 
+    enum class Status { OK, ERROR };
+
+    using HandlerT = std::add_pointer_t<void(Status status)>;
+
     // TODO change later to template<class Base> class Slave : Base
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
     class Slave : Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>
@@ -155,7 +159,7 @@ namespace STM32::I2C
         static inline Direction _dir;
         static inline uint8_t* buf;
         static inline uint16_t len;
-        // TODO callback(status(success,error))
+        static inline HandlerT _cb;//TODO: split to addr cb & data cb...
 
     public:
         static inline void listen(uint16_t address, void (*cb)(uint8_t status) = nullptr);
@@ -169,7 +173,8 @@ namespace STM32::I2C
 
             if ((SR1 & I2C_SR1_ADDR) != 0u) {
                 _dir = (SR2 & I2C_SR2_TRA) != 0u ? Direction::TX : Direction::RX;
-                // TODO callback
+                if (_cb)
+                    _cb(Status::OK);
                 SR2 = _regs()->SR2; //<-- clear ADDR
             } else if ((SR1 & I2C_SR1_STOPF) != 0u) {
                 _regs()->CR2 &= ~(I2C_CR2_ITEVTEN | I2C_CR2_ITERREN | I2C_CR2_ITBUFEN); //<-- disable IRQ
