@@ -39,7 +39,7 @@ namespace STM32::I2C
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
     class Driver
     {
-      private:
+    private:
         static const uint16_t _timeout = 10000;
 
         /**
@@ -49,7 +49,7 @@ namespace STM32::I2C
 
         static inline uint8_t _devAddress{ 0 };
 
-      public:
+    public:
         template <typename tDriver>
         friend class Master;
 
@@ -103,7 +103,7 @@ namespace STM32::I2C
          */
         static inline void dispatchErrorIRQ();
 
-      private:
+    private:
         // TODO helper functions: start/stop; send dev addr; send reg addr; wait; busy check; service via irq, data via dma, state!!!
         /**
          * @brief Get SR1 & SR2 values
@@ -142,5 +142,49 @@ namespace STM32::I2C
          */
         template <typename T>
         static inline bool _sendRegAddress(T address);
+    };
+
+    enum class Direction : uint8_t { RX, TX };
+
+    // TODO change later to template<class Base> class Slave : Base
+    template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
+    class Slave : Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>
+    {
+    private:
+        // TODO state(reset,ready,busy,listen)
+        static inline Direction _dir;
+        static inline uint8_t* buf;
+        static inline uint16_t len;
+        // TODO callback(status(success,error))
+
+    public:
+        static inline void listen(uint16_t address, void (*cb)(uint8_t status) = nullptr);
+        static inline void send(uint8_t* buf, uint16_t len, void (*cb)(uint8_t status) = nullptr);
+        static inline void recv(uint8_t* buf, uint16_t len, void (*cb)(uint8_t status) = nullptr);
+
+        static inline void dispatchEventIRQ()
+        {
+            __IO uint32_t SR2 = _regs()->SR2; //<-- read SR2 first for prevent clear ADDR flag
+            __IO uint32_t SR1 = _regs()->SR1;
+
+            if ((SR1 & I2C_SR1_ADDR) != 0u) {
+                _dir = (SR2 & I2C_SR2_TRA) != 0u ? Direction::TX : Direction::RX;
+                // TODO callback
+                SR2 = _regs()->SR2; //<-- clear ADDR
+            } else if ((SR1 & I2C_SR1_STOPF) != 0u) {
+                _regs()->CR2 &= ~(I2C_CR2_ITEVTEN | I2C_CR2_ITERREN | I2C_CR2_ITBUFEN); //<-- disable IRQ
+                _regs()->CR1 |= I2C_CR1_PE;                                             //<-- clear STOPF
+                _regs()->CR1 &= ~I2C_CR1_ACK;                                           //<-- disable ACK
+                _regs()->CR2 &= ~I2C_CR2_DMAEN;                                         //<-- disable DMA
+
+                if (_dir == Direction::RX) {
+                    DMARx::abort();
+                } else {
+                    DMATx::abort();
+                }
+            }
+        }
+
+        static inline void dispatchErrorIRQ();
     };
 }
