@@ -31,10 +31,25 @@ namespace STM32::I2C
         DUAL_FLAG = I2C_SR2_DUALF << 16u,
     };
 
-    using CallbackT = std::add_pointer_t<void(bool success)>;
+    /**
+     * Slave FSM:
+     * - RESET --listen--> LISTEN
+     * - LISTEN --ADDR--> READY
+     * - READY --send--> BUSY_TX
+     * - READY --recv--> BUSY_RX
+     * - BUSY_TX --AF--> incomplete TX
+     * - BUSY_TX --(len=0)--> complete TX
+     * - BUSY_RX --STOPF--> incomplete RX
+     * - BUSY_RX --(len=0)--> complete RX
+     */
+    enum class State {
+        RESET,  //<-- not initialized
+        READY,  //<-- initialized and ready
+        LISTEN, //<-- listen for ADDR
+        //busy tx/rx etc...
+    };
 
-    template <typename tDriver>
-    class Master;
+    using CallbackT = std::add_pointer_t<void(bool success)>;
 
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
     class Driver
