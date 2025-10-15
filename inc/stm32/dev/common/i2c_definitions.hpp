@@ -37,9 +37,9 @@ namespace STM32::I2C
      * - LISTEN --ADDR--> READY
      * - READY --send--> BUSY_TX
      * - READY --recv--> BUSY_RX
-     * - BUSY_TX --AF--> incomplete TX
+     * - BUSY_TX --AF--> master cannot receive more bytes from slave
      * - BUSY_TX --(len=0)--> complete TX
-     * - BUSY_RX --STOPF--> incomplete RX
+     * - BUSY_RX --STOPF--> master cannot sent more bytes to slave
      * - BUSY_RX --(len=0)--> complete RX
      */
     enum class State {
