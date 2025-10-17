@@ -155,12 +155,11 @@ namespace STM32::I2C
 
     using HandlerT = std::add_pointer_t<void(Status status)>;
 
-    // TODO change later to template<class Base> class Slave : Base
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
     class Slave : Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>
     {
     private:
-        // TODO state(reset,ready,busy,listen)
+        static inline State _state;
         static inline Direction _dir;
         static inline uint8_t* buf;
         static inline uint16_t len;
@@ -182,7 +181,25 @@ namespace STM32::I2C
          * @param cb      Address received callback
          */
         static inline void listen(uint16_t address, void (*cb)(uint8_t status) = nullptr)
-        {}
+        {
+            // Configure:
+            //<-- check _state == State::RESET -> set _state = State::LISTEN else return
+
+            if (address > 0x007F) {
+                _regs()->OAR1 = address & 0x3F; //<-- 10bit
+            } else {
+                _regs()->OAR1 = (address << 1) & 0x3F; //<-- 7bit
+            }
+
+            _regs()->CR1 |= I2C_CR1_PE; //<-- enable I2C
+            NVIC_EnableIRQ(tEventIRQn); //<-- enable IRQ vector
+            NVIC_EnableIRQ(tErrorIRQn);
+
+            // Listen:
+            //<-- configure ADDR callback
+            _regs()->CR1 |= I2C_CR1_ACK;                       //<-- enable ACK
+            _regs()->CR2 |= I2C_CR2_ITEVTEN | I2C_CR2_ITERREN; //<-- enable IRQ
+        }
 
         /**
          * @brief Slave TX
