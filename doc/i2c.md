@@ -1,3 +1,10 @@
+# Stop communication
+
+master to slave (slave RX), master stops (send STOP) - slave check STOPF irq
+master to slave (slave RX), slave stops (send NACK) - master check AF irq
+slave to master (slave TX), master stops (send NACK) - slave check AF irq
+slave to master (slave TX), slave stops (send STOP) - master check STOPF irq
+
 ### Master TX DMA
 - configure & enable DMA channel
 - set DMAEN = 1

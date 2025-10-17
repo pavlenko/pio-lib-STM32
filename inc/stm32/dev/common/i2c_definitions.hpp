@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stm32/dev/common/_cmsis.hpp>
+#include <stm32/dev/dma.hpp>
 #include <type_traits>
 
 namespace STM32::I2C
@@ -31,22 +32,11 @@ namespace STM32::I2C
         DUAL_FLAG = I2C_SR2_DUALF << 16u,
     };
 
-    /**
-     * Slave FSM:
-     * - RESET --listen--> LISTEN
-     * - LISTEN --ADDR--> READY
-     * - READY --send--> BUSY_TX
-     * - READY --recv--> BUSY_RX
-     * - BUSY_TX --AF--> master cannot receive more bytes from slave
-     * - BUSY_TX --(len=0)--> complete TX
-     * - BUSY_RX --STOPF--> master cannot sent more bytes to slave
-     * - BUSY_RX --(len=0)--> complete RX
-     */
     enum class State {
         RESET,  //<-- not initialized
         READY,  //<-- initialized and ready
         LISTEN, //<-- listen for ADDR
-        //busy tx/rx etc...
+        // busy tx/rx etc...
     };
 
     using CallbackT = std::add_pointer_t<void(bool success)>;
@@ -177,9 +167,86 @@ namespace STM32::I2C
         static inline HandlerT _cb; // TODO: split to addr cb & data cb???
 
     public:
-        static inline void listen(uint16_t address, void (*cb)(uint8_t status) = nullptr);
-        static inline void send(uint8_t* buf, uint16_t len, void (*cb)(uint8_t status) = nullptr);
-        static inline void recv(uint8_t* buf, uint16_t len, void (*cb)(uint8_t status) = nullptr);
+        /**
+         * @brief Slave listen address
+         *
+         * - Check state == RESET(?)
+         * - Set state = LISTEN
+         * - Configure address
+         * - Enable I2C
+         * - Enable ACK
+         * - Enable IRQ vector(s)
+         * - Enable IRQ (EVT+ERR)
+         *
+         * @param address Slave address
+         * @param cb      Address received callback
+         */
+        static inline void listen(uint16_t address, void (*cb)(uint8_t status) = nullptr)
+        {}
+
+        /**
+         * @brief Slave TX
+         *
+         * - Check state == READY(?)
+         * - Set state = BUSY_TX
+         * - Enable ACK
+         * - Configure DMA callback (TC+ERR)
+         * - Configure DMA transfer
+         * - Enable IRQ (EVT+ERR)
+         * - Enable DMA
+         *
+         * @param buf Data ptr
+         * @param len Data len
+         * @param cb  Complete callback
+         */
+        static inline void send(uint8_t* buf, uint16_t len, void (*cb)(uint8_t status) = nullptr)
+        {
+            _regs()->CR1 |= I2C_CR1_ACK;                             //<-- enable ACK
+            DMATx::template clrFlag<DMA::Flag::TRANSFER_COMPLETE>(); //<-- clear DMA TC
+
+            DMATx::setTransferCallback([cb](void* buf, size_t len, bool success) {
+                _regs()->CR2 &= ~(I2C_CR2_ITEVTEN | I2C_CR2_ITERREN); //<-- disable IRQ
+                _regs()->CR2 &= ~I2C_CR2_DMAEN;                       //<-- disable DMA
+                if (cb)
+                    cb();
+            });
+
+            DMATx::transfer(DMA::Config::MEM_2_PER | DMA::Config::MINC, buf, &_regs()->DR, len); //<-- start transfer
+            _regs()->CR2 |= I2C_CR2_ITEVTEN | I2C_CR2_ITERREN;                                   //<-- enable IRQ
+            _regs()->CR2 |= I2C_CR2_DMAEN;                                                       //<-- enable DMA
+        }
+
+        /**
+         * @brief Slave RX
+         *
+         * - Check state == READY(?)
+         * - Set state = BUSY_RX
+         * - Enable ACK
+         * - Configure DMA callback (TC+ERR)
+         * - Configure DMA transfer
+         * - Enable IRQ (EVT+ERR)
+         * - Enable DMA
+         *
+         * @param buf Data ptr
+         * @param len Data len
+         * @param cb  Complete callback
+         */
+        static inline void recv(uint8_t* buf, uint16_t len, void (*cb)(uint8_t status) = nullptr)
+        {
+            _regs()->CR1 |= I2C_CR1_ACK;                             //<-- enable ACK
+            DMATx::template clrFlag<DMA::Flag::TRANSFER_COMPLETE>(); //<-- clear DMA TC
+
+            DMATx::setTransferCallback([cb](void* buf, size_t len, bool success) {
+                _regs()->CR2 &= ~(I2C_CR2_ITEVTEN | I2C_CR2_ITERREN); //<-- disable IRQ
+                _regs()->CR2 &= ~I2C_CR2_DMAEN;                       //<-- disable DMA
+                if (cb)
+                    cb();
+            });
+
+            DMATx::transfer(DMA::Config::PER_2_MEM | DMA::Config::MINC, buf, &_regs()->DR, len); //<-- start transfer
+            _regs()->CR2 |= I2C_CR2_ITEVTEN | I2C_CR2_ITERREN;                                   //<-- enable IRQ
+            _regs()->CR2 |= I2C_CR2_DMAEN;                                                       //<-- enable DMA
+        }
 
         static inline void dispatchEventIRQ()
         {
@@ -205,6 +272,18 @@ namespace STM32::I2C
             }
         }
 
+        /**
+         * @brief Dispatch error IRQ
+         *
+         * - if BERR -> clear BERR; set errors BERR flag
+         * - if ARLO -> clear ARLO; set errors ARLO flag
+         * - if AF -> clear AF
+         *   - if state == LISTEN -> stop listen (disable IRQ; disable ACK; set state = REAY; listen callback)
+         *   - if state == BUSY_TX -> stop TX (disable IRQ; disable ACK; set state = READY; data success callback)
+         *   - else -> set errors AF flag
+         * - if OVR -> clear OVR; set errors OVR flag
+         * - if any errors -> abort RX/TX (disable IRQ; disable ACK; set state = READY; error callback)
+         */
         static inline void dispatchErrorIRQ()
         {
             uint32_t SR1 = _regs()->SR1;
@@ -219,9 +298,6 @@ namespace STM32::I2C
                 _regs()->CR2 &= ~(I2C_CR2_ITEVTEN | I2C_CR2_ITERREN | I2C_CR2_ITBUFEN); //<-- disable IRQ
                 _regs()->SR1 &= ~I2C_SR1_AF;                                            //<-- clear AF
                 _regs()->CR1 &= ~I2C_CR1_ACK;                                           //<-- disable ACK
-                // TODO if ADDR nack - listen complete cb
-                // TODO if data nack - flush DR & tx complete cb
-                // TODO else - just clear flag & error...
             }
             if ((SR1 & I2C_SR1_OVR) != 0u) {
                 _regs()->SR1 &= ~I2C_SR1_OVR;
