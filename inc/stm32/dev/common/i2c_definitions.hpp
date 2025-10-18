@@ -33,13 +33,14 @@ namespace STM32::I2C
     };
 
     enum class State {
-        RESET,  //<-- not initialized
-        READY,  //<-- initialized and ready
-        LISTEN, //<-- listen for ADDR
-        SLAVE_TX,
-        SLAVE_RX,
+        RESET,    //< Not initialized
+        READY,    //< Initialized and ready
+        LISTEN,   //< Listen for ADDR
+        SLAVE_TX, //< Slave busy tx
+        SLAVE_RX, //< Slave busy rx
     };
 
+    using AddrCallbackT = std::add_pointer_t<void(bool success, bool isTx)>;
     using CallbackT = std::add_pointer_t<void(bool success)>;
 
     template <class tDriver>
@@ -156,6 +157,7 @@ namespace STM32::I2C
         static inline Direction _dir;
         static inline uint8_t* buf;
         static inline uint16_t len;
+        static inline AddrCallbackT _addrCb;
         static inline CallbackT _cb; // TODO: split to addr cb & data cb???
 
     public:
@@ -173,7 +175,7 @@ namespace STM32::I2C
          * @param address Slave address
          * @param cb      Address received callback
          */
-        static inline void listen(uint16_t address, void (*cb)(uint8_t status) = nullptr)
+        static inline void listen(uint16_t address, AddrCallbackT cb = nullptr)
         {
             // Configure:
             //<-- check _state == State::RESET -> set _state = State::LISTEN else return
@@ -189,7 +191,8 @@ namespace STM32::I2C
             NVIC_EnableIRQ(tErrorIRQn);
 
             // Listen:
-            //<-- configure ADDR callback
+            _state = State::LISTEN;                            //<-- set state = LISTEN
+            _addrCb = cb;                                      //<-- configure ADDR callback
             _regs()->CR1 |= I2C_CR1_ACK;                       //<-- enable ACK
             _regs()->CR2 |= I2C_CR2_ITEVTEN | I2C_CR2_ITERREN; //<-- enable IRQ
         }
@@ -270,20 +273,17 @@ namespace STM32::I2C
             __IO uint32_t SR1 = _regs()->SR1;
 
             if ((SR1 & I2C_SR1_ADDR) != 0u) {
-                _dir = (SR2 & I2C_SR2_TRA) != 0u ? Direction::TX : Direction::RX;
-                if (_cb)
-                    _cb(true);
+                if (_addrCb) {
+                    _addrCb(true, (SR2 & I2C_SR2_TRA) != 0u);
+                }
                 SR2 = _regs()->SR2; //<-- clear ADDR
             } else if ((SR1 & I2C_SR1_STOPF) != 0u) {
                 _regs()->CR2 &= ~(I2C_CR2_ITEVTEN | I2C_CR2_ITERREN | I2C_CR2_ITBUFEN); //<-- disable IRQ
                 _regs()->CR1 |= I2C_CR1_PE;                                             //<-- clear STOPF
                 _regs()->CR1 &= ~I2C_CR1_ACK;                                           //<-- disable ACK
                 _regs()->CR2 &= ~I2C_CR2_DMAEN;                                         //<-- disable DMA
-
-                if (_dir == Direction::RX) {
-                    DMARx::abort();
-                } else {
-                    DMATx::abort();
+                if (_cb) {
+                    _cb(true);
                 }
             }
         }
@@ -314,7 +314,11 @@ namespace STM32::I2C
                 _regs()->CR2 &= ~(I2C_CR2_ITEVTEN | I2C_CR2_ITERREN | I2C_CR2_ITBUFEN); //<-- disable IRQ
                 _regs()->SR1 &= ~I2C_SR1_AF;                                            //<-- clear AF
                 _regs()->CR1 &= ~I2C_CR1_ACK;                                           //<-- disable ACK
-                //TODO
+                if (_state == State::LISTEN) {
+                    _addrCb(false, false);
+                } else if (_state == State::SLAVE_TX) {
+                    _cb(false, false);
+                }
             }
             if ((SR1 & I2C_SR1_OVR) != 0u) {
                 _regs()->SR1 &= ~I2C_SR1_OVR;
