@@ -36,15 +36,22 @@ namespace STM32::I2C
         RESET,  //<-- not initialized
         READY,  //<-- initialized and ready
         LISTEN, //<-- listen for ADDR
-        // busy tx/rx etc...
+        SLAVE_TX,
+        SLAVE_RX,
     };
 
     using CallbackT = std::add_pointer_t<void(bool success)>;
 
+    template <class tDriver>
+    class Slave2;
+
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
     class Driver
     {
-    private:
+        template <class tDriver>
+        friend class Slave2;
+
+    protected:
         static const uint16_t _timeout = 10000;
 
         /**
@@ -55,18 +62,8 @@ namespace STM32::I2C
         static inline uint8_t _devAddress{ 0 };
 
     public:
-        template <typename tDriver>
-        friend class Master;
-
         using DMATx = tDMATx;
         using DMARx = tDMARx;
-
-        static inline void configure();
-
-        /**
-         * @brief Listen address requests (automatically go to slave mode)
-         */
-        static inline void listen(uint8_t ownAddress);
 
         /**
          * @brief Select slave device for communicate (automatically go to master mode)
@@ -101,12 +98,12 @@ namespace STM32::I2C
         /**
          * @brief Dispatch slave IRQ events
          */
-        static inline void dispatchEventIRQ();
+        static inline void _dispatchEventIRQ();
 
         /**
          * @brief Dispatch slave IRQ errors
          */
-        static inline void dispatchErrorIRQ();
+        static inline void _dispatchErrorIRQ();
 
     private:
         // TODO helper functions: start/stop; send dev addr; send reg addr; wait; busy check; service via irq, data via dma, state!!!
@@ -151,10 +148,6 @@ namespace STM32::I2C
 
     enum class Direction : uint8_t { RX, TX };
 
-    enum class Status { OK, ERROR };
-
-    using HandlerT = std::add_pointer_t<void(Status status)>;
-
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
     class Slave : Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>
     {
@@ -163,7 +156,7 @@ namespace STM32::I2C
         static inline Direction _dir;
         static inline uint8_t* buf;
         static inline uint16_t len;
-        static inline HandlerT _cb; // TODO: split to addr cb & data cb???
+        static inline CallbackT _cb; // TODO: split to addr cb & data cb???
 
     public:
         /**
@@ -257,7 +250,7 @@ namespace STM32::I2C
                 _regs()->CR2 &= ~(I2C_CR2_ITEVTEN | I2C_CR2_ITERREN); //<-- disable IRQ
                 _regs()->CR2 &= ~I2C_CR2_DMAEN;                       //<-- disable DMA
                 if (cb)
-                    cb();
+                    cb(0);
             });
 
             DMATx::transfer(DMA::Config::PER_2_MEM | DMA::Config::MINC, buf, &_regs()->DR, len); //<-- start transfer
@@ -265,6 +258,12 @@ namespace STM32::I2C
             _regs()->CR2 |= I2C_CR2_DMAEN;                                                       //<-- enable DMA
         }
 
+        /**
+         * @brief Dispatch event IRQ
+         *
+         * - if ADDR -> detect direction; listen callback; clear ADDR flag
+         * - if STOPF -> disable IRQ; clear STOPF flag; disable ACK; disable DMA; data RX callback
+         */
         static inline void dispatchEventIRQ()
         {
             __IO uint32_t SR2 = _regs()->SR2; //<-- read SR2 first for prevent clear ADDR flag
@@ -273,7 +272,7 @@ namespace STM32::I2C
             if ((SR1 & I2C_SR1_ADDR) != 0u) {
                 _dir = (SR2 & I2C_SR2_TRA) != 0u ? Direction::TX : Direction::RX;
                 if (_cb)
-                    _cb(Status::OK);
+                    _cb(true);
                 SR2 = _regs()->SR2; //<-- clear ADDR
             } else if ((SR1 & I2C_SR1_STOPF) != 0u) {
                 _regs()->CR2 &= ~(I2C_CR2_ITEVTEN | I2C_CR2_ITERREN | I2C_CR2_ITBUFEN); //<-- disable IRQ
@@ -296,7 +295,7 @@ namespace STM32::I2C
          * - if ARLO -> clear ARLO; set errors ARLO flag
          * - if AF -> clear AF
          *   - if state == LISTEN -> stop listen (disable IRQ; disable ACK; set state = REAY; listen callback)
-         *   - if state == BUSY_TX -> stop TX (disable IRQ; disable ACK; set state = READY; data success callback)
+         *   - if state == BUSY_TX -> stop TX (disable IRQ; disable ACK; set state = READY; data TX callback)
          *   - else -> set errors AF flag
          * - if OVR -> clear OVR; set errors OVR flag
          * - if any errors -> abort RX/TX (disable IRQ; disable ACK; set state = READY; error callback)
@@ -315,12 +314,13 @@ namespace STM32::I2C
                 _regs()->CR2 &= ~(I2C_CR2_ITEVTEN | I2C_CR2_ITERREN | I2C_CR2_ITBUFEN); //<-- disable IRQ
                 _regs()->SR1 &= ~I2C_SR1_AF;                                            //<-- clear AF
                 _regs()->CR1 &= ~I2C_CR1_ACK;                                           //<-- disable ACK
+                //TODO
             }
             if ((SR1 & I2C_SR1_OVR) != 0u) {
                 _regs()->SR1 &= ~I2C_SR1_OVR;
             }
             if (_cb)
-                _cb(Status::ERROR);
+                _cb(0);
         }
     };
 }
