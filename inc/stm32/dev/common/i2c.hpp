@@ -130,7 +130,7 @@ namespace STM32::I2C
     }
 
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    inline void Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::send(uint8_t* data, uint16_t size, CallbackT cb)
+    inline void Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::send(uint8_t* data, uint16_t size, DataCallbackT cb)
     {
         DMATx::template clrFlag<DMA::Flag::TRANSFER_COMPLETE>();
 
@@ -148,7 +148,7 @@ namespace STM32::I2C
     }
 
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    inline void Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::recv(uint8_t* data, uint16_t size, CallbackT cb)
+    inline void Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::recv(uint8_t* data, uint16_t size, DataCallbackT cb)
     {
         DMATx::template clrFlag<DMA::Flag::TRANSFER_COMPLETE>();
 

@@ -41,17 +41,11 @@ namespace STM32::I2C
     };
 
     using AddrCallbackT = std::add_pointer_t<void(bool success, bool isTx)>;
-    using CallbackT = std::add_pointer_t<void(bool success)>;
-
-    template <class tDriver>
-    class Slave2;
+    using DataCallbackT = std::add_pointer_t<void(bool success)>;
 
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
     class Driver
     {
-        template <class tDriver>
-        friend class Slave2;
-
     protected:
         static const uint16_t _timeout = 10000;
 
@@ -74,12 +68,12 @@ namespace STM32::I2C
         /**
          * @brief Send data
          */
-        static inline void send(uint8_t* data, uint16_t size, CallbackT cb);
+        static inline void send(uint8_t* data, uint16_t size, DataCallbackT cb);
 
         /**
          * @brief Receive data
          */
-        static inline void recv(uint8_t* data, uint16_t size, CallbackT cb);
+        static inline void recv(uint8_t* data, uint16_t size, DataCallbackT cb);
 
         /**
          * @brief Set memory register value
@@ -147,18 +141,64 @@ namespace STM32::I2C
         static inline bool _sendRegAddress(T address);
     };
 
-    enum class Direction : uint8_t { RX, TX };
+    class Driver_
+    {
+    public:
+        // common: waitBusy,waitFlag
+        // master: start, sendDevAddress, sendRegAddress, stop, ack
+        // slave: ack, own, dma, irq
+    };
+
+    template <typename tDriver>
+    class Master
+    {
+    public:
+        enum class State {
+            RESET,   // initial state
+            READY,   // bus configured
+            BUSY_TX, // busy transmit
+            BUSY_RX, // busy receive
+            ERROR,   // error occured
+        };
+        static inline void select(uint16_t address, uint32_t speed);
+        static inline void tx(uint8_t* data, uint16_t size);
+        static inline void rx(uint8_t* data, uint16_t size);
+    };
+
+    template <typename tDriver>
+    class Memory : public Master<tDriver>
+    {
+    public:
+        static inline void set(uint16_t address, uint8_t* data, uint16_t size);
+        static inline void get(uint16_t address, uint8_t* data, uint16_t size);
+    };
+
+    template <typename tDriver>
+    class Slave
+    {
+    public:
+        enum class State {
+            RESET,     // initial state
+            LISTEN,    // listen started
+            ADDRESSED, // listen address matched
+            BUSY_TX,   // busy transmit
+            BUSY_RX,   // busy receive
+            ERROR,     // error occured
+        };
+        static inline void listen(uint16_t address, std::add_pointer_t<void(void)> cb);
+        static inline void tx(uint8_t* data, uint16_t size);
+        static inline void rx(uint8_t* data, uint16_t size);
+    };
 
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    class Slave : Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>
+    class Slave_ : Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>
     {
     private:
         static inline State _state;
-        static inline Direction _dir;
         static inline uint8_t* buf;
         static inline uint16_t len;
         static inline AddrCallbackT _addrCb;
-        static inline CallbackT _cb; // TODO: split to addr cb & data cb???
+        static inline DataCallbackT _cb; // TODO: split to addr cb & data cb???
 
     public:
         /**
