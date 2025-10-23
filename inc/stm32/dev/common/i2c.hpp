@@ -246,4 +246,191 @@ namespace STM32::I2C
 
         return true;
     }
+
+    // --- MASTER ---
+    template <typename tDriver>
+    inline void Master<tDriver>::select(uint16_t address, uint32_t speed)
+    {
+    }
+
+    template <typename tDriver>
+    inline void Master<tDriver>::tx(uint8_t* data, uint16_t size)
+    {
+        _regs()->CR1 &= ~I2C_CR1_POS; // clear POS
+
+        _regs()->CR1 |= I2C_CR1_START;               // send START
+        while ((_regs()->SR1 & I2C_SR1_SB) == 0u) {} // wait until SB is set
+
+        (void)_regs()->SR1;                   // clear SB by reading SR1 & write DR
+        _regs()->DR = _devAddress << 1 | 0x0; // send address
+
+        while ((_regs()->SR1 & I2C_SR1_ADDR) == 0u) {} // wait until ADDR is set
+
+        (void)_regs()->SR1; // clear ADDR by reading SR1 and followed reading SR2
+        (void)_regs()->SR2;
+
+        for (uint16_t i = 0; i < size; i++) {
+            _regs()->DR = data[i];                        // transmit byte
+            while ((_regs()->SR1 & I2C_SR1_TXE) == 0u) {} // wait until TXE is set
+        }
+
+        _regs()->CR1 |= I2C_CR1_STOP; // send STOP
+    }
+
+    template <typename tDriver>
+    inline void Master<tDriver>::rx(uint8_t* data, uint16_t size)
+    {
+        _regs()->CR1 &= ~I2C_CR1_POS; // clear POS
+        _regs()->CR1 |= I2C_CR1_ACK;  // enable ACK
+
+        _regs()->CR1 |= I2C_CR1_START;               // send START
+        while ((_regs()->SR1 & I2C_SR1_SB) == 0u) {} // wait until SB is set
+
+        (void)_regs()->SR1;                   // clear SB by reading SR1 & write DR
+        _regs()->DR = _devAddress << 1 | 0x1; // send address
+
+        while ((_regs()->SR1 & I2C_SR1_ADDR) == 0u) {} // wait until ADDR is set
+
+        (void)_regs()->SR1; // clear ADDR by reading SR1 and followed reading SR2
+        (void)_regs()->SR2;
+
+        for (uint16_t i = 0; i < size - 1; i++) {
+            while ((_regs()->SR1 & I2C_SR1_RXNE) == 0u) {} // wait until TXE is set
+            data[i] = _regs()->DR;                         // receive byte
+        }
+
+        _regs()->CR1 &= ~I2C_CR1_ACK; // disable ACK
+        _regs()->CR1 |= I2C_CR1_STOP; // send STOP
+
+        while ((_regs()->SR1 & I2C_SR1_RXNE) == 0u) {} // wait until TXE is set
+        data[size] = _regs()->DR;                      // receive byte
+    }
+
+    // --- MEMORY ---
+    template <typename tDriver>
+    inline void Memory<tDriver>::set(uint16_t address, uint8_t* data, uint16_t size)
+    {
+        _regs()->CR1 &= ~I2C_CR1_POS; // clear POS
+        _regs()->CR1 |= I2C_CR1_ACK;  // enable ACK
+
+        _regs()->CR1 |= I2C_CR1_START;               // send START
+        while ((_regs()->SR1 & I2C_SR1_SB) == 0u) {} // wait until SB is set
+
+        (void)_regs()->SR1;                   // clear SB by reading SR1 & write DR
+        _regs()->DR = _devAddress << 1 | 0x0; // send address
+
+        while ((_regs()->SR1 & I2C_SR1_ADDR) == 0u) {} // wait until ADDR is set
+
+        (void)_regs()->SR1; // clear ADDR by reading SR1 and followed reading SR2
+        (void)_regs()->SR2;
+
+        // transmit 16-bit reg address
+        _regs()->DR = static_cast<uint8_t>(address >> 8);
+        while ((_regs()->SR1 & I2C_SR1_TXE) == 0u) {} // wait until TXE is set
+        _regs()->DR = static_cast<uint8_t>(address);
+        while ((_regs()->SR1 & I2C_SR1_TXE) == 0u) {} // wait until TXE is set
+
+        for (uint16_t i = 0; i < size; i++) {
+            _regs()->DR = data[i];                        // transmit byte
+            while ((_regs()->SR1 & I2C_SR1_TXE) == 0u) {} // wait until TXE is set
+        }
+
+        _regs()->CR1 |= I2C_CR1_STOP; // send STOP
+    }
+
+    template <typename tDriver>
+    inline void Memory<tDriver>::get(uint16_t address, uint8_t* data, uint16_t size)
+    {
+        _regs()->CR1 &= ~I2C_CR1_POS; // clear POS
+        _regs()->CR1 |= I2C_CR1_ACK;  // enable ACK
+
+        _regs()->CR1 |= I2C_CR1_START;               // send START
+        while ((_regs()->SR1 & I2C_SR1_SB) == 0u) {} // wait until SB is set
+
+        (void)_regs()->SR1;                   // clear SB by reading SR1 & write DR
+        _regs()->DR = _devAddress << 1 | 0x0; // send address for write
+
+        while ((_regs()->SR1 & I2C_SR1_ADDR) == 0u) {} // wait until ADDR is set
+
+        (void)_regs()->SR1; // clear ADDR by reading SR1 and followed reading SR2
+        (void)_regs()->SR2;
+
+        // transmit 16-bit reg address
+        _regs()->DR = static_cast<uint8_t>(address >> 8);
+        while ((_regs()->SR1 & I2C_SR1_TXE) == 0u) {} // wait until TXE is set
+        _regs()->DR = static_cast<uint8_t>(address);
+        while ((_regs()->SR1 & I2C_SR1_TXE) == 0u) {} // wait until TXE is set
+
+        _regs()->CR1 |= I2C_CR1_START;               // send (RE)START
+        while ((_regs()->SR1 & I2C_SR1_SB) == 0u) {} // wait until SB is set
+
+        (void)_regs()->SR1;                   // clear SB by reading SR1 & write DR
+        _regs()->DR = _devAddress << 1 | 0x1; // send address for read
+
+        while ((_regs()->SR1 & I2C_SR1_ADDR) == 0u) {} // wait until ADDR is set
+
+        (void)_regs()->SR1; // clear ADDR by reading SR1 and followed reading SR2
+        (void)_regs()->SR2;
+
+        for (uint16_t i = 0; i < size - 1; i++) {
+            while ((_regs()->SR1 & I2C_SR1_RXNE) == 0u) {} // wait until TXE is set
+            data[i] = _regs()->DR;                         // receive byte
+        }
+
+        _regs()->CR1 &= ~I2C_CR1_ACK; // disable ACK
+        _regs()->CR1 |= I2C_CR1_STOP; // send STOP
+
+        while ((_regs()->SR1 & I2C_SR1_RXNE) == 0u) {} // wait until TXE is set
+        data[size] = _regs()->DR;                      // receive byte
+    }
+
+    // --- SLAVE ---
+    template <typename tDriver>
+    inline void Slave<tDriver>::listen(uint16_t address, std::add_pointer_t<void(bool tx)> cb)
+    {
+    }
+
+    template <typename tDriver>
+    inline void Slave<tDriver>::tx(uint8_t* data, uint16_t size)
+    {
+        _regs()->CR1 &= ~I2C_CR1_POS; // clear POS
+        _regs()->CR1 |= I2C_CR1_ACK;  // enable ACK
+
+        while ((_regs()->SR1 & I2C_SR1_ADDR) == 0u) {} // wait until ADDR is set
+
+        (void)_regs()->SR1; // clear ADDR by reading SR1 and followed reading SR2
+        (void)_regs()->SR2;
+
+        for (uint16_t i = 0; i < size; i++) {
+            while ((_regs()->SR1 & I2C_SR1_TXE) == 0u) {} // wait until TXE is set
+            _regs()->DR = data[i];                        // transmit byte
+        }
+
+        while ((_regs()->SR1 & I2C_SR1_AF) == 0u) {} // wait until AF is set
+
+        _regs()->SR1 &= ~I2C_SR1_AF;  // clear AF
+        _regs()->CR1 &= ~I2C_CR1_ACK; // disable ACK
+    }
+
+    template <typename tDriver>
+    inline void Slave<tDriver>::rx(uint8_t* data, uint16_t size)
+    {
+        _regs()->CR1 &= ~I2C_CR1_POS; // clear POS
+        _regs()->CR1 |= I2C_CR1_ACK;  // enable ACK
+
+        while ((_regs()->SR1 & I2C_SR1_ADDR) == 0u) {} // wait until ADDR is set
+
+        (void)_regs()->SR1; // clear ADDR by reading SR1 and followed reading SR2
+        (void)_regs()->SR2;
+
+        for (uint16_t i = 0; i < size; i++) {
+            while ((_regs()->SR1 & I2C_SR1_RXNE) == 0u) {} // wait until RXNE is set
+            data[i] = _regs()->DR;                         // receive byte
+        }
+
+        while ((_regs()->SR1 & I2C_SR1_STOPF) == 0u) {} // wait until STOPF is set
+
+        _regs()->SR1 &= ~I2C_SR1_STOPF; // clear STOPF
+        _regs()->CR1 &= ~I2C_CR1_ACK;   // disable ACK
+    }
 }

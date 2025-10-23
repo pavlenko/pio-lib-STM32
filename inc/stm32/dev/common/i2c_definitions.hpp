@@ -32,7 +32,7 @@ namespace STM32::I2C
         DUAL_FLAG = I2C_SR2_DUALF << 16u,
     };
 
-    enum class State {
+    enum class State_ {
         RESET,    //< Not initialized
         READY,    //< Initialized and ready
         LISTEN,   //< Listen for ADDR
@@ -152,6 +152,13 @@ namespace STM32::I2C
     template <typename tDriver>
     class Master
     {
+    protected:
+        static inline uint16_t _devAddress;
+        static inline I2C_TypeDef *_regs();
+        static inline bool _waitBusy();
+        static inline bool _waitFlag(Flag flag);
+        static inline bool _start();
+        static inline bool _sendDevAdrress();
     public:
         enum class State {
             RESET,   // initial state
@@ -163,12 +170,14 @@ namespace STM32::I2C
         static inline void select(uint16_t address, uint32_t speed);
         static inline void tx(uint8_t* data, uint16_t size);
         static inline void rx(uint8_t* data, uint16_t size);
+        static inline State _state;
     };
 
     template <typename tDriver>
     class Memory : public Master<tDriver>
     {
     public:
+        using base = Master<tDriver>;
         static inline void set(uint16_t address, uint8_t* data, uint16_t size);
         static inline void get(uint16_t address, uint8_t* data, uint16_t size);
     };
@@ -185,7 +194,7 @@ namespace STM32::I2C
             BUSY_RX,   // busy receive
             ERROR,     // error occured
         };
-        static inline void listen(uint16_t address, std::add_pointer_t<void(void)> cb);
+        static inline void listen(uint16_t address, std::add_pointer_t<void(bool tx)> cb);
         static inline void tx(uint8_t* data, uint16_t size);
         static inline void rx(uint8_t* data, uint16_t size);
     };
@@ -194,7 +203,7 @@ namespace STM32::I2C
     class Slave_ : Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>
     {
     private:
-        static inline State _state;
+        static inline State_ _state;
         static inline uint8_t* buf;
         static inline uint16_t len;
         static inline AddrCallbackT _addrCb;
@@ -231,7 +240,7 @@ namespace STM32::I2C
             NVIC_EnableIRQ(tErrorIRQn);
 
             // Listen:
-            _state = State::LISTEN;                            //<-- set state = LISTEN
+            _state = State_::LISTEN;                            //<-- set state = LISTEN
             _addrCb = cb;                                      //<-- configure ADDR callback
             _regs()->CR1 |= I2C_CR1_ACK;                       //<-- enable ACK
             _regs()->CR2 |= I2C_CR2_ITEVTEN | I2C_CR2_ITERREN; //<-- enable IRQ
@@ -354,9 +363,9 @@ namespace STM32::I2C
                 _regs()->CR2 &= ~(I2C_CR2_ITEVTEN | I2C_CR2_ITERREN | I2C_CR2_ITBUFEN); //<-- disable IRQ
                 _regs()->SR1 &= ~I2C_SR1_AF;                                            //<-- clear AF
                 _regs()->CR1 &= ~I2C_CR1_ACK;                                           //<-- disable ACK
-                if (_state == State::LISTEN) {
+                if (_state == State_::LISTEN) {
                     _addrCb(false, false);
-                } else if (_state == State::SLAVE_TX) {
+                } else if (_state == State_::SLAVE_TX) {
                     _cb(false, false);
                 }
             }
