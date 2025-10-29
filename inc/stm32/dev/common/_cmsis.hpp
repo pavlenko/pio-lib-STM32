@@ -1,7 +1,6 @@
 #pragma once
 
-extern "C"
-{
+extern "C" {
 #if defined(STM32F0)
 #include <stm32f0xx.h>
 #elif defined(STM32F1)
@@ -39,4 +38,15 @@ extern "C"
 #else
 #error "STM32YYxx chip series is not defined"
 #endif
+}
+
+namespace STM32
+{
+    enum class Status : uint8_t
+    {
+        OK,
+        ERROR,
+        BUSY,
+        TIMEOUT,
+    };
 }
