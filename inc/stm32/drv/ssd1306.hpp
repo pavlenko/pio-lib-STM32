@@ -2,15 +2,15 @@
 
 #include <stm32/dev/i2c.hpp>
 
-template <typename tBus, uint16_t tWidth = 128u, uint16_t height = 64u>
+template <typename tBus, uint16_t tWidth = 128u, uint16_t tHeight = 64u>
 class SSD1306
 {
 private:
     static const uint8_t _address = 0x78 >> 1;
 
     static uint8_t _buffer[tWidth * tHeight / 8];
-    static uint16_t _x{0};
-    static uint16_t _y{0};
+    static uint16_t _x;
+    static uint16_t _y;
 
 public:
     enum CMD : uint8_t {
@@ -33,7 +33,7 @@ public:
         SET_COM_PINS_CONFIG = 0xDA,
     };
 
-    static bool void init()
+    static void init()
     {
         constexpr uint8_t data[] = {
             CMD::OFF,

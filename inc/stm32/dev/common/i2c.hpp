@@ -19,8 +19,9 @@ namespace STM32::I2C
 
     // --- DRIVER ---
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    inline bool Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::_waitFlag(Flag flag, uint32_t timeout)
+    inline bool Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::_waitFlag(Flag flag)
     {
+        uint32_t timeout = _timeout;
         while ((_regs()->SR1 & static_cast<uint32_t>(flag)) == 0u) {
             if (timeout == 0) {
                 return false;
@@ -30,14 +31,34 @@ namespace STM32::I2C
         return true;
     }
 
+    template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
+    inline bool Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::_start()
+    {
+        _regs()->CR1 |= I2C_CR1_START;
+        return _waitFlag(Flag::START_BIT);
+    }
+
+    template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
+    inline bool Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::_sendDevAddressW(uint8_t address)
+    {
+        _regs()->DR = (address << 1);
+        return _waitFlag(Flag::ADDRESS_SENT);
+    }
+
+    template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
+    inline bool Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::_sendDevAddressR(uint8_t address)
+    {
+        _regs()->DR = (address << 1u) | 1u;
+        return _waitFlag(Flag::ADDRESS_SENT);
+    }
+
     // --- MASTER ---
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
     inline void Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Master::tx(uint8_t* data, uint16_t size)
     {
         _regs()->CR1 &= ~I2C_CR1_POS; // clear POS
 
-        _regs()->CR1 |= I2C_CR1_START;         // send START
-        if (!_waitFlag(Flag::START_BIT, 1000)) // wait until SB is set
+        if (!_start())
             return;
 
         _regs()->DR = _devAddress << 1 | 0x0; // send address
@@ -61,8 +82,7 @@ namespace STM32::I2C
         _regs()->CR1 &= ~I2C_CR1_POS; // clear POS
         _regs()->CR1 |= I2C_CR1_ACK;  // enable ACK
 
-        _regs()->CR1 |= I2C_CR1_START;         // send START
-        if (!_waitFlag(Flag::START_BIT, 1000)) // wait until SB is set
+        if (!_start())
             return;
 
         _regs()->DR = _devAddress << 1 | 0x1; // send address
@@ -91,8 +111,7 @@ namespace STM32::I2C
         _regs()->CR1 &= ~I2C_CR1_POS; // clear POS
         _regs()->CR1 |= I2C_CR1_ACK;  // enable ACK
 
-        _regs()->CR1 |= I2C_CR1_START;         // send START
-        if (!_waitFlag(Flag::START_BIT, 1000)) // wait until SB is set
+        if (!_start())
             return;
 
         _regs()->DR = _devAddress << 1 | 0x0; // send address
@@ -122,8 +141,7 @@ namespace STM32::I2C
         _regs()->CR1 &= ~I2C_CR1_POS; // clear POS
         _regs()->CR1 |= I2C_CR1_ACK;  // enable ACK
 
-        _regs()->CR1 |= I2C_CR1_START;         // send START
-        if (!_waitFlag(Flag::START_BIT, 1000)) // wait until SB is set
+        if (!_start())
             return;
 
         _regs()->DR = _devAddress << 1 | 0x0; // send address for write
@@ -139,8 +157,7 @@ namespace STM32::I2C
         _regs()->DR = static_cast<uint8_t>(address);
         while ((_regs()->SR1 & I2C_SR1_TXE) == 0u) {} // wait until TXE is set
 
-        _regs()->CR1 |= I2C_CR1_START;         // send START
-        if (!_waitFlag(Flag::START_BIT, 1000)) // wait until SB is set
+        if (!_start())
             return;
 
         _regs()->DR = _devAddress << 1 | 0x1; // send address for read

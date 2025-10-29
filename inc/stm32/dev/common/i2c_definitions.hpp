@@ -2,7 +2,6 @@
 
 #include <stm32/dev/common/_cmsis.hpp>
 #include <stm32/dev/dma.hpp>
-#include <concepts>
 #include <type_traits>
 
 namespace STM32::I2C
@@ -53,18 +52,19 @@ namespace STM32::I2C
         // common: waitBusy,waitFlag
         // master: start, sendDevAddress, sendRegAddress, stop, ack
         // slave: ack, own, dma, irq
-        static inline uint16_t _devAddress;
+        static const uint32_t _timeout = 10000;
+        static inline uint8_t _devAddress;
         static inline I2C_TypeDef* _regs();
         static inline bool _waitBusy();
-        static inline bool _waitFlag(Flag flag, uint32_t timeout);
+        static inline bool _waitFlag(Flag flag);
+
+        static inline bool _start();
+        static inline bool _sendDevAddressW(uint8_t address);
+        static inline bool _sendDevAddressR(uint8_t address);
 
     public:
         class Master
         {
-        protected:
-            static inline bool _start();
-            static inline bool _sendDevAdrress();
-
         public:
             enum class State {
                 RESET,   // initial state
@@ -73,12 +73,12 @@ namespace STM32::I2C
                 BUSY_RX, // busy receive
                 ERROR,   // error occured
             };
-            static inline void select(uint16_t address, uint32_t speed);
+            static inline void select(uint8_t address, uint32_t speed);
             static inline void tx(uint8_t* data, uint16_t size);
             static inline void rx(uint8_t* data, uint16_t size);
         };
 
-        class Memory : Master
+        class Memory : public Master
         {
         public:
             static inline void set(uint16_t address, uint8_t* data, uint16_t size);
