@@ -61,9 +61,8 @@ namespace STM32::I2C
         if (!_start())
             return;
 
-        _regs()->DR = _devAddress << 1 | 0x0; // send address
-
-        while ((_regs()->SR1 & I2C_SR1_ADDR) == 0u) {} // wait until ADDR is set
+        if (!_sendDevAddressW(_devAddress))
+            return;
 
         (void)_regs()->SR1; // clear ADDR by reading SR1 and followed reading SR2
         (void)_regs()->SR2;
@@ -85,9 +84,8 @@ namespace STM32::I2C
         if (!_start())
             return;
 
-        _regs()->DR = _devAddress << 1 | 0x1; // send address
-
-        while ((_regs()->SR1 & I2C_SR1_ADDR) == 0u) {} // wait until ADDR is set
+        if (!_sendDevAddressR(_devAddress))
+            return;
 
         (void)_regs()->SR1; // clear ADDR by reading SR1 and followed reading SR2
         (void)_regs()->SR2;
@@ -114,9 +112,8 @@ namespace STM32::I2C
         if (!_start())
             return;
 
-        _regs()->DR = _devAddress << 1 | 0x0; // send address
-
-        while ((_regs()->SR1 & I2C_SR1_ADDR) == 0u) {} // wait until ADDR is set
+        if (!_sendDevAddressW(_devAddress))
+            return;
 
         (void)_regs()->SR1; // clear ADDR by reading SR1 and followed reading SR2
         (void)_regs()->SR2;
@@ -144,9 +141,8 @@ namespace STM32::I2C
         if (!_start())
             return;
 
-        _regs()->DR = _devAddress << 1 | 0x0; // send address for write
-
-        while ((_regs()->SR1 & I2C_SR1_ADDR) == 0u) {} // wait until ADDR is set
+        if (!_sendDevAddressW(_devAddress))
+            return;
 
         (void)_regs()->SR1; // clear ADDR by reading SR1 and followed reading SR2
         (void)_regs()->SR2;
@@ -160,9 +156,8 @@ namespace STM32::I2C
         if (!_start())
             return;
 
-        _regs()->DR = _devAddress << 1 | 0x1; // send address for read
-
-        while ((_regs()->SR1 & I2C_SR1_ADDR) == 0u) {} // wait until ADDR is set
+        if (!_sendDevAddressR(_devAddress))
+            return;
 
         (void)_regs()->SR1; // clear ADDR by reading SR1 and followed reading SR2
         (void)_regs()->SR2;
