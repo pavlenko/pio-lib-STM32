@@ -53,7 +53,10 @@ namespace STM32::I2C
         // master: start, sendDevAddress, sendRegAddress, stop, ack
         // slave: ack, own, dma, irq
         static const uint32_t _timeout = 10000;
+
+        static inline State_ _state;
         static inline uint8_t _devAddress;
+
         static inline I2C_TypeDef* _regs();
         static inline bool _waitBusy();
         static inline bool _waitFlag(Flag flag);

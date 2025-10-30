@@ -54,6 +54,46 @@ namespace STM32::I2C
 
     // --- MASTER ---
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
+    inline void Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Master::select(uint8_t address, uint32_t speed)
+    {
+        // state = busy
+        _regs()->CR1 &= ~I2C_CR1_PE;   // disable peripherial
+        _regs()->CR1 |= I2C_CR1_SWRST; // software reset
+        _regs()->CR1 &= ~I2C_CR1_SWRST;
+
+        // calculate timings; TODO constexpr, config struct...
+        uint32_t freq = tClock::getFrequency() / 1000000u;
+        MODIFY_REG(_regs()->CR2, I2C_CR2_FREQ, freq);
+
+        uint32_t result, dutyCycle2 = 0;
+        if (speed <= 100000U) {
+            result = (uint16_t)(tClock::getFrequency() / (speed << 1));
+            if (result < 0x04) {
+                result = 0x04;
+            }
+            _regs()->CCR = result;
+            _regs()->TRISE = freq + 1U;
+        } else {
+            if (dutyCycle2) {
+                result = static_cast<uint16_t>(tClock::getFrequency() / (speed * 3));
+            } else {
+                result = static_cast<uint16_t>(tClock::getFrequency() / (speed * 25)) | I2C_CCR_DUTY;
+            }
+            if ((result & I2C_CCR_CCR) == 0) {
+                result |= static_cast<uint16_t>(0x0001);
+            }
+            _regs()->CCR = static_cast<uint16_t>(result | I2C_CCR_FS);
+            _regs()->TRISE = (freq * 300U / 1000U) + 1U;
+        }
+        // calculate timings done
+
+        _regs()->CR1 |= I2C_CR1_PE; // enable peripherial
+
+        _devAddress = address;
+        // state = READY
+    }
+
+    template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
     inline void Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Master::tx(uint8_t* data, uint16_t size)
     {
         _regs()->CR1 &= ~I2C_CR1_POS; // clear POS
