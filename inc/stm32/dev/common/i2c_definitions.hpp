@@ -32,6 +32,13 @@ namespace STM32::I2C
         DUAL_FLAG = I2C_SR2_DUALF << 16u,
     };
 
+    // When the PCLK frequency is a multiple of 10 MHz, the DUTY bit must be set in order to reach the 400 kHz maximum I2C frequency.
+    enum class Speed {
+        STANDARD = 100000,
+        FAST = 400000,
+        FAST_PLUS = 1000000, // If supported
+    };
+
     enum class State_ {
         RESET,    //< Not initialized
         READY,    //< Initialized and ready
@@ -66,6 +73,8 @@ namespace STM32::I2C
         static inline bool _sendDevAddressR(uint8_t address);
 
     public:
+        //TODO config master: PCLK + speed + duty --calculate--> CCR,TRISE
+        //TODO config slave: gCall, noStrech???
         class Master
         {
         public:
@@ -76,7 +85,8 @@ namespace STM32::I2C
                 BUSY_RX, // busy receive
                 ERROR,   // error occured
             };
-            static inline void select(uint8_t address, uint32_t speed);
+            template <Speed tSpeed>
+            static inline void select(uint8_t address);
             static inline void tx(uint8_t* data, uint16_t size);
             static inline void rx(uint8_t* data, uint16_t size);
         };

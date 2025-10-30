@@ -57,8 +57,8 @@ public:
             CMD::ON,
         };
 
-        tBus::select(_address, 400000);
-        tBus::send(data, sizeof(data)); // TODO send in sync mode
+        tBus::Master::template select<STM32::I2C::Speed::FAST>(_address);
+        tBus::Master::tx(const_cast<uint8_t*>(data), sizeof(data)); // TODO send in sync mode
 
         // reset
         memset(_buffer, 0x00, sizeof(_buffer));

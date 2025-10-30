@@ -52,39 +52,47 @@ namespace STM32::I2C
         return _waitFlag(Flag::ADDRESS_SENT);
     }
 
+    static consteval uint16_t calculateCCR(const uint32_t PCLK, const uint32_t speed)
+    {
+        uint16_t CCR;
+        if (speed == static_cast<uint32_t>(Speed::STANDARD)) {
+            CCR = (((PCLK - 1u) / speed * 2u) + 1u) & I2C_CCR_CCR;
+            if (CCR < 4u) {
+                CCR = 4u;
+            }
+        } else {
+            if ((PCLK % 10000000u) != 0u) {
+                CCR = (((PCLK - 1u) / speed * 3u) + 1u) & I2C_CCR_CCR;
+            } else {
+                CCR = ((((PCLK - 1u) / speed * 25u) + 1u) & I2C_CCR_CCR) | I2C_CCR_DUTY;
+            }
+            if ((CCR & I2C_CCR_CCR) == 0) {
+                CCR |= 1u;
+            }
+        }
+        return CCR;
+    }
+
     // --- MASTER ---
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    inline void Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Master::select(uint8_t address, uint32_t speed)
+    template <Speed tSpeed>
+    inline void Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Master::select(uint8_t address)
     {
         // state = busy
         _regs()->CR1 &= ~I2C_CR1_PE;   // disable peripherial
         _regs()->CR1 |= I2C_CR1_SWRST; // software reset
         _regs()->CR1 &= ~I2C_CR1_SWRST;
 
-        // calculate timings; TODO constexpr, config struct...
+        // calculate timings (TODO need to move outside)
         uint32_t freq = tClock::getFrequency() / 1000000u;
         MODIFY_REG(_regs()->CR2, I2C_CR2_FREQ, freq);
 
-        uint32_t result, dutyCycle2 = 0;
-        if (speed <= 100000U) {
-            result = (uint16_t)(tClock::getFrequency() / (speed << 1));
-            if (result < 0x04) {
-                result = 0x04;
-            }
-            _regs()->CCR = result;
+        if constexpr (tSpeed == Speed::STANDARD) {
             _regs()->TRISE = freq + 1U;
         } else {
-            if (dutyCycle2) {
-                result = static_cast<uint16_t>(tClock::getFrequency() / (speed * 3));
-            } else {
-                result = static_cast<uint16_t>(tClock::getFrequency() / (speed * 25)) | I2C_CCR_DUTY;
-            }
-            if ((result & I2C_CCR_CCR) == 0) {
-                result |= static_cast<uint16_t>(0x0001);
-            }
-            _regs()->CCR = static_cast<uint16_t>(result | I2C_CCR_FS);
             _regs()->TRISE = (freq * 300U / 1000U) + 1U;
         }
+        _regs()->CCR = calculateCCR(tClock::getFrequency(), static_cast<uint32_t>(tSpeed));
         // calculate timings done
 
         _regs()->CR1 |= I2C_CR1_PE; // enable peripherial
