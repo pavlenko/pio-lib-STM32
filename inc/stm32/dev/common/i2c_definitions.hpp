@@ -48,6 +48,8 @@ namespace STM32::I2C
         SLAVE_RX, //< Slave busy rx
     };
 
+    enum class Error {};
+
     using AddrCallbackT = std::add_pointer_t<void(bool success, bool isTx)>;
     using DataCallbackT = std::add_pointer_t<void(bool success)>;
 
@@ -64,6 +66,7 @@ namespace STM32::I2C
 
         static inline Speed _speed;
         static inline State_ _state;
+        static inline Error _error;
         static inline uint8_t _devAddress;
 
         static inline I2C_TypeDef* _regs();
@@ -88,15 +91,15 @@ namespace STM32::I2C
                 ERROR,   // error occured
             };
             static inline Status select(uint8_t address, Speed speed);
-            static inline void tx(uint8_t* data, uint16_t size);
-            static inline void rx(uint8_t* data, uint16_t size);
+            static inline Status tx(uint8_t* data, uint16_t size);
+            static inline Status rx(uint8_t* data, uint16_t size);
         };
 
         class Memory : public Master
         {
         public:
-            static inline void set(uint16_t address, uint8_t* data, uint16_t size);
-            static inline void get(uint16_t address, uint8_t* data, uint16_t size);
+            static inline Status set(uint16_t address, uint8_t* data, uint16_t size);
+            static inline Status get(uint16_t address, uint8_t* data, uint16_t size);
         };
 
         class Slave
@@ -110,9 +113,9 @@ namespace STM32::I2C
                 BUSY_RX,   // busy receive
                 ERROR,     // error occured
             };
-            static inline void listen(uint16_t address, std::add_pointer_t<void(bool tx)> cb);
-            static inline void tx(uint8_t* data, uint16_t size);
-            static inline void rx(uint8_t* data, uint16_t size);
+            static inline Status listen(uint16_t address, std::add_pointer_t<void(bool tx)> cb);
+            static inline Status tx(uint8_t* data, uint16_t size);
+            static inline Status rx(uint8_t* data, uint16_t size);
         };
     };
 }
