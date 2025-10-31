@@ -42,6 +42,7 @@ namespace STM32::I2C
     enum class State_ {
         RESET,    //< Not initialized
         READY,    //< Initialized and ready
+        BUSY,     //< Internal process ongoing
         LISTEN,   //< Listen for ADDR
         SLAVE_TX, //< Slave busy tx
         SLAVE_RX, //< Slave busy rx
@@ -61,6 +62,7 @@ namespace STM32::I2C
         // slave: ack, own, dma, irq
         static const uint32_t _timeout = 10000;
 
+        static inline Speed _speed;
         static inline State_ _state;
         static inline uint8_t _devAddress;
 
@@ -73,8 +75,8 @@ namespace STM32::I2C
         static inline bool _sendDevAddressR(uint8_t address);
 
     public:
-        //TODO config master: PCLK + speed + duty --calculate--> CCR,TRISE
-        //TODO config slave: gCall, noStrech???
+        // TODO config master: PCLK + speed + duty --calculate--> CCR,TRISE
+        // TODO config slave: gCall, noStrech???
         class Master
         {
         public:
@@ -85,9 +87,7 @@ namespace STM32::I2C
                 BUSY_RX, // busy receive
                 ERROR,   // error occured
             };
-            static inline void configure();//TODO move bus configuration here
-            template <class tConfig>
-            static inline void select(uint8_t address);
+            static inline Status select(uint8_t address, Speed speed);
             static inline void tx(uint8_t* data, uint16_t size);
             static inline void rx(uint8_t* data, uint16_t size);
         };

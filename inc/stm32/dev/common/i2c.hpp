@@ -88,25 +88,48 @@ namespace STM32::I2C
         static constexpr const uint16_t TRISE = tSpeed == Speed::STANDARD ? FREQ + 1u : (FREQ * 300U / 1000U) + 1U;
     };
 
+    namespace
+    {
+        // F1,F2,F4
+        template <uint32_t tRegsAddr>
+        static inline void calculateTimings(Speed speed, uint32_t pclk)
+        {
+            auto regs = reinterpret_cast<I2C_TypeDef*>(tRegsAddr);
+
+            uint32_t freq = pclk / 1000000;
+
+            MODIFY_REG(regs->CR2, I2C_CR2_FREQ, freq);
+            MODIFY_REG(regs->TRISE, I2C_TRISE_TRISE, I2C_RISE_TIME(freq, static_cast<uint32_t>(speed)));
+            MODIFY_REG(regs->CCR, (I2C_CCR_FS | I2C_CCR_DUTY | I2C_CCR_CCR), I2C_SPEED(pclk, static_cast<uint32_t>(speed), 0));
+        }
+    }
+
     // --- MASTER ---
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    template <class tConfig>
-    inline void Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Master::select(uint8_t address)
+    inline Status Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Master::select(uint8_t address, Speed speed)
     {
-        // state = busy
-        _regs()->CR1 &= ~I2C_CR1_PE;   // disable peripherial
-        _regs()->CR1 |= I2C_CR1_SWRST; // software reset
-        _regs()->CR1 &= ~I2C_CR1_SWRST;
+        // Only if state is reset or ready re-configuration is possible
+        if (_state != State_::RESET && _state != State_::READY)
+            return Status::BUSY;
 
-        // calculate timings (TODO need to move outside)
-        MODIFY_REG(_regs()->CR2, I2C_CR2_FREQ, tConfig::FREQ);
-        _regs()->TRISE = tConfig::TRISE;
-        _regs()->CCR = tConfig::CCR;
-        // calculate timings done
+        // (re)configure interface if not already or speed changed
+        if (_state == State_::RESET || _speed != speed) {
+            _state = State_::BUSY;
+            _speed = speed;
 
-        _regs()->CR1 |= I2C_CR1_PE; // enable peripherial
+            _regs()->CR1 &= ~I2C_CR1_PE; // disable peripherial
 
-        // state = READY
+            _regs()->CR1 |= I2C_CR1_SWRST; // software reset (F1,F2,F4)
+            _regs()->CR1 &= ~I2C_CR1_SWRST;
+
+            calculateTimings<tRegsAddr>(speed, tClock::getFrequency());
+
+            _regs()->CR1 |= I2C_CR1_PE; // enable peripherial
+        }
+
+        _devAddress = address;
+        _state = State_::READY;
+        return Status::OK;
     }
 
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
