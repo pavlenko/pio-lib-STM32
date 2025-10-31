@@ -19,6 +19,12 @@ namespace STM32::I2C
 
     // --- DRIVER ---
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
+    inline I2C_TypeDef* Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::_regs()
+    {
+        return reinterpret_cast<I2C_TypeDef*>(tRegsAddr);
+    }
+
+    template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
     inline bool Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::_waitFlag(Flag flag)
     {
         uint32_t timeout = _timeout;
@@ -52,30 +58,39 @@ namespace STM32::I2C
         return _waitFlag(Flag::ADDRESS_SENT);
     }
 
-    static consteval uint16_t calculateCCR(const uint32_t PCLK, const uint32_t speed)
-    {
-        uint16_t CCR;
-        if (speed == static_cast<uint32_t>(Speed::STANDARD)) {
-            CCR = (((PCLK - 1u) / speed * 2u) + 1u) & I2C_CCR_CCR;
-            if (CCR < 4u) {
-                CCR = 4u;
-            }
-        } else {
-            if ((PCLK % 10000000u) != 0u) {
-                CCR = (((PCLK - 1u) / speed * 3u) + 1u) & I2C_CCR_CCR;
+    template <uint32_t tPCLK, Speed tSpeed>
+    struct Config {
+    private:
+        static consteval uint16_t calculateCCR()
+        {
+            uint16_t CCR;
+            if (tSpeed == Speed::STANDARD) {
+                CCR = (((tPCLK - 1u) / static_cast<uint32_t>(tSpeed) * 2u) + 1u) & I2C_CCR_CCR;
+                if (CCR < 4u) {
+                    CCR = 4u;
+                }
             } else {
-                CCR = ((((PCLK - 1u) / speed * 25u) + 1u) & I2C_CCR_CCR) | I2C_CCR_DUTY;
+                if ((tPCLK % 10000000u) != 0u) {
+                    CCR = (((tPCLK - 1u) / static_cast<uint32_t>(tSpeed) * 3u) + 1u) & I2C_CCR_CCR;
+                } else {
+                    CCR = ((((tPCLK - 1u) / static_cast<uint32_t>(tSpeed) * 25u) + 1u) & I2C_CCR_CCR) | I2C_CCR_DUTY;
+                }
+                if ((CCR & I2C_CCR_CCR) == 0) {
+                    CCR |= 1u;
+                }
             }
-            if ((CCR & I2C_CCR_CCR) == 0) {
-                CCR |= 1u;
-            }
+            return CCR;
         }
-        return CCR;
-    }
+
+    public:
+        static constexpr const uint16_t CCR = calculateCCR();
+        static constexpr const uint16_t FREQ = tPCLK / 1000000;
+        static constexpr const uint16_t TRISE = tSpeed == Speed::STANDARD ? FREQ + 1u : (FREQ * 300U / 1000U) + 1U;
+    };
 
     // --- MASTER ---
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    template <Speed tSpeed>
+    template <class tConfig>
     inline void Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Master::select(uint8_t address)
     {
         // state = busy
@@ -84,20 +99,13 @@ namespace STM32::I2C
         _regs()->CR1 &= ~I2C_CR1_SWRST;
 
         // calculate timings (TODO need to move outside)
-        uint32_t freq = tClock::getFrequency() / 1000000u;
-        MODIFY_REG(_regs()->CR2, I2C_CR2_FREQ, freq);
-
-        if constexpr (tSpeed == Speed::STANDARD) {
-            _regs()->TRISE = freq + 1U;
-        } else {
-            _regs()->TRISE = (freq * 300U / 1000U) + 1U;
-        }
-        _regs()->CCR = calculateCCR(tClock::getFrequency(), static_cast<uint32_t>(tSpeed));
+        MODIFY_REG(_regs()->CR2, I2C_CR2_FREQ, tConfig::FREQ);
+        _regs()->TRISE = tConfig::TRISE;
+        _regs()->CCR = tConfig::CCR;
         // calculate timings done
 
         _regs()->CR1 |= I2C_CR1_PE; // enable peripherial
 
-        _devAddress = address;
         // state = READY
     }
 
@@ -152,7 +160,7 @@ namespace STM32::I2C
 
     // --- MEMORY ---
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    inline void Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Memory::set(uint16_t address, uint8_t* data, uint16_t size)
+    inline void Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Memory::set(uint16_t regAddress, uint8_t* data, uint16_t size)
     {
         _regs()->CR1 &= ~I2C_CR1_POS; // clear POS
         _regs()->CR1 |= I2C_CR1_ACK;  // enable ACK
@@ -167,9 +175,9 @@ namespace STM32::I2C
         (void)_regs()->SR2;
 
         // transmit 16-bit reg address
-        _regs()->DR = static_cast<uint8_t>(address >> 8);
+        _regs()->DR = static_cast<uint8_t>(regAddress >> 8);
         while ((_regs()->SR1 & I2C_SR1_TXE) == 0u) {} // wait until TXE is set
-        _regs()->DR = static_cast<uint8_t>(address);
+        _regs()->DR = static_cast<uint8_t>(regAddress);
         while ((_regs()->SR1 & I2C_SR1_TXE) == 0u) {} // wait until TXE is set
 
         for (uint16_t i = 0; i < size; i++) {
@@ -181,7 +189,7 @@ namespace STM32::I2C
     }
 
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    inline void Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Memory::get(uint16_t address, uint8_t* data, uint16_t size)
+    inline void Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Memory::get(uint16_t regAddress, uint8_t* data, uint16_t size)
     {
         _regs()->CR1 &= ~I2C_CR1_POS; // clear POS
         _regs()->CR1 |= I2C_CR1_ACK;  // enable ACK
@@ -196,9 +204,9 @@ namespace STM32::I2C
         (void)_regs()->SR2;
 
         // transmit 16-bit reg address
-        _regs()->DR = static_cast<uint8_t>(address >> 8);
+        _regs()->DR = static_cast<uint8_t>(regAddress >> 8);
         while ((_regs()->SR1 & I2C_SR1_TXE) == 0u) {} // wait until TXE is set
-        _regs()->DR = static_cast<uint8_t>(address);
+        _regs()->DR = static_cast<uint8_t>(regAddress);
         while ((_regs()->SR1 & I2C_SR1_TXE) == 0u) {} // wait until TXE is set
 
         if (!_start())

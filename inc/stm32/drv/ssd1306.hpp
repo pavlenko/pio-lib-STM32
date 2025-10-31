@@ -6,13 +6,13 @@ template <typename tBus, uint16_t tWidth = 128u, uint16_t tHeight = 64u>
 class SSD1306
 {
 private:
-    static const uint8_t _address = 0x78 >> 1;
-
-    static uint8_t _buffer[tWidth * tHeight / 8];
-    static uint16_t _x;
-    static uint16_t _y;
+    static inline uint8_t _buffer[tWidth * tHeight / 8];
+    static inline uint16_t _x;
+    static inline uint16_t _y;
 
 public:
+    static const uint8_t address = 0x78 >> 1;
+
     enum CMD : uint8_t {
         SET_MEMORY_MODE = 0x20,    // 0x20,mode(0x0 = horizontal, 0x1 = vertical, 0x2 = page, 0x3 = invalid)
         SET_COLUMN_ADDRESS = 0x21, // 0x21,min,max
@@ -57,7 +57,6 @@ public:
             CMD::ON,
         };
 
-        tBus::Master::template select<STM32::I2C::Speed::FAST>(_address);
         tBus::Master::tx(const_cast<uint8_t*>(data), sizeof(data)); // TODO send in sync mode
 
         // reset
@@ -68,7 +67,7 @@ public:
 
     static inline void update()
     {
-        tBus::send(_buffer, tWidth * tHeight / 8); // send in async mode
+        tBus::tx(_buffer, tWidth * tHeight / 8); // TODO send in async mode
     }
 
     // TODO GFX methods...

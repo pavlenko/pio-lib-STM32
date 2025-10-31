@@ -85,7 +85,8 @@ namespace STM32::I2C
                 BUSY_RX, // busy receive
                 ERROR,   // error occured
             };
-            template <Speed tSpeed>
+            static inline void configure();//TODO move bus configuration here
+            template <class tConfig>
             static inline void select(uint8_t address);
             static inline void tx(uint8_t* data, uint16_t size);
             static inline void rx(uint8_t* data, uint16_t size);
