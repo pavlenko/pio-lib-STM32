@@ -39,7 +39,7 @@ namespace STM32::I2C
         FAST_PLUS = 1000000, // If supported
     };
 
-    enum class State_ {
+    enum class State {
         RESET,    //< Not initialized
         READY,    //< Initialized and ready
         BUSY,     //< Internal process ongoing
@@ -57,15 +57,10 @@ namespace STM32::I2C
     class Driver
     {
     protected:
-        // SR1: SB, ADDR, BTF, ADD10, STOPF, TXE, RXNE
-        // SR2: MSL, BUSY, TRA
-        // common: waitBusy,waitFlag
-        // master: start, sendDevAddress, sendRegAddress, stop, ack
-        // slave: ack, own, dma, irq
         static const uint32_t _timeout = 10000;
 
         static inline Speed _speed;
-        static inline State_ _state;
+        static inline State _state;
         static inline Error _error;
         static inline uint8_t _devAddress;
 
@@ -73,17 +68,25 @@ namespace STM32::I2C
         static inline bool _waitBusy();
         static inline bool _waitFlag(Flag flag);
 
+        static inline void _clearADDR();
+
         static inline bool _start();
         static inline bool _sendDevAddressW(uint8_t address);
         static inline bool _sendDevAddressR(uint8_t address);
 
     public:
-        // TODO config master: PCLK + speed + duty --calculate--> CCR,TRISE
-        // TODO config slave: gCall, noStrech???
+        /**
+         * select(): RESET|READY -> BUSY -> READY
+         * tx()    : READY -> BUSY_TX -> READY
+         * txDMA() : READY -> BUSY_TX
+         * rx()    : READY -> BUSY_RX -> READY
+         * rxDMA() : READY -> BUSY_RX
+         * DMA [TC]: BUSY_TX|BUSY_RX -> READY
+         */
         class Master
         {
         public:
-            enum class State {
+            enum class MState {
                 RESET,   // initial state
                 READY,   // bus configured
                 BUSY_TX, // busy transmit
@@ -102,10 +105,19 @@ namespace STM32::I2C
             static inline Status get(uint16_t address, uint8_t* data, uint16_t size);
         };
 
+        /**
+         * listen()  : RESET|READY -> LISTEN
+         * tx()      : READY -> BUSY_TX -> READY
+         * txDMA()   : LISTEN -> BUSY_TX
+         * TX [AF]   : BUSY_TX -> READY(?)
+         * rx()      : READY -> BUSY_RX -> READY
+         * rxDMA()   : LISTEN -> BUSY_RX
+         * RX [STOPF]: BUSY_RX -> READY(?)
+         */
         class Slave
         {
         public:
-            enum class State {
+            enum class SState {
                 RESET,     // initial state
                 LISTEN,    // listen started
                 ADDRESSED, // listen address matched
@@ -113,7 +125,7 @@ namespace STM32::I2C
                 BUSY_RX,   // busy receive
                 ERROR,     // error occured
             };
-            static inline Status listen(uint16_t address, std::add_pointer_t<void(bool tx)> cb);
+            static inline Status listen(uint8_t address, std::add_pointer_t<void(bool tx)> cb);
             static inline Status tx(uint8_t* data, uint16_t size);
             static inline Status rx(uint8_t* data, uint16_t size);
         };

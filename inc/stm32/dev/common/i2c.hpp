@@ -38,6 +38,15 @@ namespace STM32::I2C
     }
 
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
+    inline void Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::_clearADDR()
+    {
+        __IO uint32_t reg;
+        reg = _regs()->SR1;
+        reg = _regs()->SR2;
+        (void)reg;
+    }
+
+    template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
     inline bool Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::_start()
     {
         _regs()->CR1 |= I2C_CR1_START;
@@ -48,14 +57,22 @@ namespace STM32::I2C
     inline bool Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::_sendDevAddressW(uint8_t address)
     {
         _regs()->DR = (address << 1);
-        return _waitFlag(Flag::ADDRESS_SENT);
+        if (!_waitFlag(Flag::ADDRESS_SENT)) {
+            return false;
+        }
+        _clearADDR();
+        return true;
     }
 
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
     inline bool Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::_sendDevAddressR(uint8_t address)
     {
         _regs()->DR = (address << 1u) | 1u;
-        return _waitFlag(Flag::ADDRESS_SENT);
+        if (!_waitFlag(Flag::ADDRESS_SENT)) {
+            return false;
+        }
+        _clearADDR();
+        return true;
     }
 
     namespace
@@ -79,11 +96,11 @@ namespace STM32::I2C
     inline Status Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Master::select(uint8_t address, Speed speed)
     {
         // Only if state is reset or ready re-configuration is possible
-        if (_state != State_::RESET && _state != State_::READY) return Status::BUSY;
+        if (_state != State::RESET && _state != State::READY) return Status::BUSY;
 
         // (re)configure interface if not already or speed changed
-        if (_state == State_::RESET || _speed != speed) {
-            _state = State_::BUSY;
+        if (_state == State::RESET || _speed != speed) {
+            _state = State::BUSY;
             _speed = speed;
 
             _regs()->CR1 &= ~I2C_CR1_PE; // disable peripherial
@@ -97,23 +114,19 @@ namespace STM32::I2C
         }
 
         _devAddress = address;
-        _state = State_::READY;
+        _state = State::READY;
         return Status::OK;
     }
 
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
     inline Status Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Master::tx(uint8_t* data, uint16_t size)
     {
-        if (_state != State_::READY) return Status::BUSY;
+        if (_state != State::READY) return Status::BUSY;
 
         _regs()->CR1 &= ~I2C_CR1_POS; // clear POS
 
         if (!_start()) return Status::ERROR;
-
         if (!_sendDevAddressW(_devAddress)) return Status::ERROR;
-
-        (void)_regs()->SR1; // clear ADDR by reading SR1 and followed reading SR2
-        (void)_regs()->SR2;
 
         for (uint16_t i = 0; i < size; i++) {
             _regs()->DR = data[i];                        // transmit byte
@@ -122,24 +135,20 @@ namespace STM32::I2C
 
         _regs()->CR1 |= I2C_CR1_STOP; // send STOP
 
-        _state = State_::READY;
+        _state = State::READY;
         return Status::OK;
     }
 
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
     inline Status Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Master::rx(uint8_t* data, uint16_t size)
     {
-        if (_state != State_::READY) return Status::BUSY;
+        if (_state != State::READY) return Status::BUSY;
 
         _regs()->CR1 &= ~I2C_CR1_POS; // clear POS
         _regs()->CR1 |= I2C_CR1_ACK;  // enable ACK
 
         if (!_start()) return Status::ERROR;
-
         if (!_sendDevAddressR(_devAddress)) return Status::ERROR;
-
-        (void)_regs()->SR1; // clear ADDR by reading SR1 and followed reading SR2
-        (void)_regs()->SR2;
 
         for (uint16_t i = 0; i < size - 1; i++) {
             while ((_regs()->SR1 & I2C_SR1_RXNE) == 0u) {} // wait until TXE is set
@@ -152,7 +161,7 @@ namespace STM32::I2C
         while ((_regs()->SR1 & I2C_SR1_RXNE) == 0u) {} // wait until TXE is set
         data[size] = _regs()->DR;                      // receive byte
 
-        _state = State_::READY;
+        _state = State::READY;
         return Status::OK;
     }
 
@@ -160,17 +169,13 @@ namespace STM32::I2C
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
     inline Status Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Memory::set(uint16_t regAddress, uint8_t* data, uint16_t size)
     {
-        if (_state != State_::READY) return Status::BUSY;
+        if (_state != State::READY) return Status::BUSY;
 
         _regs()->CR1 &= ~I2C_CR1_POS; // clear POS
         _regs()->CR1 |= I2C_CR1_ACK;  // enable ACK
 
         if (!_start()) return Status::ERROR;
-
         if (!_sendDevAddressW(_devAddress)) return Status::ERROR;
-
-        (void)_regs()->SR1; // clear ADDR by reading SR1 and followed reading SR2
-        (void)_regs()->SR2;
 
         // transmit 16-bit reg address
         _regs()->DR = static_cast<uint8_t>(regAddress >> 8);
@@ -191,17 +196,13 @@ namespace STM32::I2C
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
     inline Status Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Memory::get(uint16_t regAddress, uint8_t* data, uint16_t size)
     {
-        if (_state != State_::READY) return Status::BUSY;
+        if (_state != State::READY) return Status::BUSY;
 
         _regs()->CR1 &= ~I2C_CR1_POS; // clear POS
         _regs()->CR1 |= I2C_CR1_ACK;  // enable ACK
 
         if (!_start()) return Status::ERROR;
-
         if (!_sendDevAddressW(_devAddress)) return Status::ERROR;
-
-        (void)_regs()->SR1; // clear ADDR by reading SR1 and followed reading SR2
-        (void)_regs()->SR2;
 
         // transmit 16-bit reg address
         _regs()->DR = static_cast<uint8_t>(regAddress >> 8);
@@ -210,11 +211,7 @@ namespace STM32::I2C
         while ((_regs()->SR1 & I2C_SR1_TXE) == 0u) {} // wait until TXE is set
 
         if (!_start()) return Status::ERROR;
-
         if (!_sendDevAddressR(_devAddress)) return Status::ERROR;
-
-        (void)_regs()->SR1; // clear ADDR by reading SR1 and followed reading SR2
-        (void)_regs()->SR2;
 
         for (uint16_t i = 0; i < size - 1; i++) {
             while ((_regs()->SR1 & I2C_SR1_RXNE) == 0u) {} // wait until TXE is set
@@ -232,23 +229,33 @@ namespace STM32::I2C
 
     // --- SLAVE ---
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    inline Status Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Slave::listen(uint16_t address, std::add_pointer_t<void(bool tx)> cb)
+    inline Status Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Slave::listen(uint8_t address, std::add_pointer_t<void(bool tx)> cb)
     {
+        if (_state != State::RESET && _state != State::READY) return Status::BUSY;
+
+        _state = State::LISTEN;
+
+        _regs()->OAR1 = address & I2C_OAR1_ADD1_7; // set listen address
+
+        _regs()->CR1 |= I2C_CR1_PE;  // enable peripherial
+        _regs()->CR1 |= I2C_CR1_ACK; // enable ACK
+
+        _regs()->CR2 |= I2C_CR2_ITEVTEN | I2C_CR2_ITERREN; // enable IRQ
+
         return Status::OK;
     }
 
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
     inline Status Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Slave::tx(uint8_t* data, uint16_t size)
     {
-        if (_state != State_::READY) return Status::BUSY;
+        if (_state != State::READY) return Status::BUSY;
 
         _regs()->CR1 &= ~I2C_CR1_POS; // clear POS
         _regs()->CR1 |= I2C_CR1_ACK;  // enable ACK
 
-        while ((_regs()->SR1 & I2C_SR1_ADDR) == 0u) {} // wait until ADDR is set
+        if (!_waitFlag(Flag::ADDRESS_SENT)) return Status::ERROR;
 
-        (void)_regs()->SR1; // clear ADDR by reading SR1 and followed reading SR2
-        (void)_regs()->SR2;
+        _clearADDR();
 
         for (uint16_t i = 0; i < size; i++) {
             while ((_regs()->SR1 & I2C_SR1_TXE) == 0u) {} // wait until TXE is set
@@ -266,15 +273,14 @@ namespace STM32::I2C
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
     inline Status Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Slave::rx(uint8_t* data, uint16_t size)
     {
-        if (_state != State_::READY) return Status::BUSY;
+        if (_state != State::READY) return Status::BUSY;
 
         _regs()->CR1 &= ~I2C_CR1_POS; // clear POS
         _regs()->CR1 |= I2C_CR1_ACK;  // enable ACK
 
-        while ((_regs()->SR1 & I2C_SR1_ADDR) == 0u) {} // wait until ADDR is set
+        if (!_waitFlag(Flag::ADDRESS_SENT)) return Status::ERROR;
 
-        (void)_regs()->SR1; // clear ADDR by reading SR1 and followed reading SR2
-        (void)_regs()->SR2;
+        _clearADDR();
 
         for (uint16_t i = 0; i < size; i++) {
             while ((_regs()->SR1 & I2C_SR1_RXNE) == 0u) {} // wait until RXNE is set
