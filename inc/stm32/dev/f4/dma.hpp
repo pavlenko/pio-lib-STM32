@@ -16,9 +16,9 @@
 namespace STM32::DMA
 {
     template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
-    inline DMA_Stream_TypeDef *Channel<tDriver, tRegsAddress, tChannel, tIRQn>::_regs()
+    inline DMA_Stream_TypeDef* Channel<tDriver, tRegsAddress, tChannel, tIRQn>::_regs()
     {
-        return reinterpret_cast<DMA_Stream_TypeDef *>(tRegsAddress);
+        return reinterpret_cast<DMA_Stream_TypeDef*>(tRegsAddress);
     }
 
     template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
@@ -52,14 +52,12 @@ namespace STM32::DMA
     }
 
     template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
-    inline void Channel<tDriver, tRegsAddress, tChannel, tIRQn>::transfer(Config config, const void *buffer, volatile void *periph, uint32_t size, uint8_t channel)
+    inline void Channel<tDriver, tRegsAddress, tChannel, tIRQn>::transfer(Config config, const void* buffer, volatile void* periph, uint32_t size, uint8_t channel)
     {
         // TODO
         tDriver::enable();
-        if (!hasFlag<Flag::TRANSFER_ERROR>())
-        {
-            while (!isReady())
-                ;
+        if (!hasFlag<Flag::TRANSFER_ERROR>()) {
+            while (!isReady()) {}
         }
 
         _regs()->CR = 0;
@@ -67,8 +65,7 @@ namespace STM32::DMA
         _regs()->M0AR = reinterpret_cast<uint32_t>(buffer);
         _regs()->PAR = reinterpret_cast<uint32_t>(periph);
 
-        if (_cb)
-        {
+        if (_eventCallback || _errorCallback) {
             config = config | Config::IE_TRANSFER_COMPLETE | Config::IE_TRANSFER_ERROR;
         }
 
@@ -92,12 +89,9 @@ namespace STM32::DMA
     inline bool Driver<tRegsAddress, tClock>::hasChannelFlag()
     {
         static constexpr const uint8_t _6bit_pos = ((tChannel & 0x1) * 6) + (((tChannel & 0x2) >> 1) * 16);
-        if (tChannel < 4)
-        {
+        if (tChannel < 4) {
             return _regs()->LISR & (static_cast<uint32_t>(tFlag) << _6bit_pos);
-        }
-        else
-        {
+        } else {
             return _regs()->HISR & (static_cast<uint32_t>(tFlag) << _6bit_pos);
         }
     }
@@ -107,12 +101,9 @@ namespace STM32::DMA
     inline void Driver<tRegsAddress, tClock>::clrChannelFlag()
     {
         static constexpr const uint8_t _6bit_pos = ((tChannel & 0x1) * 6) + (((tChannel & 0x2) >> 1) * 16);
-        if (tChannel < 4)
-        {
+        if (tChannel < 4) {
             _regs()->LIFCR = (static_cast<uint32_t>(tFlag) << _6bit_pos);
-        }
-        else
-        {
+        } else {
             _regs()->HIFCR = (static_cast<uint32_t>(tFlag) << _6bit_pos);
         }
     }
@@ -122,12 +113,9 @@ namespace STM32::DMA
     inline void Driver<tRegsAddress, tClock>::clrChannelFlags()
     {
         static constexpr const uint8_t _6bit_pos = ((tChannel & 0x1) * 6) + (((tChannel & 0x2) >> 1) * 16);
-        if (tChannel < 4)
-        {
+        if (tChannel < 4) {
             _regs()->LIFCR = (static_cast<uint32_t>(Flag::ALL) << _6bit_pos);
-        }
-        else
-        {
+        } else {
             _regs()->HIFCR = (static_cast<uint32_t>(Flag::ALL) << _6bit_pos);
         }
     }
@@ -136,10 +124,7 @@ namespace STM32::DMA
     class StreamChannel : public tStream
     {
     public:
-        static inline void transfer(Config config, const void *buffer, volatile void *periph, uint32_t size)
-        {
-            tStream::transfer(config, buffer, periph, size, tChannel);
-        }
+        static inline void transfer(Config config, const void* buffer, volatile void* periph, uint32_t size) { tStream::transfer(config, buffer, periph, size, tChannel); }
     };
 
     // Alias
@@ -166,14 +151,14 @@ namespace STM32::DMA
     using DMA2Stream6 = Stream<DMA2, DMA2_Stream6_BASE, 0, DMA2_Stream6_IRQn>;
     using DMA2Stream7 = Stream<DMA2, DMA2_Stream7_BASE, 0, DMA2_Stream7_IRQn>;
 
-#define DMA_STREAM_CHANNEL_DEFINITION(__BUS__, __STREAM__)                                                 \
-    using DMA##__BUS__##Stream##__STREAM__##Channel0 = StreamChannel<DMA##__BUS__##Stream##__STREAM__, 0>; \
-    using DMA##__BUS__##Stream##__STREAM__##Channel1 = StreamChannel<DMA##__BUS__##Stream##__STREAM__, 1>; \
-    using DMA##__BUS__##Stream##__STREAM__##Channel2 = StreamChannel<DMA##__BUS__##Stream##__STREAM__, 2>; \
-    using DMA##__BUS__##Stream##__STREAM__##Channel3 = StreamChannel<DMA##__BUS__##Stream##__STREAM__, 3>; \
-    using DMA##__BUS__##Stream##__STREAM__##Channel4 = StreamChannel<DMA##__BUS__##Stream##__STREAM__, 4>; \
-    using DMA##__BUS__##Stream##__STREAM__##Channel5 = StreamChannel<DMA##__BUS__##Stream##__STREAM__, 5>; \
-    using DMA##__BUS__##Stream##__STREAM__##Channel6 = StreamChannel<DMA##__BUS__##Stream##__STREAM__, 6>; \
+#define DMA_STREAM_CHANNEL_DEFINITION(__BUS__, __STREAM__)                                                                                                                                             \
+    using DMA##__BUS__##Stream##__STREAM__##Channel0 = StreamChannel<DMA##__BUS__##Stream##__STREAM__, 0>;                                                                                             \
+    using DMA##__BUS__##Stream##__STREAM__##Channel1 = StreamChannel<DMA##__BUS__##Stream##__STREAM__, 1>;                                                                                             \
+    using DMA##__BUS__##Stream##__STREAM__##Channel2 = StreamChannel<DMA##__BUS__##Stream##__STREAM__, 2>;                                                                                             \
+    using DMA##__BUS__##Stream##__STREAM__##Channel3 = StreamChannel<DMA##__BUS__##Stream##__STREAM__, 3>;                                                                                             \
+    using DMA##__BUS__##Stream##__STREAM__##Channel4 = StreamChannel<DMA##__BUS__##Stream##__STREAM__, 4>;                                                                                             \
+    using DMA##__BUS__##Stream##__STREAM__##Channel5 = StreamChannel<DMA##__BUS__##Stream##__STREAM__, 5>;                                                                                             \
+    using DMA##__BUS__##Stream##__STREAM__##Channel6 = StreamChannel<DMA##__BUS__##Stream##__STREAM__, 6>;                                                                                             \
     using DMA##__BUS__##Stream##__STREAM__##Channel7 = StreamChannel<DMA##__BUS__##Stream##__STREAM__, 7>;
 
     DMA_STREAM_CHANNEL_DEFINITION(1, 0);

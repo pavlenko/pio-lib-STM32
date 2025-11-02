@@ -17,12 +17,6 @@ namespace STM32::DMA
     }
 
     template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
-    inline void Channel<tDriver, tRegsAddress, tChannel, tIRQn>::setTransferCallback(CallbackT cb)
-    {
-        _cb = cb;
-    }
-
-    template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
     template <Flag tFlag>
     inline bool Channel<tDriver, tRegsAddress, tChannel, tIRQn>::hasFlag()
     {
@@ -48,20 +42,16 @@ namespace STM32::DMA
         if (hasFlag<Flag::TRANSFER_COMPLETE>()) {
             clrFlags();
 
-            if (!isCircular())
-                disable();
+            if (!isCircular()) disable();
 
-            if (_cb)
-                _cb(true);
+            if (_eventCallback) _eventCallback();
         }
         if (hasFlag<Flag::TRANSFER_ERROR>()) {
             clrFlags();
 
-            if (!isCircular())
-                disable();
+            if (!isCircular()) disable();
 
-            if (_cb)
-                _cb(false);
+            if (_errorCallback) _errorCallback();
         }
     }
 

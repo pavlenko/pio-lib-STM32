@@ -16,9 +16,9 @@
 namespace STM32::DMA
 {
     template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
-    inline DMA_Channel_TypeDef *Channel<tDriver, tRegsAddress, tChannel, tIRQn>::_regs()
+    inline DMA_Channel_TypeDef* Channel<tDriver, tRegsAddress, tChannel, tIRQn>::_regs()
     {
-        return reinterpret_cast<DMA_Channel_TypeDef *>(tRegsAddress);
+        return reinterpret_cast<DMA_Channel_TypeDef*>(tRegsAddress);
     }
 
     template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
@@ -52,14 +52,12 @@ namespace STM32::DMA
     }
 
     template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
-    inline void Channel<tDriver, tRegsAddress, tChannel, tIRQn>::transfer(Config config, const void *buffer, volatile void *periph, uint32_t size)
+    inline void Channel<tDriver, tRegsAddress, tChannel, tIRQn>::transfer(Config config, const void* buffer, volatile void* periph, uint32_t size)
     {
         // TODO
         tDriver::enable();
-        if (!hasFlag<Flag::TRANSFER_ERROR>())
-        {
-            while (!isReady())
-                ;
+        if (!hasFlag<Flag::TRANSFER_ERROR>()) {
+            while (!isReady()) {}
         }
 
         _regs()->CCR = 0;
@@ -67,8 +65,7 @@ namespace STM32::DMA
         _regs()->CMAR = reinterpret_cast<uint32_t>(buffer);
         _regs()->CPAR = reinterpret_cast<uint32_t>(periph);
 
-        if (_cb)
-        {
+        if (_eventCallback || _errorCallback) {
             config = config | Config::IE_TRANSFER_COMPLETE | Config::IE_TRANSFER_ERROR;
         }
 

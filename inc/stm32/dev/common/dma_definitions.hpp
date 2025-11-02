@@ -95,6 +95,9 @@ namespace STM32::DMA
 #endif
     };
 
+    using EventCallbackT = std::add_pointer_t<void(void)>;
+    using ErrorCallbackT = std::add_pointer_t<void(void)>;
+
     /**
      * @brief DMA channel APIs
      *
@@ -106,13 +109,11 @@ namespace STM32::DMA
     template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
     class Channel
     {
-      private:
+    private:
         static_assert(tChannel < 8u, "Invalid channel number");
 
-        /**
-         * @brief Callback for success/error transfer
-         */
-        static inline CallbackT _cb;
+        static inline EventCallbackT _eventCallback;
+        static inline ErrorCallbackT _errorCallback;
 
         /**
          * @brief Get ptr to DMA channel registers
@@ -126,7 +127,7 @@ namespace STM32::DMA
         static inline DMA_Stream_TypeDef* _regs();
 #endif
 
-      public:
+    public:
         /**
          * @brief Enable DMA channel
          */
@@ -164,11 +165,18 @@ namespace STM32::DMA
         static inline uint32_t getRemaining();
 
         /**
-         * @brief Set optional transfer callback
+         * @brief Set optional event callback (Transfer complete, Half-transfer complete)
          *
-         * @param cb Callback
+         * @param cb
          */
-        static inline void setTransferCallback(CallbackT cb);
+        static inline void setEventCallback(EventCallbackT cb) { _eventCallback = cb; }
+
+        /**
+         * @brief Set optional error callback (Transfer error, FIFO error, Direct error)
+         *
+         * @param cb
+         */
+        static inline void setErrorCallback(ErrorCallbackT cb) { _errorCallback = cb; }
 
         /**
          * @brief Transfer data via DMA
@@ -221,7 +229,7 @@ namespace STM32::DMA
     template <uint32_t tRegsAddress, typename tClock>
     class Driver
     {
-      private:
+    private:
         /**
          * @brief Get ptr to DMA registers struct
          *
@@ -229,7 +237,7 @@ namespace STM32::DMA
          */
         static inline DMA_TypeDef* _regs();
 
-      public:
+    public:
         /**
          * @brief Enable DMA clock
          */
