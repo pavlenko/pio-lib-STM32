@@ -48,7 +48,10 @@ namespace STM32::I2C
         SLAVE_RX, //< Slave busy rx
     };
 
-    enum class Error {};
+    enum class Error {
+        NONE, //< Not error
+        // TODO
+    };
 
     using AddrCallbackT = std::add_pointer_t<void(bool success, bool isTx)>;
     using DataCallbackT = std::add_pointer_t<void(bool success)>;
@@ -64,6 +67,9 @@ namespace STM32::I2C
         static inline Error _error;
         static inline uint8_t _devAddress;
 
+        static inline AddrCallbackT _addrCallback;
+        static inline DataCallbackT _dataCallback;
+
         static inline I2C_TypeDef* _regs();
         static inline bool _waitBusy();
         static inline bool _waitFlag(Flag flag);
@@ -75,6 +81,9 @@ namespace STM32::I2C
         static inline bool _sendDevAddressR(uint8_t address);
 
     public:
+        using DMATx = tDMATx;
+        using DMARx = tDMARx;
+
         /**
          * select(): RESET|READY -> BUSY -> READY
          * tx()    : READY -> BUSY_TX -> READY
@@ -128,6 +137,9 @@ namespace STM32::I2C
             static inline Status listen(uint8_t address, std::add_pointer_t<void(bool tx)> cb);
             static inline Status tx(uint8_t* data, uint16_t size);
             static inline Status rx(uint8_t* data, uint16_t size);
+            static inline Status rxDMA(uint8_t* data, uint16_t size, std::add_pointer_t<void(void)> cb);
+            static inline void dispatchEventIRQ();
+            static inline void dispatchErrorIRQ();
         };
     };
 }

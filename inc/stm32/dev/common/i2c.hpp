@@ -294,4 +294,28 @@ namespace STM32::I2C
 
         return Status::OK;
     }
+
+    template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
+    inline Status Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Slave::rxDMA(uint8_t* data, uint16_t size, std::add_pointer_t<void(void)> cb)
+    {
+        if (_state != State::LISTEN) return Status::BUSY;
+
+        _state = State::SLAVE_RX;
+        _dataCallback = cb;
+
+        DMARx::clrFlagTC();
+        DMARx::setEventCallback([]() {
+            CLR_BIT(_regs()->CR2, I2C_CR2_ITEVTEN | I2C_CR2_ITERREN | I2C_CR2_DMAEN); // disable IRQ, DMA
+            _state = State::LISTEN;
+
+            if (_dataCallback) _dataCallback();
+        });
+
+        DMARx::transfer(DMA::Config::MEM_2_PER | DMA::Config::MINC, data, &_regs()->DR, size);
+
+        SET_BIT(_regs()->CR1, I2C_CR1_ACK);                                       // enable ACK
+        SET_BIT(_regs()->CR2, I2C_CR2_ITEVTEN | I2C_CR2_ITERREN | I2C_CR2_DMAEN); // enable IRQ, DMA
+
+        return Status::OK;
+    }
 }

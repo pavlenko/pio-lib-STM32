@@ -210,6 +210,11 @@ namespace STM32::DMA
         static inline void clrFlag();
 
         /**
+         * @brief Clear flag TC
+         */
+        static inline void clrFlagTC() { clrFlag<Flag::TRANSFER_COMPLETE>(); }
+
+        /**
          * @brief Clear all flags
          */
         static inline void clrFlags();

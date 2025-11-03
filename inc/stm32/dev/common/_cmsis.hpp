@@ -40,6 +40,8 @@ extern "C" {
 #endif
 }
 
+#define CLR_BIT CLEAR_BIT
+
 namespace STM32
 {
     enum class Status : uint8_t
