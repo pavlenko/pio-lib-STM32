@@ -47,6 +47,15 @@ namespace STM32::I2C
     }
 
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
+    inline void Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::_clearSTOPF()
+    {
+        __IO uint32_t reg;
+        reg = _regs()->SR1;
+        SET_BIT(_regs()->CR1, I2C_CR1_PE);
+        (void)reg;
+    }
+
+    template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
     inline bool Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::_start()
     {
         _regs()->CR1 |= I2C_CR1_START;
@@ -317,5 +326,23 @@ namespace STM32::I2C
         SET_BIT(_regs()->CR2, I2C_CR2_ITEVTEN | I2C_CR2_ITERREN | I2C_CR2_DMAEN); // enable IRQ, DMA
 
         return Status::OK;
+    }
+
+    template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
+    inline void Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Slave::dispatchEventIRQ()
+    {
+        uint32_t SR2 = _regs()->SR2; // read SR2 first to prevent clear ADDR
+        uint32_t SR1 = _regs()->SR1;
+
+        if ((_regs()->SR1 & I2C_SR1_ADDR) != 0u) {
+            I2C_Slave_ADDR(hi2c, sr2itflags);
+        } else if ((_regs()->SR1 & I2C_SR1_STOPF) != 0u) {
+            CLR_BIT(_regs()->CR2, I2C_CR2_ITEVTEN | I2C_CR2_ITBUFEN | I2C_CR2_ITERREN); // disable IRQ
+            _clearSTOPF();
+            CLR_BIT(_regs()->CR1, I2C_CR1_ACK);   // disable ACK
+            CLR_BIT(_regs()->CR2, I2C_CR2_DMAEN); // disable DMA
+            DMARx::abort();
+            I2C_DMAAbort(); //<-- TODO
+        }
     }
 }

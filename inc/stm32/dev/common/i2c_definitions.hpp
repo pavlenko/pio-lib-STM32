@@ -75,6 +75,7 @@ namespace STM32::I2C
         static inline bool _waitFlag(Flag flag);
 
         static inline void _clearADDR();
+        static inline void _clearSTOPF();
 
         static inline bool _start();
         static inline bool _sendDevAddressW(uint8_t address);
