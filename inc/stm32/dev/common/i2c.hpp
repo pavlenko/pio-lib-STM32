@@ -365,30 +365,47 @@ namespace STM32::I2C
         Error errors = Error::NONE;
 
         if ((SR1 & I2C_SR1_BERR) != 0u) {
-            errors |= Error::BERR;
+            errors |= Error::BUS_ERROR;
             CLR_BIT(_regs()->SR1, I2C_SR1_BERR); // clear flag
         }
 
-        if ((SR1 & I2C_SR1_ARLO) != 0u) {
-            errors |= Error::ARLO;
-            CLR_BIT(_regs()->SR1, I2C_SR1_ARLO); // clear flag
-        }
-
         if ((SR1 & I2C_SR1_AF) != 0u) {
-            CLR_BIT(_regs()->CR2, I2C_CR2_ITEVTEN | I2C_CR2_ITBUFEN | I2C_CR2_ITERREN); // disable IRQ
-            CLR_BIT(_regs()->SR1, I2C_SR1_AF);                                          // clear AF
-            CLR_BIT(_regs()->CR1, I2C_CR1_ACK);                                         // disable ACK
-            CLR_BIT(_regs()->CR2, I2C_CR2_DMAEN);                                       // disable DMA
-            DMATx::abort();
+            if (_state == State::LISTEN) {
+                CLR_BIT(_regs()->CR2, I2C_CR2_ITEVTEN | I2C_CR2_ITBUFEN | I2C_CR2_ITERREN); // disable IRQ
+                CLR_BIT(_regs()->SR1, I2C_SR1_AF);                                          // clear flag
+                CLR_BIT(_regs()->CR1, I2C_CR1_ACK);                                         // disable ACK
+                // TODO stop listen
+            } else if (_state == State::SLAVE_TX) {
+                CLR_BIT(_regs()->CR2, I2C_CR2_ITEVTEN | I2C_CR2_ITBUFEN | I2C_CR2_ITERREN); // disable IRQ
+                CLR_BIT(_regs()->SR1, I2C_SR1_AF);                                          // clear flag
+                CLR_BIT(_regs()->CR1, I2C_CR1_ACK);                                         // disable ACK
+                CLR_BIT(_regs()->CR2, I2C_CR2_DMAEN);                                       // disable DMA
+                DMATx::abort();                                                             // stop TX via DMA abort
+            } else {
+                errors |= Error::ACK_FAILURE;
+                CLR_BIT(_regs()->SR1, I2C_SR1_AF); // clear flag
+            }
         }
 
         if ((SR1 & I2C_SR1_OVR) != 0u) {
-            errors |= Error::OVR;
+            errors |= Error::OVER_UNDERRUN;
             CLR_BIT(_regs()->SR1, I2C_SR1_OVR); // clear flag
         }
 
         if (errors != Error::NONE) {
+            CLR_BIT(_regs()->CR2, I2C_CR2_ITEVTEN | I2C_CR2_ITBUFEN | I2C_CR2_ITERREN); // disable IRQ
+
+            if ((_regs()->CR2 & I2C_CR2_DMAEN) != 0u) {
+                CLR_BIT(_regs()->CR2, I2C_CR2_DMAEN); // disable DMA
+                if (_state == State::SLAVE_TX) {
+                    DMATx::abort();
+                } else {
+                    DMARx::abort();
+                }
+            }
+            // stop all
             // TODO error callback
+            _state = State::READY;
         }
     }
 }

@@ -49,15 +49,16 @@ namespace STM32::I2C
     };
 
     enum class Error : uint8_t {
-        NONE,               //< Not error
-        BERR = 0x00000001u, //< BERR error
-        ARLO = 0x00000002u, //< ARLO error
-        AF = 0x00000004u,   //< AF error
-        OVR = 0x00000008u,  //< OVR error
+        NONE,
+        BUS_ERROR        = 0b00000001u,
+        ARBITRATION_LOST = 0b00000010u,
+        ACK_FAILURE      = 0b00000100u,
+        OVER_UNDERRUN    = 0b00001000u,
     };
 
     using AddrCallbackT = std::add_pointer_t<void(bool isTx)>;
     using DataCallbackT = std::add_pointer_t<void(bool success)>;
+    using ErrorCallbackT = std::add_pointer_t<void(Error errors)>;
 
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
     class Driver
