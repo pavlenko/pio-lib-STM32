@@ -48,12 +48,15 @@ namespace STM32::I2C
         SLAVE_RX, //< Slave busy rx
     };
 
-    enum class Error {
-        NONE, //< Not error
-        // TODO
+    enum class Error : uint8_t {
+        NONE,               //< Not error
+        BERR = 0x00000001u, //< BERR error
+        ARLO = 0x00000002u, //< ARLO error
+        AF = 0x00000004u,   //< AF error
+        OVR = 0x00000008u,  //< OVR error
     };
 
-    using AddrCallbackT = std::add_pointer_t<void(bool success, bool isTx)>;
+    using AddrCallbackT = std::add_pointer_t<void(bool isTx)>;
     using DataCallbackT = std::add_pointer_t<void(bool success)>;
 
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>

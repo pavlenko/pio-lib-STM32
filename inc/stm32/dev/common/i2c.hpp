@@ -17,6 +17,16 @@ namespace STM32::I2C
         return Flag(static_cast<uint32_t>(l) & static_cast<uint32_t>(r));
     }
 
+    inline constexpr Error operator|=(Error l, Error r)
+    {
+        return Error(static_cast<uint32_t>(l) | static_cast<uint32_t>(r));
+    }
+
+    inline constexpr Error operator&(Error l, Error r)
+    {
+        return Error(static_cast<uint32_t>(l) & static_cast<uint32_t>(r));
+    }
+
     // --- DRIVER ---
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
     inline I2C_TypeDef* Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::_regs()
@@ -317,7 +327,7 @@ namespace STM32::I2C
             CLR_BIT(_regs()->CR2, I2C_CR2_ITEVTEN | I2C_CR2_ITERREN | I2C_CR2_DMAEN); // disable IRQ, DMA
             _state = State::LISTEN;
 
-            if (_dataCallback) _dataCallback();
+            if (_dataCallback) _dataCallback(true);
         });
 
         DMARx::transfer(DMA::Config::MEM_2_PER | DMA::Config::MINC, data, &_regs()->DR, size);
@@ -334,15 +344,51 @@ namespace STM32::I2C
         uint32_t SR2 = _regs()->SR2; // read SR2 first to prevent clear ADDR
         uint32_t SR1 = _regs()->SR1;
 
-        if ((_regs()->SR1 & I2C_SR1_ADDR) != 0u) {
-            I2C_Slave_ADDR(hi2c, sr2itflags);
-        } else if ((_regs()->SR1 & I2C_SR1_STOPF) != 0u) {
+        if ((SR1 & I2C_SR1_ADDR) != 0u) {
+            if (_addrCallback) {
+                _addrCallback(SR2 & I2C_SR2_TRA);
+            }
+            _clearADDR();
+        } else if ((SR1 & I2C_SR1_STOPF) != 0u) {
             CLR_BIT(_regs()->CR2, I2C_CR2_ITEVTEN | I2C_CR2_ITBUFEN | I2C_CR2_ITERREN); // disable IRQ
             _clearSTOPF();
             CLR_BIT(_regs()->CR1, I2C_CR1_ACK);   // disable ACK
             CLR_BIT(_regs()->CR2, I2C_CR2_DMAEN); // disable DMA
             DMARx::abort();
-            I2C_DMAAbort(); //<-- TODO
+        }
+    }
+
+    template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
+    inline void Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Slave::dispatchErrorIRQ()
+    {
+        uint32_t SR1 = _regs()->SR1;
+        Error errors = Error::NONE;
+
+        if ((SR1 & I2C_SR1_BERR) != 0u) {
+            errors |= Error::BERR;
+            CLR_BIT(_regs()->SR1, I2C_SR1_BERR); // clear flag
+        }
+
+        if ((SR1 & I2C_SR1_ARLO) != 0u) {
+            errors |= Error::ARLO;
+            CLR_BIT(_regs()->SR1, I2C_SR1_ARLO); // clear flag
+        }
+
+        if ((SR1 & I2C_SR1_AF) != 0u) {
+            CLR_BIT(_regs()->CR2, I2C_CR2_ITEVTEN | I2C_CR2_ITBUFEN | I2C_CR2_ITERREN); // disable IRQ
+            CLR_BIT(_regs()->SR1, I2C_SR1_AF);                                          // clear AF
+            CLR_BIT(_regs()->CR1, I2C_CR1_ACK);                                         // disable ACK
+            CLR_BIT(_regs()->CR2, I2C_CR2_DMAEN);                                       // disable DMA
+            DMATx::abort();
+        }
+
+        if ((SR1 & I2C_SR1_OVR) != 0u) {
+            errors |= Error::OVR;
+            CLR_BIT(_regs()->SR1, I2C_SR1_OVR); // clear flag
+        }
+
+        if (errors != Error::NONE) {
+            // TODO error callback
         }
     }
 }
