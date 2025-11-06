@@ -44,7 +44,7 @@ namespace STM32::DMA
 
             if (!isCircular()) disable();
 
-            if (_eventCallback) _eventCallback();
+            if (_eventCallback) _eventCallback(Event::COMPLETE);
         }
         if (hasFlag<Flag::TRANSFER_ERROR>()) {
             clrFlags();

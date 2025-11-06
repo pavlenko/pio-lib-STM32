@@ -141,8 +141,9 @@ namespace STM32::I2C
             };
             static inline Status listen(uint8_t address, std::add_pointer_t<void(bool tx)> cb);
             static inline Status tx(uint8_t* data, uint16_t size);
+            static inline Status txDMA(uint8_t* data, uint16_t size, DataCallbackT cb);
             static inline Status rx(uint8_t* data, uint16_t size);
-            static inline Status rxDMA(uint8_t* data, uint16_t size, std::add_pointer_t<void(void)> cb);
+            static inline Status rxDMA(uint8_t* data, uint16_t size, DataCallbackT cb);
             static inline void dispatchEventIRQ();
             static inline void dispatchErrorIRQ();
         };

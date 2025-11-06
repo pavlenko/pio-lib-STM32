@@ -290,6 +290,14 @@ namespace STM32::I2C
     }
 
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
+    inline Status Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Slave::txDMA(uint8_t* data, uint16_t size, DataCallbackT cb)
+    {
+        if (_state != State::LISTEN) return Status::BUSY;
+        // todo
+        return Status::OK;
+    }
+
+    template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
     inline Status Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Slave::rx(uint8_t* data, uint16_t size)
     {
         if (_state != State::READY) return Status::BUSY;
@@ -315,7 +323,7 @@ namespace STM32::I2C
     }
 
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    inline Status Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Slave::rxDMA(uint8_t* data, uint16_t size, std::add_pointer_t<void(void)> cb)
+    inline Status Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Slave::rxDMA(uint8_t* data, uint16_t size, DataCallbackT cb)
     {
         if (_state != State::LISTEN) return Status::BUSY;
 

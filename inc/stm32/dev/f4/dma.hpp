@@ -82,6 +82,7 @@ namespace STM32::DMA
 
         disable();
         clrFlags();
+        if (_eventCallback) _eventCallback(Event::ABORTED);
     }
 
     template <uint32_t tRegsAddress, typename tClock>

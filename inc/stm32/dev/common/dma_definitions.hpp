@@ -7,11 +7,6 @@
 namespace STM32::DMA
 {
     /**
-     * @brief DMA callback type, allow lambdas
-     */
-    using CallbackT = std::add_pointer_t<void(bool success)>;
-
-    /**
      * @brief DMA config options
      */
     enum class Config {
@@ -95,7 +90,13 @@ namespace STM32::DMA
 #endif
     };
 
-    using EventCallbackT = std::add_pointer_t<void(void)>;
+    enum class Event {
+        COMPLETE,
+        PARTIAL,
+        ABORTED,
+    };
+
+    using EventCallbackT = std::add_pointer_t<void(Event)>;
     using ErrorCallbackT = std::add_pointer_t<void(void)>;
 
     /**
