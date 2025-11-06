@@ -196,7 +196,7 @@ namespace STM32::DMA
         /**
          * @brief Abort DMA transfer
          */
-        static inline void abort();
+        static inline Status abort();
 
         /**
          * @brief Check flag is set

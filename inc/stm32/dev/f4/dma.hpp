@@ -75,14 +75,23 @@ namespace STM32::DMA
     }
 
     template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
-    inline void Channel<tDriver, tRegsAddress, tChannel, tIRQn>::abort()
+    inline Status Channel<tDriver, tRegsAddress, tChannel, tIRQn>::abort()
     {
-        _regs()->CR &= ~static_cast<uint32_t>(Config::IE_TRANSFER_COMPLETE | Config::IE_TRANSFER_ERROR | Config::IE_HALF_TRANSFER | Config::IE_DIRECT_MODE_ERROR);
-        _regs()->FCR &= DMA_SxFCR_FEIE;
+        _regs()->CR &= ~(DMA_SxCR_TCIE | DMA_SxCR_TEIE | DMA_SxCR_HTIE | DMA_SxCR_DMEIE); // disable IRQ
+        _regs()->FCR &= ~(DMA_SxFCR_FEIE);
 
         disable();
+
+        uint32_t timeout = 5u;
+        while ((_regs()->CR & DMA_SxCR_EN) != 0u) {
+            if (timeout == 0) {
+                return Status::TIMEOUT;
+            }
+            timeout--;
+        }
+
         clrFlags();
-        if (_eventCallback) _eventCallback(Event::ABORTED);
+        return Status::OK;
     }
 
     template <uint32_t tRegsAddress, typename tClock>

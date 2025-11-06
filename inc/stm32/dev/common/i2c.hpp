@@ -293,7 +293,22 @@ namespace STM32::I2C
     inline Status Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Slave::txDMA(uint8_t* data, uint16_t size, DataCallbackT cb)
     {
         if (_state != State::LISTEN) return Status::BUSY;
-        // todo
+
+        _state = State::SLAVE_TX;
+        _dataCallback = cb;
+
+        DMARx::clrFlagTC();
+        DMARx::setEventCallback([]() {
+            CLR_BIT(_regs()->CR2, I2C_CR2_ITEVTEN | I2C_CR2_ITERREN | I2C_CR2_DMAEN); // disable IRQ, DMA
+            _state = State::LISTEN;
+
+            if (_dataCallback) _dataCallback(true);
+        });
+        DMARx::transfer(DMA::Config::PER_2_MEM | DMA::Config::MINC, data, &_regs()->DR, size);
+
+        SET_BIT(_regs()->CR1, I2C_CR1_ACK);                                       // enable ACK
+        SET_BIT(_regs()->CR2, I2C_CR2_ITEVTEN | I2C_CR2_ITERREN | I2C_CR2_DMAEN); // enable IRQ, DMA
+
         return Status::OK;
     }
 
@@ -388,7 +403,8 @@ namespace STM32::I2C
                 CLR_BIT(_regs()->SR1, I2C_SR1_AF);                                          // clear flag
                 CLR_BIT(_regs()->CR1, I2C_CR1_ACK);                                         // disable ACK
                 CLR_BIT(_regs()->CR2, I2C_CR2_DMAEN);                                       // disable DMA
-                DMATx::abort();                                                             // stop TX via DMA abort
+                DMATx::abort();
+                // TODO handle stop I2C, DMA abort not called callbacks
             } else {
                 errors |= Error::ACK_FAILURE;
                 CLR_BIT(_regs()->SR1, I2C_SR1_AF); // clear flag
