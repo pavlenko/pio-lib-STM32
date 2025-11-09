@@ -1,137 +1,65 @@
-# Stop communication
+### Slave DMA Event
 
-master to slave (slave RX), master stops (send STOP) - slave check STOPF irq
-master to slave (slave RX), slave stops (send NACK) - master check AF irq
-slave to master (slave TX), master stops (send NACK) - slave check AF irq
-slave to master (slave TX), slave stops (send STOP) - master check STOPF irq
+- Disable IRQ
+- Clear DMA event callback
+- Disable DMA
+- If state == SLAVE_TX - Execute TX_DATA callback
+- If state == SLAVE_RX - Execute RX_DATA callback
 
-### Master TX DMA
-- configure & enable DMA channel
-- set DMAEN = 1
-- send START, wait SB is set & clear it
-- send slave address, wait ADDR is set & clear it
-- wait until DMA TC = 1, disable DMA channel, clear DMA TC
-- wait until BTF = 1, send STOP, wait STOPF cleared
+### Slave IRQ Event
 
-### Master RX DMA
-- configure & enable DMA channel
-- set DMAEN = 1, set LAST = 1
-- send START, wait SB is set & clear it
-- send slave address, wait ADDR is set & clear it
-- wait until DMA TC = 1, disable DMA channel, clear DMA TC
-- send STOP, wait STOPF cleared
+- Read SR2 before SR1 for prevent clear ADDR
+- Check ADDR
+  - Execute ADDR callback (SR2.TRA == 1 ? state = SLAVE_TX : state = SLAVE_RX)
+  - Clear ADDR flag (MUST BE AFTER EXECUTE CALLBACK)
+- check STOPF (Master aborts transfer)
+  - Clear STOPF flag
+  - Disable IRQ
+  - Disable ACK
+  - Disable DMA, execute DMA::abort()
+  - If state == LISTEN - Stop listening:
+    - Execute callback(?)
+  - If state == SLAVE_RX - Stop RX:
+    - Execute RX_DATA callback
 
-### Slave TX DMA
-- enable IRQ (for handle ADDR & AF)
-- ADDR interrupt: configure DMA channel, clear ADDR
-- AF interrupt: disable DMA channel
+### Slave DMA Abort
 
-### Slave RX DMA
-- enable IRQ (for handle ADDR & STOPF)
-- ADDR interrupt: configure DMA channel, clear ADDR
-- STOPF interrupt: disable DMA channel
+- Wait for STOP to be reset
+- Clear DMA event callback
+- Disable ACK
+- Clear DMA abort callback
+- Disable I2C
+- If state == ABORT - Execute abort callback
+- Else - Execute error callback
 
------------------------------------------------------------------
+### Slave DMA Error
 
-# I2C workflow TODO....
+- Clear DMA event callback
+- If DMA.FE - skip below
+- Disable ACK
+- Execute error callback
 
-### Master send
+### Slave IRQ Error
 
-- wait busy (BUSY flag)
-- send start
-  - check if success (SB flag)
-- send dev address (W)
-  - check if success (ADDR & ADD10 flags)
-- send byte(s)
-  - check if success (BTF flag)
-- send stop
-
-### Master recv
-
-- wait busy (BUSY flag)
-- send start
-  - check if success (SB flag)
-- send dev address (R)
-  - check if success (ADDR & ADD10 flags)
-- recv byte(s)
-  - check if success (BTF flag)
-- send stop
-
-### Mem set
-
-- wait busy
-- enable if any
-- send start
-  - check if success (SB flag)
-- send dev address (W)
-  - check if success (ADDR & ADD10 flags)
-- send reg address
-  - check if success (TXE flag)
-- send byte(s)
-  - check if success (TXE flag)
-- send stop
-
-### Mem get
-
-- wait busy
-- enable if any
-- send start
-  - check if success (SB flag)
-- send dev address (W)
-  - check if success (ADDR & ADD10 flags)
-- send reg address
-  - check if success (TXE flag)
-- send restart
-  - check if success (SB flag)
-- send dev address (R)
-  - check if success (ADDR & ADD10 flags)
-- recv byte(s)
-  - check if success (RXNE & BTF flags)
-- send stop
-
-### Slave send
-
-- enable ACK
-- wait address (ADDR & ADD10 flags)
-- send byte(s)
-  - check if success (TXE flag)
-- disable ACK
-
-### Slave recv
-
-- enable ACK
-- wait address (ADDR & ADD10 flags)
-- recv byte(s)
-  - check if success (RXNE & BTF flags)
-- wait stop
-- disable ACK
-
-### DMA TX
-
-- success:
-  - disable IRQ (?)
-  - disable ACK
-  - send STOP
-  - disable DMA (?)
-  - execute callaback
-- error:
-  - disable ACK
-  - send STOP
-  - disable DMA (?)
-  - execute callaback
-
-### DMA RX
-
-- send size - 1
-- success:
-  - disable IRQ (?)
-  - disable ACK
-  - disable DMA (?)
-  - receive last byte
-  - send STOP
-  - execute callback
-- error:
-  - disable ACK
-  - send STOP
-  - disable DMA (?)
-  - execute callaback
+- Check BERR
+  - Clear BERR flag
+  - Error |= BERR
+- Check AF (Master aborts transfer)
+  - Clear AF flag
+  - If state == LISTEN - Stop listening:
+    - Disable IRQ
+    - Disable ACK
+    - Execute callback(?)
+  - If state == SLAVE_TX - Stop TX:
+    - Disable IRQ
+    - Disable ACK
+    - Execute TX_DATA callback
+    - !!! DMA disabled in error handler !!!
+  - Else error |= AF
+- Check OVR
+  - Clear OVR flag
+  - Error |= OVR
+- If error
+  - Disable IRQ
+  - Disable DMA, execute DMA::abort()
+  - Execute error callback
