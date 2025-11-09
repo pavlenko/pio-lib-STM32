@@ -39,19 +39,36 @@ namespace STM32::DMA
     template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
     inline void Channel<tDriver, tRegsAddress, tChannel, tIRQn>::dispatchIRQ()
     {
-        if (hasFlag<Flag::TRANSFER_COMPLETE>()) {
-            clrFlags();
+        Error error = Error::NONE;
 
+        if (hasFlag<Flag::TRANSFER_ERROR>()) {
+            // TODO disable TEIE
+            clrFlag<Flag::TRANSFER_ERROR>();
+            error = error | Error::TRANSFER;
+        }
+#if defined(DMA_SxCR_EN)
+        if (hasFlag<Flag::FIFO_ERROR>()) {
+            clrFlag<Flag::FIFO_ERROR>();
+            error = error | Error::FIFO;
+        }
+        if (hasFlag<Flag::DIRECT_MODE_ERROR>()) {
+            clrFlag<Flag::DIRECT_MODE_ERROR>();
+            error = error | Error::DIRECT_MODE;
+        }
+#endif
+        if (hasFlag<Flag::HALF_TRANSFER>()) {
+            clrFlag<Flag::HALF_TRANSFER>();
             if (!isCircular()) disable();
-
+            if (_eventCallback) _eventCallback(Event::PARTIAL);
+        }
+        if (hasFlag<Flag::TRANSFER_COMPLETE>()) {
+            clrFlag<Flag::TRANSFER_COMPLETE>();
+            if (!isCircular()) disable();
             if (_eventCallback) _eventCallback(Event::COMPLETE);
         }
-        if (hasFlag<Flag::TRANSFER_ERROR>()) {
-            clrFlags();
-
-            if (!isCircular()) disable();
-
-            if (_errorCallback) _errorCallback();
+        if (error != Error::NONE) {
+            if ((error & Error::TRANSFER) == Error::TRANSFER) disable();
+            if (_errorCallback) _errorCallback(error);
         }
     }
 
