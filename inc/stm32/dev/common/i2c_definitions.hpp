@@ -56,7 +56,7 @@ namespace STM32::I2C
         OVER_UNDERRUN    = 0b00001000u,
     };
 
-    using AddrCallbackT = std::add_pointer_t<void(bool isTx)>;
+    using AddrCallbackT = std::add_pointer_t<void(bool masterTx)>;
     using DataCallbackT = std::add_pointer_t<void(bool success)>;
     using ErrorCallbackT = std::add_pointer_t<void(Error errors)>;
 
@@ -131,15 +131,7 @@ namespace STM32::I2C
         class Slave
         {
         public:
-            enum class SState {
-                RESET,     // initial state
-                LISTEN,    // listen started
-                ADDRESSED, // listen address matched
-                BUSY_TX,   // busy transmit
-                BUSY_RX,   // busy receive
-                ERROR,     // error occured
-            };
-            static inline Status listen(uint8_t address, std::add_pointer_t<void(bool tx)> cb);
+            static inline Status listen(uint8_t address, AddrCallbackT cb);
             static inline Status tx(uint8_t* data, uint16_t size);
             static inline Status txDMA(uint8_t* data, uint16_t size, DataCallbackT cb);
             static inline Status rx(uint8_t* data, uint16_t size);

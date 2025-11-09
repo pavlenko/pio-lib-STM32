@@ -96,8 +96,25 @@ namespace STM32::DMA
         ABORTED,
     };
 
+    enum class Error : uint8_t {
+        NONE = 0b00000000,
+        TRANSFER = 0b00000001,
+        FIFO = 0b00000010,
+        DIRECT_MODE = 0b00000100,
+    };
+
+    constexpr inline Error operator|(Error lft, Error rgt)
+    {
+        return Error(static_cast<uint32_t>(lft) | static_cast<uint32_t>(rgt));
+    }
+
+    constexpr inline Error operator&(Error lft, Error rgt)
+    {
+        return Error(static_cast<uint32_t>(lft) | static_cast<uint32_t>(rgt));
+    }
+
     using EventCallbackT = std::add_pointer_t<void(Event)>;
-    using ErrorCallbackT = std::add_pointer_t<void(void)>;
+    using ErrorCallbackT = std::add_pointer_t<void(Error)>;
 
     /**
      * @brief DMA channel APIs
