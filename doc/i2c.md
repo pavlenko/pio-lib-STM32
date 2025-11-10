@@ -3,8 +3,12 @@
 - Disable IRQ
 - Clear DMA event callback
 - Disable DMA
-- If state == SLAVE_TX - Execute TX_DATA callback
-- If state == SLAVE_RX - Execute RX_DATA callback
+- If state == SLAVE_TX
+  - State = LISTEN
+  - Execute TX_DATA callback
+- If state == SLAVE_RX
+  - State = LISTEN
+  - Execute RX_DATA callback
 
 ### Slave IRQ Event
 
@@ -18,8 +22,10 @@
   - Disable ACK
   - Disable DMA, execute DMA::abort()
   - If state == LISTEN - Stop listening:
+    - State = READY
     - Execute callback(?)
   - If state == SLAVE_RX - Stop RX:
+    - State = READY
     - Execute RX_DATA callback
 
 ### Slave DMA Abort
@@ -29,14 +35,20 @@
 - Disable ACK
 - Clear DMA abort callback
 - Disable I2C
-- If state == ABORT - Execute abort callback
-- Else - Execute error callback
+- If state == ABORT
+  - State = READY
+  - Error = NONE
+  - Execute abort callback
+- Else
+  - Execute error callback
 
 ### Slave DMA Error
 
 - Clear DMA event callback
 - If DMA.FE - skip below
 - Disable ACK
+- State = READY
+- Error |= DMA
 - Execute error callback
 
 ### Slave IRQ Error
@@ -49,10 +61,12 @@
   - If state == LISTEN - Stop listening:
     - Disable IRQ
     - Disable ACK
+    - State = READY
     - Execute callback(?)
   - If state == SLAVE_TX - Stop TX:
     - Disable IRQ
     - Disable ACK
+    - State = READY
     - Execute TX_DATA callback
     - !!! DMA disabled in error handler !!!
   - Else error |= AF
