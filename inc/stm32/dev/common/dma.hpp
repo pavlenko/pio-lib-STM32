@@ -4,12 +4,49 @@
 
 namespace STM32::DMA
 {
-    constexpr inline Config operator|(Config lft, Config rgt)
+    // CHANNEL
+    template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
+    template <IRQEnable tFlags>
+    inline void Channel<tDriver, tRegsAddress, tChannel, tIRQn>::attachIRQ()
     {
-        return Config(static_cast<uint32_t>(lft) | static_cast<uint32_t>(rgt));
+#ifdef DMA_CCR_EN
+        static constexpr const uint32_t flags = static_cast<uint32_t>(tFlags);
+        if constexpr (flags != 0u) {
+            _regs()->CCR |= flags;
+        }
+#endif
+#ifdef DMA_SxCR_EN
+        static constexpr const uint32_t flags = static_cast<uint32_t>(tFlags & ~IRQEnable::FIFO_ERROR);
+        if constexpr (flags != 0u) {
+            _regs()->CR |= flags;
+        }
+        if constexpr ((tFlags & IRQEnable::FIFO_ERROR) == IRQEnable::FIFO_ERROR) {
+            _regs()->FCR |= static_cast<uint32_t>(IRQEnable::FIFO_ERROR);
+        }
+#endif
     }
 
-    // CHANNEL
+    template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
+    template <IRQEnable tFlags>
+    inline void Channel<tDriver, tRegsAddress, tChannel, tIRQn>::detachIRQ()
+    {
+#ifdef DMA_CCR_EN
+        static constexpr const uint32_t flags = static_cast<uint32_t>(tFlags);
+        if constexpr (flags != 0u) {
+            _regs()->CCR &= ~flags;
+        }
+#endif
+#ifdef DMA_SxCR_EN
+        static constexpr const uint32_t flags = static_cast<uint32_t>(tFlags & ~IRQEnable::FIFO_ERROR);
+        if constexpr (flags != 0u) {
+            _regs()->CR &= ~flags;
+        }
+        if constexpr ((tFlags & IRQEnable::FIFO_ERROR) == IRQEnable::FIFO_ERROR) {
+            _regs()->FCR &= ~(static_cast<uint32_t>(IRQEnable::FIFO_ERROR));
+        }
+#endif
+    }
+
     template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
     inline bool Channel<tDriver, tRegsAddress, tChannel, tIRQn>::isReady()
     {
@@ -63,7 +100,10 @@ namespace STM32::DMA
         }
         if (hasFlag<Flag::TRANSFER_COMPLETE>()) {
             clrFlag<Flag::TRANSFER_COMPLETE>();
-            if (!isCircular()) disable();
+            if (!isCircular()) {
+                disable();
+                _state = State::READY;
+            }
             if (_eventCallback) _eventCallback(Event::COMPLETE);
         }
         if (error != Error::NONE) {

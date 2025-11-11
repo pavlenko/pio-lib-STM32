@@ -54,7 +54,6 @@ namespace STM32::DMA
     template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
     inline void Channel<tDriver, tRegsAddress, tChannel, tIRQn>::transfer(Config config, const void* buffer, volatile void* periph, uint32_t size, uint8_t channel)
     {
-        // TODO
         tDriver::enable();
         if (!hasFlag<Flag::TRANSFER_ERROR>()) {
             while (!isReady()) {}
@@ -66,24 +65,27 @@ namespace STM32::DMA
         _regs()->PAR = reinterpret_cast<uint32_t>(periph);
 
         if (_eventCallback || _errorCallback) {
-            config = config | Config::IE_TRANSFER_COMPLETE | Config::IE_TRANSFER_ERROR;
+            attachIRQ<IRQEnable::TRANSFER_COMPLETE | IRQEnable::TRANSFER_ERROR>();
         }
 
         NVIC_EnableIRQ(tIRQn);
 
         _regs()->CR = static_cast<uint32_t>(config) | ((channel & 0x07) << 25) | DMA_SxCR_EN;
+        _state = State::TRANSFER;
     }
 
     template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
     inline Status Channel<tDriver, tRegsAddress, tChannel, tIRQn>::abort()
     {
-        _regs()->CR &= ~(DMA_SxCR_TCIE | DMA_SxCR_TEIE | DMA_SxCR_HTIE | DMA_SxCR_DMEIE); // disable IRQ
-        _regs()->FCR &= ~(DMA_SxFCR_FEIE);
+        if (_state != State::TRANSFER) return Status::ERROR;
 
+        _state = State::ABORTING;
+
+        detachIRQ<IRQEnable::ALL>();
         disable();
 
         uint32_t timeout = 5u;
-        while ((_regs()->CR & DMA_SxCR_EN) != 0u) {
+        while (isEnabled()) {
             if (timeout == 0) {
                 return Status::TIMEOUT;
             }
@@ -91,6 +93,8 @@ namespace STM32::DMA
         }
 
         clrFlags();
+
+        _state = State::READY;
         return Status::OK;
     }
 

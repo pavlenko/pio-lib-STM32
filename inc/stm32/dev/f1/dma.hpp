@@ -66,7 +66,7 @@ namespace STM32::DMA
         _regs()->CPAR = reinterpret_cast<uint32_t>(periph);
 
         if (_eventCallback || _errorCallback) {
-            config = config | Config::IE_TRANSFER_COMPLETE | Config::IE_TRANSFER_ERROR;
+            attachIRQ<IRQEnable::TRANSFER_COMPLETE | IRQEnable::TRANSFER_ERROR>();
         }
 
         NVIC_EnableIRQ(tIRQn);
@@ -76,12 +76,18 @@ namespace STM32::DMA
     }
 
     template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
-    inline void Channel<tDriver, tRegsAddress, tChannel, tIRQn>::abort()
+    inline Status Channel<tDriver, tRegsAddress, tChannel, tIRQn>::abort()
     {
-        _regs()->CCR &= ~static_cast<uint32_t>(Config::IE_TRANSFER_COMPLETE | Config::IE_TRANSFER_ERROR | Config::IE_HALF_TRANSFER);
+        if (_state != State::TRANSFER) return Status::ERROR;
 
+        _state = State::ABORTING;
+
+        detachIRQ<IRQEnable::ALL>();
         disable();
         clrFlags();
+
+        _state = State::READY;
+        return Status::OK;
     }
 
     template <uint32_t tRegsAddress, typename tClock>

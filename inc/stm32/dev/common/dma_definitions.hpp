@@ -33,10 +33,10 @@ namespace STM32::DMA
         PRIORITY_MEDIUM = DMA_CCR_PL_0,
         PRIORITY_HIGH = DMA_CCR_PL_1,
         PRIORITY_VERY_HIGH = DMA_CCR_PL,
-        // Interrupts
-        IE_TRANSFER_ERROR = DMA_CCR_TEIE,
-        IE_TRANSFER_COMPLETE = DMA_CCR_TCIE,
-        IE_HALF_TRANSFER = DMA_CCR_HTIE,
+    // Interrupts
+    // IE_TRANSFER_ERROR = DMA_CCR_TEIE,
+    // IE_TRANSFER_COMPLETE = DMA_CCR_TCIE,
+    // IE_HALF_TRANSFER = DMA_CCR_HTIE,
 #endif
 #ifdef DMA_SxCR_EN
         // Direction
@@ -61,13 +61,50 @@ namespace STM32::DMA
         PRIORITY_MEDIUM = DMA_SxCR_PL_0,
         PRIORITY_HIGH = DMA_SxCR_PL_1,
         PRIORITY_VERY_HIGH = DMA_SxCR_PL_1 | DMA_SxCR_PL_0,
-        // Enable IRQ
-        IE_TRANSFER_ERROR = DMA_SxCR_TEIE,
-        IE_HALF_TRANSFER = DMA_SxCR_HTIE,
-        IE_TRANSFER_COMPLETE = DMA_SxCR_TCIE,
-        IE_DIRECT_MODE_ERROR = DMA_SxCR_DMEIE,
+    // Enable IRQ
+    IE_TRANSFER_ERROR = DMA_SxCR_TEIE,
+    IE_HALF_TRANSFER = DMA_SxCR_HTIE,
+    IE_TRANSFER_COMPLETE = DMA_SxCR_TCIE,
+    IE_DIRECT_MODE_ERROR = DMA_SxCR_DMEIE,
 #endif
     };
+
+    constexpr inline Config operator|(Config lft, Config rgt)
+    {
+        return Config(static_cast<uint32_t>(lft) | static_cast<uint32_t>(rgt));
+    }
+
+    enum class IRQEnable : uint32_t {
+#ifdef DMA_CCR_EN
+        TRANSFER_ERROR = DMA_CCR_TEIE,
+        TRANSFER_COMPLETE = DMA_CCR_TCIE,
+        HALF_TRANSFER = DMA_CCR_HTIE,
+        ALL = HALF_TRANSFER | TRANSFER_COMPLETE | TRANSFER_ERROR,
+#endif
+#ifdef DMA_SxCR_EN
+        HALF_TRANSFER = DMA_SxCR_HTIE,
+        TRANSFER_COMPLETE = DMA_SxCR_TCIE,
+        TRANSFER_ERROR = DMA_SxCR_TEIE,
+        DIRECT_MODE_ERROR = DMA_SxCR_DMEIE,
+        FIFO_ERROR = DMA_SxFCR_FEIE << 16u,
+        ALL = HALF_TRANSFER | TRANSFER_COMPLETE | TRANSFER_ERROR | DIRECT_MODE_ERROR | FIFO_ERROR,
+#endif
+    };
+
+    constexpr inline IRQEnable operator|(IRQEnable lft, IRQEnable rgt)
+    {
+        return IRQEnable(static_cast<uint32_t>(lft) | static_cast<uint32_t>(rgt));
+    }
+
+    constexpr inline IRQEnable operator&(IRQEnable lft, IRQEnable rgt)
+    {
+        return IRQEnable(static_cast<uint32_t>(lft) & static_cast<uint32_t>(rgt));
+    }
+
+    constexpr inline IRQEnable operator~(IRQEnable v)
+    {
+        return IRQEnable(~static_cast<uint32_t>(v));
+    }
 
     /**
      * @brief DMA interrupt flags
@@ -88,6 +125,12 @@ namespace STM32::DMA
         DIRECT_MODE_ERROR = DMA_LISR_DMEIF0,
         ALL = TRANSFER_COMPLETE | HALF_TRANSFER | TRANSFER_ERROR | FIFO_ERROR | DIRECT_MODE_ERROR,
 #endif
+    };
+
+    enum class State : uint8_t {
+        READY,
+        TRANSFER,
+        ABORTING,
     };
 
     enum class Event {
@@ -130,6 +173,8 @@ namespace STM32::DMA
     private:
         static_assert(tChannel < 8u, "Invalid channel number");
 
+        static inline State _state;
+
         static inline EventCallbackT _eventCallback;
         static inline ErrorCallbackT _errorCallback;
 
@@ -155,6 +200,12 @@ namespace STM32::DMA
          * @brief Disable DMA channel
          */
         static inline void disable();
+
+        template <IRQEnable tFlags>
+        static inline void attachIRQ();
+
+        template <IRQEnable tFlags>
+        static inline void detachIRQ();
 
         /**
          * @brief Check if DMA channel is enabled
