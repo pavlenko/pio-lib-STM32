@@ -50,10 +50,11 @@ namespace STM32::I2C
 
     enum class Error : uint8_t {
         NONE,
-        BUS_ERROR        = 0b00000001u,
+        BUS_ERROR = 0b00000001u,
         ARBITRATION_LOST = 0b00000010u,
-        ACK_FAILURE      = 0b00000100u,
-        OVER_UNDERRUN    = 0b00001000u,
+        ACK_FAILURE = 0b00000100u,
+        OVER_UNDERRUN = 0b00001000u,
+        DMA = 0b00010000u
     };
 
     using AddrCallbackT = std::add_pointer_t<void(bool masterTx)>;
@@ -130,6 +131,10 @@ namespace STM32::I2C
          */
         class Slave
         {
+        private:
+            static inline void _onDMAEvent(DMA::Event);
+            static inline void _onDMAError(DMA::Error);
+
         public:
             static inline Status listen(uint8_t address, AddrCallbackT cb);
             static inline Status tx(uint8_t* data, uint16_t size);

@@ -3,12 +3,9 @@
 - Disable IRQ
 - Clear DMA event callback
 - Disable DMA
-- If state == SLAVE_TX
-  - State = LISTEN
-  - Execute TX_DATA callback
-- If state == SLAVE_RX
-  - State = LISTEN
-  - Execute RX_DATA callback
+- State = LISTEN
+- Execute DATA callback
+- Enable IRQ
 
 ### Slave IRQ Event
 

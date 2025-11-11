@@ -248,10 +248,30 @@ namespace STM32::I2C
 
     // --- SLAVE ---
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
+    inline void Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Slave::_onDMAEvent(DMA::Event e)
+    {
+        CLR_BIT(_regs()->CR2, I2C_CR2_ITEVTEN | I2C_CR2_ITERREN | I2C_CR2_DMAEN); // disable IRQ, DMA
+        _state = State::LISTEN;
+        if (_dataCallback) _dataCallback(true);
+        SET_BIT(_regs()->CR2, I2C_CR2_ITEVTEN | I2C_CR2_ITERREN); // re-enable IRQ
+    }
+
+    template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
+    inline void Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Slave::_onDMAError(DMA::Error e)
+    {
+        if (e == DMA::Error::FIFO) return;
+        CLR_BIT(_regs()->CR2, I2C_CR1_ACK); // disable ACK
+        _state = State::READY;
+        _error = Error::DMA;
+        // TODO error callback
+    }
+
+    template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
     inline Status Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Slave::listen(uint8_t address, AddrCallbackT cb)
     {
         if (_state != State::RESET && _state != State::READY) return Status::BUSY;
 
+        _error = Error::NONE;
         _state = State::LISTEN;
 
         _regs()->OAR1 = address & I2C_OAR1_ADD1_7; // set listen address
@@ -298,14 +318,10 @@ namespace STM32::I2C
         _state = State::SLAVE_TX;
         _dataCallback = cb;
 
-        DMARx::clrFlagTC();
-        DMARx::setEventCallback([]() {
-            CLR_BIT(_regs()->CR2, I2C_CR2_ITEVTEN | I2C_CR2_ITERREN | I2C_CR2_DMAEN); // disable IRQ, DMA
-            _state = State::LISTEN;
-
-            if (_dataCallback) _dataCallback(true);
-        });
-        DMARx::transfer(DMA::Config::PER_2_MEM | DMA::Config::MINC, data, &_regs()->DR, size);
+        DMATx::clrFlagTC();
+        DMATx::setEventCallback(_onDMAEvent);
+        DMATx::setErrorCallback(_onDMAError);
+        DMATx::transfer(DMA::Config::PER_2_MEM | DMA::Config::MINC, data, &_regs()->DR, size);
 
         SET_BIT(_regs()->CR1, I2C_CR1_ACK);                                       // enable ACK
         SET_BIT(_regs()->CR2, I2C_CR2_ITEVTEN | I2C_CR2_ITERREN | I2C_CR2_DMAEN); // enable IRQ, DMA
@@ -347,19 +363,8 @@ namespace STM32::I2C
         _dataCallback = cb;
 
         DMARx::clrFlagTC();
-        DMARx::setEventCallback([]() {
-            CLR_BIT(_regs()->CR2, I2C_CR2_ITEVTEN | I2C_CR2_ITERREN | I2C_CR2_DMAEN); // disable IRQ, DMA
-            _state = State::LISTEN;
-
-            if (_dataCallback) _dataCallback(true);
-        });
-        DMARx::setErrorCallback([](DMA::Error e) {
-            //- reset DMA event callback (maybe do it in DMA module)
-            //- if DMA error == FE - ignore below
-            //- disable ACK
-            //- set state to READY
-            //- set error to DMA
-        });
+        DMARx::setEventCallback(_onDMAEvent);
+        DMARx::setErrorCallback(_onDMAError);
         DMARx::transfer(DMA::Config::MEM_2_PER | DMA::Config::MINC, data, &_regs()->DR, size);
 
         SET_BIT(_regs()->CR1, I2C_CR1_ACK);                                       // enable ACK
