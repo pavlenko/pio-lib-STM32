@@ -262,8 +262,7 @@ namespace STM32::I2C
         if (e == DMA::Error::FIFO) return;
         CLR_BIT(_regs()->CR2, I2C_CR1_ACK); // disable ACK
         _state = State::READY;
-        _error = Error::DMA;
-        // TODO error callback
+        if (_errorCallback) _errorCallback(Error::DMA);
     }
 
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
@@ -271,42 +270,15 @@ namespace STM32::I2C
     {
         if (_state != State::RESET && _state != State::READY) return Status::BUSY;
 
-        _error = Error::NONE;
         _state = State::LISTEN;
 
         _regs()->OAR1 = address & I2C_OAR1_ADD1_7; // set listen address
 
-        _regs()->CR1 |= I2C_CR1_PE;  // enable peripherial
-        _regs()->CR1 |= I2C_CR1_ACK; // enable ACK
-
+        _regs()->CR1 |= I2C_CR1_PE;                        // enable peripherial
+        _regs()->CR1 |= I2C_CR1_ACK;                       // enable ACK
         _regs()->CR2 |= I2C_CR2_ITEVTEN | I2C_CR2_ITERREN; // enable IRQ
 
         _addrCallback = cb;
-        return Status::OK;
-    }
-
-    template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    inline Status Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Slave::tx(uint8_t* data, uint16_t size)
-    {
-        if (_state != State::READY) return Status::BUSY;
-
-        _regs()->CR1 &= ~I2C_CR1_POS; // clear POS
-        _regs()->CR1 |= I2C_CR1_ACK;  // enable ACK
-
-        if (!_waitFlag(Flag::ADDRESS_SENT)) return Status::ERROR;
-
-        _clearADDR();
-
-        for (uint16_t i = 0; i < size; i++) {
-            while ((_regs()->SR1 & I2C_SR1_TXE) == 0u) {} // wait until TXE is set
-            _regs()->DR = data[i];                        // transmit byte
-        }
-
-        while ((_regs()->SR1 & I2C_SR1_AF) == 0u) {} // wait until AF is set
-
-        _regs()->SR1 &= ~I2C_SR1_AF;  // clear AF
-        _regs()->CR1 &= ~I2C_CR1_ACK; // disable ACK
-
         return Status::OK;
     }
 
@@ -325,31 +297,6 @@ namespace STM32::I2C
 
         SET_BIT(_regs()->CR1, I2C_CR1_ACK);                                       // enable ACK
         SET_BIT(_regs()->CR2, I2C_CR2_ITEVTEN | I2C_CR2_ITERREN | I2C_CR2_DMAEN); // enable IRQ, DMA
-
-        return Status::OK;
-    }
-
-    template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    inline Status Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Slave::rx(uint8_t* data, uint16_t size)
-    {
-        if (_state != State::READY) return Status::BUSY;
-
-        _regs()->CR1 &= ~I2C_CR1_POS; // clear POS
-        _regs()->CR1 |= I2C_CR1_ACK;  // enable ACK
-
-        if (!_waitFlag(Flag::ADDRESS_SENT)) return Status::ERROR;
-
-        _clearADDR();
-
-        for (uint16_t i = 0; i < size; i++) {
-            while ((_regs()->SR1 & I2C_SR1_RXNE) == 0u) {} // wait until RXNE is set
-            data[i] = _regs()->DR;                         // receive byte
-        }
-
-        while ((_regs()->SR1 & I2C_SR1_STOPF) == 0u) {} // wait until STOPF is set
-
-        _regs()->SR1 &= ~I2C_SR1_STOPF; // clear STOPF
-        _regs()->CR1 &= ~I2C_CR1_ACK;   // disable ACK
 
         return Status::OK;
     }
@@ -380,9 +327,7 @@ namespace STM32::I2C
         uint32_t SR1 = _regs()->SR1;
 
         if ((SR1 & I2C_SR1_ADDR) != 0u) {
-            if (_addrCallback) {
-                _addrCallback(SR2 & I2C_SR2_TRA);
-            }
+            if (_addrCallback) _addrCallback(SR2 & I2C_SR2_TRA);
             _clearADDR();
         } else if ((SR1 & I2C_SR1_STOPF) != 0u) {
             CLR_BIT(_regs()->CR2, I2C_CR2_ITEVTEN | I2C_CR2_ITBUFEN | I2C_CR2_ITERREN); // disable IRQ
@@ -390,6 +335,10 @@ namespace STM32::I2C
             CLR_BIT(_regs()->CR1, I2C_CR1_ACK);   // disable ACK
             CLR_BIT(_regs()->CR2, I2C_CR2_DMAEN); // disable DMA
             DMARx::abort();
+            if (_state == State::SLAVE_RX) {
+                _state = State::READY;
+                if (_dataCallback) _dataCallback(true);
+            }
         }
     }
 
@@ -403,45 +352,32 @@ namespace STM32::I2C
             errors |= Error::BUS_ERROR;
             CLR_BIT(_regs()->SR1, I2C_SR1_BERR); // clear flag
         }
-
         if ((SR1 & I2C_SR1_AF) != 0u) {
-            if (_state == State::LISTEN) {
-                CLR_BIT(_regs()->CR2, I2C_CR2_ITEVTEN | I2C_CR2_ITBUFEN | I2C_CR2_ITERREN); // disable IRQ
-                CLR_BIT(_regs()->SR1, I2C_SR1_AF);                                          // clear flag
-                CLR_BIT(_regs()->CR1, I2C_CR1_ACK);                                         // disable ACK
-                // TODO stop listen
-            } else if (_state == State::SLAVE_TX) {
+            if (_state == State::SLAVE_TX) {
+                _state = State::READY;
                 CLR_BIT(_regs()->CR2, I2C_CR2_ITEVTEN | I2C_CR2_ITBUFEN | I2C_CR2_ITERREN); // disable IRQ
                 CLR_BIT(_regs()->SR1, I2C_SR1_AF);                                          // clear flag
                 CLR_BIT(_regs()->CR1, I2C_CR1_ACK);                                         // disable ACK
                 CLR_BIT(_regs()->CR2, I2C_CR2_DMAEN);                                       // disable DMA
-                DMATx::abort();
-                // TODO handle stop I2C, DMA abort not called callbacks
+                if (_dataCallback) _dataCallback(true);
             } else {
                 errors |= Error::ACK_FAILURE;
                 CLR_BIT(_regs()->SR1, I2C_SR1_AF); // clear flag
             }
         }
-
         if ((SR1 & I2C_SR1_OVR) != 0u) {
             errors |= Error::OVER_UNDERRUN;
             CLR_BIT(_regs()->SR1, I2C_SR1_OVR); // clear flag
         }
-
         if (errors != Error::NONE) {
             CLR_BIT(_regs()->CR2, I2C_CR2_ITEVTEN | I2C_CR2_ITBUFEN | I2C_CR2_ITERREN); // disable IRQ
-
             if ((_regs()->CR2 & I2C_CR2_DMAEN) != 0u) {
                 CLR_BIT(_regs()->CR2, I2C_CR2_DMAEN); // disable DMA
-                if (_state == State::SLAVE_TX) {
-                    DMATx::abort();
-                } else {
-                    DMARx::abort();
-                }
+                if (_state == State::SLAVE_TX) DMATx::abort();
+                if (_state == State::SLAVE_RX) DMARx::abort();
             }
-            // stop all
-            // TODO error callback
             _state = State::READY;
+            if (_errorCallback) _errorCallback(errors);
         }
     }
 }

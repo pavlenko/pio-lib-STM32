@@ -69,11 +69,11 @@ namespace STM32::I2C
 
         static inline Speed _speed;
         static inline State _state;
-        static inline Error _error;
         static inline uint8_t _devAddress;
 
         static inline AddrCallbackT _addrCallback;
         static inline DataCallbackT _dataCallback;
+        static inline ErrorCallbackT _errorCallback;
 
         static inline I2C_TypeDef* _regs();
         static inline bool _waitBusy();
@@ -120,15 +120,6 @@ namespace STM32::I2C
             static inline Status get(uint16_t address, uint8_t* data, uint16_t size);
         };
 
-        /**
-         * listen()  : RESET|READY -> LISTEN
-         * tx()      : READY -> BUSY_TX -> READY
-         * txDMA()   : LISTEN -> BUSY_TX
-         * TX [AF]   : BUSY_TX -> READY(?)
-         * rx()      : READY -> BUSY_RX -> READY
-         * rxDMA()   : LISTEN -> BUSY_RX
-         * RX [STOPF]: BUSY_RX -> READY(?)
-         */
         class Slave
         {
         private:
@@ -137,9 +128,7 @@ namespace STM32::I2C
 
         public:
             static inline Status listen(uint8_t address, AddrCallbackT cb);
-            static inline Status tx(uint8_t* data, uint16_t size);
             static inline Status txDMA(uint8_t* data, uint16_t size, DataCallbackT cb);
-            static inline Status rx(uint8_t* data, uint16_t size);
             static inline Status rxDMA(uint8_t* data, uint16_t size, DataCallbackT cb);
             static inline void dispatchEventIRQ();
             static inline void dispatchErrorIRQ();
