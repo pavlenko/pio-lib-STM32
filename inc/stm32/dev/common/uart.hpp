@@ -1,7 +1,7 @@
 #pragma once
 
 #include <stm32/dev/common/uart_definitions.hpp>
-#include <stm32/dev/common/dma.hpp>
+#include <stm32/dev/dma.hpp>
 
 namespace STM32::UART
 {
@@ -56,7 +56,7 @@ namespace STM32::UART
     }
 
     template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    inline void Driver<tRegsAddr, tIRQn, tClock, tDMATx, tDMARx>::send(void *data, uint16_t size, CallbackT cb)
+    inline void Driver<tRegsAddr, tIRQn, tClock, tDMATx, tDMARx>::txDMA(void *data, uint16_t size, CallbackT cb)
     {
         while (!readyTx())
             asm volatile("nop");
@@ -70,7 +70,7 @@ namespace STM32::UART
     }
 
     template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    inline void Driver<tRegsAddr, tIRQn, tClock, tDMATx, tDMARx>::recv(void *data, uint16_t size, CallbackT cb)
+    inline void Driver<tRegsAddr, tIRQn, tClock, tDMATx, tDMARx>::rxDMA(void *data, uint16_t size, CallbackT cb)
     {
         while (!readyRx())
             asm volatile("nop");
@@ -137,12 +137,10 @@ namespace STM32::UART
         static constexpr uint32_t CR2 = static_cast<uint32_t>(tEnable & IRQEnable::CR2Mask) >> 16u;
         static constexpr uint32_t CR3 = static_cast<uint32_t>(tEnable & IRQEnable::CR3Mask) >> 16u;
 
-        _regs()->CR1 |= CR1;
-        _regs()->CR2 |= CR2;
-        _regs()->CR3 |= CR3;
-
-        if (CR1 != 0u || CR2 != 0u || CR3 != 0u)
-            NVIC_EnableIRQ(tIRQn);
+        if constexpr (CR1 != 0u) _regs()->CR1 |= CR1;
+        if constexpr (CR2 != 0u) _regs()->CR2 |= CR2;
+        if constexpr (CR3 != 0u) _regs()->CR3 |= CR3;
+        if constexpr (CR1 != 0u || CR2 != 0u || CR3 != 0u) NVIC_EnableIRQ(tIRQn);
     }
 
     template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock, typename tDMATx, typename tDMARx>
@@ -153,8 +151,8 @@ namespace STM32::UART
         static constexpr uint32_t CR2 = static_cast<uint32_t>(tEnable & IRQEnable::CR2Mask) >> 16u;
         static constexpr uint32_t CR3 = static_cast<uint32_t>(tEnable & IRQEnable::CR3Mask) >> 16u;
 
-        _regs()->CR1 &= ~CR1;
-        _regs()->CR2 &= ~CR2;
-        _regs()->CR3 &= ~CR3;
+        if constexpr (CR1 != 0u) _regs()->CR1 &= ~CR1;
+        if constexpr (CR2 != 0u) _regs()->CR2 &= ~CR2;
+        if constexpr (CR3 != 0u) _regs()->CR3 &= ~CR3;
     }
 }

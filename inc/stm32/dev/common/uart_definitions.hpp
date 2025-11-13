@@ -132,7 +132,7 @@ namespace STM32::UART
          * @param size Data size
          * @param cb   Callback
          */
-        static inline void send(void *data, uint16_t size, CallbackT cb);
+        static inline void txDMA(void *data, uint16_t size, CallbackT cb);
 
         /**
          * @brief Receive data async
@@ -141,7 +141,7 @@ namespace STM32::UART
          * @param size Data size
          * @param cb   Callback
          */
-        static inline void recv(void *data, uint16_t size, CallbackT cb);
+        static inline void rxDMA(void *data, uint16_t size, CallbackT cb);
 
         /**
          * @brief Check if tx in progress
