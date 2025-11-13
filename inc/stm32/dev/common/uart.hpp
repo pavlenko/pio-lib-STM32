@@ -38,9 +38,9 @@ namespace STM32::UART
     }
 
     template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    inline USART_TypeDef *Driver<tRegsAddr, tIRQn, tClock, tDMATx, tDMARx>::_regs()
+    inline USART_TypeDef* Driver<tRegsAddr, tIRQn, tClock, tDMATx, tDMARx>::_regs()
     {
-        return reinterpret_cast<USART_TypeDef *>(tRegsAddr);
+        return reinterpret_cast<USART_TypeDef*>(tRegsAddr);
     }
 
     template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock, typename tDMATx, typename tDMARx>
@@ -56,45 +56,52 @@ namespace STM32::UART
     }
 
     template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    inline void Driver<tRegsAddr, tIRQn, tClock, tDMATx, tDMARx>::txDMA(void *data, uint16_t size, CallbackT cb)
+    inline void Driver<tRegsAddr, tIRQn, tClock, tDMATx, tDMARx>::txDMA(void* data, uint16_t size, CallbackT cb)
     {
         while (!readyTx())
             asm volatile("nop");
 
-        DMARx::template clrFlag<DMA::Flag::TRANSFER_COMPLETE>();
-        DMARx::setTransferCallback(cb);
+        DMATx::clrFlagTC();
+        DMATx::setEventCallback(cb);
+        DMATx::setErrorCallback([](DMA::Error e){});
 
         _regs()->CR3 |= USART_CR3_DMAR;
 
+#if defined(USART_ISR_PE)
+        DMATx::transfer(DMA::Config::PER_2_MEM | DMA::Config::MINC, data, &_regs()->TDR, size);
+#else
         DMATx::transfer(DMA::Config::PER_2_MEM | DMA::Config::MINC, data, &_regs()->DR, size);
+#endif
     }
 
     template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    inline void Driver<tRegsAddr, tIRQn, tClock, tDMATx, tDMARx>::rxDMA(void *data, uint16_t size, CallbackT cb)
+    inline void Driver<tRegsAddr, tIRQn, tClock, tDMATx, tDMARx>::rxDMA(void* data, uint16_t size, CallbackT cb)
     {
         while (!readyRx())
             asm volatile("nop");
 
-        DMATx::template clrFlag<DMA::Flag::TRANSFER_COMPLETE>();
-        DMATx::setTransferCallback(cb);
+        DMATx::clrFlagTC();
+        DMATx::setEventCallback(cb);
+        DMATx::setErrorCallback([](DMA::Error e){});
 
         _regs()->CR3 |= USART_CR3_DMAT;
 
         clrFlag<Flag::TX_COMPLETE>();
 
+#if defined(USART_ISR_PE)
+        DMATx::transfer(DMA::Config::MEM_2_PER | DMA::Config::MINC, data, &_regs()->RDR, size);
+#else
         DMATx::transfer(DMA::Config::MEM_2_PER | DMA::Config::MINC, data, &_regs()->DR, size);
+#endif
     }
 
     template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock, typename tDMATx, typename tDMARx>
     inline bool Driver<tRegsAddr, tIRQn, tClock, tDMATx, tDMARx>::readyTx()
     {
-        if constexpr (!std::is_same_v<DMATx, void>)
-        {
+        if constexpr (!std::is_same_v<DMATx, void>) {
             bool dmaActive = (_regs()->CR3 & USART_CR3_DMAT) && DMATx::isEnabled();
             return (!dmaActive || DMATx::template hasFlag<DMA::Flag::TRANSFER_COMPLETE>()) && hasFlag<Flag::TX_COMPLETE>();
-        }
-        else
-        {
+        } else {
             return hasFlag<Flag::TX_COMPLETE>();
         }
     }

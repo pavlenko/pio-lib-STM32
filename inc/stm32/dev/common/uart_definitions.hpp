@@ -3,11 +3,11 @@
 #include <stdint.h>
 #include <stm32/dev/common/_callback.hpp>
 #include <stm32/dev/common/_cmsis.hpp>
+#include <stm32/dev/dma.hpp>
 
 namespace STM32::UART
 {
-    enum class Config : uint32_t
-    {
+    enum class Config : uint32_t {
         // Mode bits
         ENABLE_RX = USART_CR1_RE,
         ENABLE_TX = USART_CR1_TE,
@@ -32,8 +32,7 @@ namespace STM32::UART
         CR3Mask = ENABLE_RTS_CTS,
     };
 
-    enum class IRQEnable
-    {
+    enum class IRQEnable {
         TX_COMPLETE = USART_CR1_TCIE,
         TX_EMPTY = USART_CR1_TXEIE,
         RX_NOT_EMPTY = USART_CR1_RXNEIE,
@@ -48,27 +47,30 @@ namespace STM32::UART
 #if defined(USART_CR1_CMIE)
         CHARACTER_MATCH = USART_CR1_CMIE,
 #endif
+#if defined(USART_CR2_LBDIE)
         LINE_BREAK = USART_CR2_LBDIE << 16u,
+#else
+        LINE_BREAK = 0,
+#endif
         ERROR = USART_CR3_EIE << 16u,
         CTS = USART_CR3_CTSIE << 16u,
 
         CR1Mask = TX_COMPLETE | TX_EMPTY | RX_NOT_EMPTY | IDLE | PARITY_ERROR
 #if defined(USART_CR1_EOBIE)
-        | END_OF_BLOCK
+                  | END_OF_BLOCK
 #endif
 #if defined(USART_CR1_RTOIE)
-        | RECEIVE_TIMEOUT
+                  | RECEIVE_TIMEOUT
 #endif
 #if defined(USART_CR1_CMIE)
-        | CHARACTER_MATCH
+                  | CHARACTER_MATCH
 #endif
         ,
         CR2Mask = LINE_BREAK,
         CR3Mask = ERROR | CTS,
     };
 
-    enum class Flag : uint32_t
-    {
+    enum class Flag : uint32_t {
         NONE = 0,
 #ifdef USART_SR_PE
         PARITY_ERROR = USART_SR_PE,
@@ -106,11 +108,13 @@ namespace STM32::UART
         ALL = ERRORS | TX_EMPTY | TX_COMPLETE | RX_NOT_EMPTY | IDLE | LINE_BREAK | CTS
     };
 
+    using CallbackT = DMA::EventCallbackT;
+
     template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock, typename tDMATx, typename tDMARx>
     class Driver
     {
     private:
-        static inline USART_TypeDef *_regs();
+        static inline USART_TypeDef* _regs();
 
     public:
         using DMATx = tDMATx;
@@ -132,7 +136,7 @@ namespace STM32::UART
          * @param size Data size
          * @param cb   Callback
          */
-        static inline void txDMA(void *data, uint16_t size, CallbackT cb);
+        static inline void txDMA(void* data, uint16_t size, CallbackT cb);
 
         /**
          * @brief Receive data async
@@ -141,7 +145,7 @@ namespace STM32::UART
          * @param size Data size
          * @param cb   Callback
          */
-        static inline void rxDMA(void *data, uint16_t size, CallbackT cb);
+        static inline void rxDMA(void* data, uint16_t size, CallbackT cb);
 
         /**
          * @brief Check if tx in progress
