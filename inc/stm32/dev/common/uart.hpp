@@ -15,18 +15,6 @@ namespace STM32::UART
         return Config(static_cast<uint32_t>(l) & static_cast<uint32_t>(r));
     }
 
-    // template <typename T>
-    // inline constexpr T operator>>(Config l, T r)
-    // {
-    //     return static_cast<uint32_t>(l) | r;
-    // }
-
-    // template <typename T>
-    // inline constexpr T operator&&(Config l, T r)
-    // {
-    //     return static_cast<uint32_t>(l) && r;
-    // }
-
     inline constexpr IRQEnable operator|(IRQEnable l, IRQEnable r)
     {
         return IRQEnable(static_cast<uint32_t>(l) | static_cast<uint32_t>(r));
@@ -63,14 +51,19 @@ namespace STM32::UART
 
         DMATx::clrFlagTC();
         DMATx::setEventCallback(cb);
-        DMATx::setErrorCallback([](DMA::Error e){});
+        DMATx::setErrorCallback([](DMA::Error e){
+            detachIRQ<IRQEnable::TX_EMPTY | IRQEnable::TX_COMPLETE>();
+            // state = ready
+            // err callback
+        });
 
         _regs()->CR3 |= USART_CR3_DMAR;
 
+#if defined(USART_SR_PE)
+        DMATx::transfer(DMA::Config::PER_2_MEM | DMA::Config::MINC, data, &_regs()->DR, size);
+#endif
 #if defined(USART_ISR_PE)
         DMATx::transfer(DMA::Config::PER_2_MEM | DMA::Config::MINC, data, &_regs()->TDR, size);
-#else
-        DMATx::transfer(DMA::Config::PER_2_MEM | DMA::Config::MINC, data, &_regs()->DR, size);
 #endif
     }
 
@@ -80,18 +73,23 @@ namespace STM32::UART
         while (!readyRx())
             asm volatile("nop");
 
-        DMATx::clrFlagTC();
-        DMATx::setEventCallback(cb);
-        DMATx::setErrorCallback([](DMA::Error e){});
+        DMARx::clrFlagTC();
+        DMARx::setEventCallback(cb);
+        DMARx::setErrorCallback([](DMA::Error e){
+            detachIRQ<IRQEnable::RX_NOT_EMPTY | IRQEnable::IDLE | IRQEnable::PARITY_ERROR | IRQEnable::ERROR>();
+            // state = ready
+            // err callback
+        });
 
         _regs()->CR3 |= USART_CR3_DMAT;
 
         clrFlag<Flag::TX_COMPLETE>();
 
+#if defined(USART_SR_PE)
+        DMATx::transfer(DMA::Config::MEM_2_PER | DMA::Config::MINC, data, &_regs()->DR, size);
+#endif
 #if defined(USART_ISR_PE)
         DMATx::transfer(DMA::Config::MEM_2_PER | DMA::Config::MINC, data, &_regs()->RDR, size);
-#else
-        DMATx::transfer(DMA::Config::MEM_2_PER | DMA::Config::MINC, data, &_regs()->DR, size);
 #endif
     }
 

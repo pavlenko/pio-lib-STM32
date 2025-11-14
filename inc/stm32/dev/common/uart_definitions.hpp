@@ -108,12 +108,20 @@ namespace STM32::UART
         ALL = ERRORS | TX_EMPTY | TX_COMPLETE | RX_NOT_EMPTY | IDLE | LINE_BREAK | CTS
     };
 
+    enum class State {
+        RESET,
+        READY,
+        BUSY,
+    };
+
     using CallbackT = DMA::EventCallbackT;
 
     template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock, typename tDMATx, typename tDMARx>
     class Driver
     {
     private:
+        //static inline State _txState;
+        //static inline State _rxState;
         static inline USART_TypeDef* _regs();
 
     public:

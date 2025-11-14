@@ -69,13 +69,13 @@ namespace STM32::Clock
         {
             RCC->CFGR = (RCC->CFGR & clrMask) | setMask | RCC_CFGR_PLLSRC_HSI_PREDIV;
             RCC->CFGR2 = divMask;
-            PLLClockFrequency = HSIClock::getFrequency() * tConfig::PLLMul / tConfig::PLLDiv;
+            PLLClockFrequency = HSIClock::getFrequency() * tConfig::PLLMul / (tConfig::PLLDiv == 0 ? 1 : tConfig::PLLDiv);
         }
         else
         {
             RCC->CFGR = (RCC->CFGR & clrMask) | setMask | RCC_CFGR_PLLSRC_HSE_PREDIV;
             RCC->CFGR2 = divMask;
-            PLLClockFrequency = HSEClock::getFrequency() * tConfig::PLLMul / tConfig::PLLDiv;
+            PLLClockFrequency = HSEClock::getFrequency() * tConfig::PLLMul / (tConfig::PLLDiv == 0 ? 1 : tConfig::PLLDiv);
         }
     }
 
