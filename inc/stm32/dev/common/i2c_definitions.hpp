@@ -7,6 +7,7 @@
 namespace STM32::I2C
 {
     enum class Flag : uint32_t {
+#if defined(I2C_SR2_BUSY)
         // SR1
         START_BIT = I2C_SR1_SB,
         ADDRESS_SENT = I2C_SR1_ADDR,
@@ -30,6 +31,26 @@ namespace STM32::I2C
         SMB_DEFAULT_ADDR = I2C_SR2_SMBDEFAULT << 16u,
         SMB_HOST = I2C_SR2_SMBHOST << 16u,
         DUAL_FLAG = I2C_SR2_DUALF << 16u,
+#endif
+#if defined(I2C_ISR_BUSY)
+        TX_EMPTY = I2C_ISR_TXE,
+        TX_INTERRUPT = I2C_ISR_TXIS,
+        RX_NOT_EMPTY = I2C_ISR_RXNE,
+        ADDRESSED = I2C_ISR_ADDR,
+        ACK_FAILED = I2C_ISR_NACKF,
+        STOP_DETECT = I2C_ISR_STOPF,
+        TRANSFER_COMPLETE = I2C_ISR_TC,
+        TRANSFER_COMPLETE_RELOAD = I2C_ISR_TCR,
+        BUS_ERROR = I2C_ISR_BERR,
+        ARBITRATION_LOST = I2C_ISR_ARLO,
+        OVERRUN = I2C_ISR_OVR,
+        PEC_ERROR = I2C_ISR_PECERR,
+        TIMEOUT = I2C_ISR_TIMEOUT,
+        SMB_ALERT = I2C_ISR_ALERT,
+        BUSY = I2C_ISR_BUSY,
+        DIRECTION = I2C_ISR_DIR,
+        ADDRESS_CODE = I2C_ISR_ADDCODE,
+#endif
     };
 
     // When the PCLK frequency is a multiple of 10 MHz, the DUTY bit must be set in order to reach the 400 kHz maximum I2C frequency.
@@ -48,14 +69,7 @@ namespace STM32::I2C
         SLAVE_RX, //< Slave busy rx
     };
 
-    enum class Error : uint8_t {
-        NONE,
-        BUS_ERROR = 0b00000001u,
-        ARBITRATION_LOST = 0b00000010u,
-        ACK_FAILURE = 0b00000100u,
-        OVER_UNDERRUN = 0b00001000u,
-        DMA = 0b00010000u
-    };
+    enum class Error : uint8_t { NONE, BUS_ERROR = 0b00000001u, ARBITRATION_LOST = 0b00000010u, ACK_FAILURE = 0b00000100u, OVER_UNDERRUN = 0b00001000u, DMA = 0b00010000u };
 
     using AddrCallbackT = std::add_pointer_t<void(bool masterTx)>;
     using DataCallbackT = std::add_pointer_t<void(bool success)>;
