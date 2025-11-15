@@ -6,50 +6,81 @@
 
 namespace STM32::I2C
 {
+    enum class IRQEnable {
+#if defined(I2C_SR2_BUSY)
+        EVENT = I2C_CR2_ITEVTEN,  //< Event (SB, ADDR, ADD10, STOPF, BTF, TXE if ITBUFEN = 1, RXNE if ITBUFEN = 1) interrupts
+        ERROR = I2C_CR2_ITERREN,  //< Error (ARLO, AF, BERR, OVR, TIMEOUT, PECERR, ALERT) interrupts
+        BUFFER = I2C_CR2_ITBUFEN, //< Buffer (TXE, RXNE) interrupts
+
+        ALL = EVENT | ERROR | BUFFER,
+#endif
+#if defined(I2C_ISR_BUSY)
+        TX = I2C_CR1_TXIE,     //< Transmit (TXIS) interrupt
+        RX = I2C_CR1_RXIE,     //< Receive (RXNE) interrupt
+        ADDR = I2C_CR1_ADDRIE, //< Address match (ADDR) interrupt (slave only)
+        NACK = I2C_CR1_NACKIE, //< Not acknowledge (NACKF) received interrupt
+        STOP = I2C_CR1_STOPIE, //< STOP detection (STOPF) interrupt
+        DONE = I2C_CR1_TCIE,   //< Transfer complete (TC, TCR) interrupts
+        ERROR = I2C_CR1_ERRIE, //< Error (ARLO, BERR, OVR, TIMEOUT, PECERR, ALERT) interrupts
+
+        ALL = TX | RX | ADDR | NACK | STOP | DONE | ERROR,
+#endif
+    };
+
+    inline constexpr IRQEnable operator | (IRQEnable l, IRQEnable r)
+    {
+        return IRQEnable(static_cast<uint32_t>(l) | static_cast<uint32_t>(r));
+    }
+
+    inline constexpr IRQEnable operator & (IRQEnable l, IRQEnable r)
+    {
+        return IRQEnable(static_cast<uint32_t>(l) & static_cast<uint32_t>(r));
+    }
+
     enum class Flag : uint32_t {
 #if defined(I2C_SR2_BUSY)
         // SR1
-        START_BIT = I2C_SR1_SB,
-        ADDRESS_SENT = I2C_SR1_ADDR,
-        BYTE_TX_FINISHED = I2C_SR1_BTF,
-        ADDR_10_SENT = I2C_SR1_ADD10,
-        STOP_DETECT = I2C_SR1_STOPF,
-        RX_NOT_EMPTY = I2C_SR1_RXNE,
-        TX_EMPTY = I2C_SR1_TXE,
-        BUS_ERROR = I2C_SR1_BERR,
-        ARBITRATION_LOST = I2C_SR1_ARLO,
-        ACK_FAILED = I2C_SR1_AF,
-        OVERRUN = I2C_SR1_OVR,
-        PEC_ERROR = I2C_SR1_PECERR,
-        TIMEOUT = I2C_SR1_TIMEOUT,
-        SMB_ALERT = I2C_SR1_SMBALERT,
+        START_BIT = I2C_SR1_SB,          //< Start condition generated (master mode)
+        ADDRESSED = I2C_SR1_ADDR,        //< Address matched (slave mode)
+        BYTE_TX_FINISHED = I2C_SR1_BTF,  //< Byte transfer finished
+        ADDR_10_SENT = I2C_SR1_ADD10,    //< 10-bit header sent (Master mode)
+        STOP_DETECTED = I2C_SR1_STOPF,   //< Stop condition detected
+        RX_NOT_EMPTY = I2C_SR1_RXNE,     //< Data register not empty (receivers)
+        TX_EMPTY = I2C_SR1_TXE,          //< Data register empty (transmitters)
+        BUS_ERROR = I2C_SR1_BERR,        //<E Bus errorc
+        ARBITRATION_LOST = I2C_SR1_ARLO, //<E Arbitration lost
+        ACK_FAILED = I2C_SR1_AF,         //<E Not acknowledge received
+        OVERRUN = I2C_SR1_OVR,           //<E Overrun/underrun (slave mode)
+        PEC_ERROR = I2C_SR1_PECERR,      //<E PEC error in reception
+        TIMEOUT = I2C_SR1_TIMEOUT,       //<E Timeout or Tlow error
+        SMB_ALERT = I2C_SR1_SMBALERT,    //< SMBus alert
         // SR2
         MASTER = I2C_SR2_MSL << 16u,
-        BUSY = I2C_SR2_BUSY << 16u,
-        DIRECTION = I2C_SR2_TRA << 16u,
-        GENERAL_CALL = I2C_SR2_GENCALL << 16u,
-        SMB_DEFAULT_ADDR = I2C_SR2_SMBDEFAULT << 16u,
-        SMB_HOST = I2C_SR2_SMBHOST << 16u,
-        DUAL_FLAG = I2C_SR2_DUALF << 16u,
+        BUSY = I2C_SR2_BUSY << 16u,              //< Bus busy
+        DIRECTION = I2C_SR2_TRA << 16u,          //< Transfer direction (0 = SLAVE_RX, 1 = SLAVE_TX)
+        GENERAL_CALL = I2C_SR2_GENCALL << 16u,   //< General call address (Slave mode)
+        SMB_DEFAULT = I2C_SR2_SMBDEFAULT << 16u, //< SMBus device default address (Slave mode)
+        SMB_HOST = I2C_SR2_SMBHOST << 16u,       //< SMBus host header (Slave mode)c
+        DUAL_FLAG = I2C_SR2_DUALF << 16u,        //< Dual flag (Slave mode) 0: ADDR = OAR1; 1: ADDR = OAR2
 #endif
 #if defined(I2C_ISR_BUSY)
-        TX_EMPTY = I2C_ISR_TXE,
-        TX_INTERRUPT = I2C_ISR_TXIS,
-        RX_NOT_EMPTY = I2C_ISR_RXNE,
-        ADDRESSED = I2C_ISR_ADDR,
-        ACK_FAILED = I2C_ISR_NACKF,
-        STOP_DETECT = I2C_ISR_STOPF,
-        TRANSFER_COMPLETE = I2C_ISR_TC,
-        TRANSFER_COMPLETE_RELOAD = I2C_ISR_TCR,
-        BUS_ERROR = I2C_ISR_BERR,
-        ARBITRATION_LOST = I2C_ISR_ARLO,
-        OVERRUN = I2C_ISR_OVR,
-        PEC_ERROR = I2C_ISR_PECERR,
-        TIMEOUT = I2C_ISR_TIMEOUT,
-        SMB_ALERT = I2C_ISR_ALERT,
-        BUSY = I2C_ISR_BUSY,
-        DIRECTION = I2C_ISR_DIR,
-        ADDRESS_CODE = I2C_ISR_ADDCODE,
+        TX_EMPTY = I2C_ISR_TXE,                 //< Data register empty (transmitters)
+        TX_INTERRUPT = I2C_ISR_TXIS,            //< Transmit interrupt status (transmitters)
+        RX_NOT_EMPTY = I2C_ISR_RXNE,            //< Data register not empty (receivers)
+        ADDRESSED = I2C_ISR_ADDR,               //< Address matched (slave mode)
+        ACK_FAILED = I2C_ISR_NACKF,             //< Not acknowledge received
+        STOP_DETECTED = I2C_ISR_STOPF,          //< Stop condition detected
+        TRANSFER_COMPLETE = I2C_ISR_TC,         //< Transfer complete (master mode)
+        TRANSFER_COMPLETE_RELOAD = I2C_ISR_TCR, //< Transfer complete reload
+        BUS_ERROR = I2C_ISR_BERR,               //<E Bus error
+        ARBITRATION_LOST = I2C_ISR_ARLO,        //<E Arbitration lost
+        OVER_UNDERRUN = I2C_ISR_OVR,                  //<E Overrun/underrun (slave mode)
+        PEC_ERROR = I2C_ISR_PECERR,             //<E PEC error in reception
+        TIMEOUT = I2C_ISR_TIMEOUT,              //<E Timeout or Tlow error
+        SMB_ALERT = I2C_ISR_ALERT,              //< SMBus alert
+        BUSY = I2C_ISR_BUSY,                    //< Bus busy
+        DIRECTION = I2C_ISR_DIR,                //< Transfer direction (0 = SLAVE_RX, 1 = SLAVE_TX)
+        ADDRESS_CODE = I2C_ISR_ADDCODE,         //< Address match code (slave mode)
 #endif
     };
 
@@ -93,16 +124,28 @@ namespace STM32::I2C
         static inline bool _waitBusy();
         static inline bool _waitFlag(Flag flag);
 
-        static inline void _clearADDR();
-        static inline void _clearSTOPF();
+        static inline void _clearADDR();//< @deprecated
+        static inline void _clearSTOPF();//< @deprecated
 
         static inline bool _start();
         static inline bool _sendDevAddressW(uint8_t address);
         static inline bool _sendDevAddressR(uint8_t address);
 
+        template <Flag tFlag>
+        static inline bool _hasFlag(uint32_t reg);
+
+        template <Flag tFlag>
+        static inline void _clrFlag();
+
     public:
         using DMATx = tDMATx;
         using DMARx = tDMARx;
+
+        template <IRQEnable tFlag>
+        static inline void attachIRQ();
+
+        template <IRQEnable tFlag>
+        static inline void detachIRQ();
 
         /**
          * select(): RESET|READY -> BUSY -> READY
@@ -137,6 +180,10 @@ namespace STM32::I2C
         class Slave
         {
         private:
+            static inline void _onADDR(uint32_t);
+            static inline void _onSTOP();
+            static inline void _onNACK();
+            static inline void _onIRQError(Error);
             static inline void _onDMAEvent(DMA::Event);
             static inline void _onDMAError(DMA::Error);
 

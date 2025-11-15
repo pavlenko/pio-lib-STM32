@@ -7,22 +7,22 @@
 
 namespace STM32::I2C
 {
-    inline constexpr Flag operator|(Flag l, Flag r)
+    inline constexpr Flag operator | (Flag l, Flag r)
     {
         return Flag(static_cast<uint32_t>(l) | static_cast<uint32_t>(r));
     }
 
-    inline constexpr Flag operator&(Flag l, Flag r)
+    inline constexpr Flag operator & (Flag l, Flag r)
     {
         return Flag(static_cast<uint32_t>(l) & static_cast<uint32_t>(r));
     }
 
-    inline constexpr Error operator|=(Error l, Error r)
+    inline constexpr Error operator |= (Error l, Error r)
     {
         return Error(static_cast<uint32_t>(l) | static_cast<uint32_t>(r));
     }
 
-    inline constexpr Error operator&(Error l, Error r)
+    inline constexpr Error operator & (Error l, Error r)
     {
         return Error(static_cast<uint32_t>(l) & static_cast<uint32_t>(r));
     }
@@ -76,7 +76,7 @@ namespace STM32::I2C
     inline bool Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::_sendDevAddressW(uint8_t address)
     {
         _regs()->DR = (address << 1);
-        if (!_waitFlag(Flag::ADDRESS_SENT)) {
+        if (!_waitFlag(Flag::ADDRESSED)) {
             return false;
         }
         _clearADDR();
@@ -87,11 +87,57 @@ namespace STM32::I2C
     inline bool Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::_sendDevAddressR(uint8_t address)
     {
         _regs()->DR = (address << 1u) | 1u;
-        if (!_waitFlag(Flag::ADDRESS_SENT)) {
+        if (!_waitFlag(Flag::ADDRESSED)) {
             return false;
         }
         _clearADDR();
         return true;
+    }
+
+    template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
+    template <IRQEnable tFlag>
+    inline void Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::attachIRQ()
+    {
+#if defined(I2C_SR2_BUSY)
+        _regs()->CR2 |= static_cast<uint32_t>(tFlag);
+#endif
+#if defined(I2C_ISR_BUSY)
+        _regs()->CR1 |= static_cast<uint32_t>(tFlag);
+#endif
+    }
+
+    template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
+    template <IRQEnable tFlag>
+    inline void Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::detachIRQ()
+    {
+#if defined(I2C_SR2_BUSY)
+        _regs()->CR2 &= ~static_cast<uint32_t>(tFlag);
+#endif
+#if defined(I2C_ISR_BUSY)
+        _regs()->CR1 &= ~static_cast<uint32_t>(tFlag);
+#endif
+    }
+
+    template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
+    template <Flag tFlag>
+    inline bool Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::_hasFlag(uint32_t reg)
+    {
+        return (reg & reinterpret_cast<uint32_t>(tFlag)) != 0u;
+    }
+
+    template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
+    template <Flag tFlag>
+    inline void Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::_clrFlag()
+    {
+#if defined(I2C_SR2_BUSY)
+#endif
+#if defined(I2C_ISR_BUSY)
+        if constexpr (tFlag == Flag::TX_EMPTY) {
+            _regs()->ISR |= static_cast<uint32_t>(tFlag);
+        } else {
+            _regs()->ICR = static_cast<uint32_t>(tFlag);
+        }
+#endif
     }
 
     namespace
@@ -248,6 +294,58 @@ namespace STM32::I2C
 
     // --- SLAVE ---
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
+    inline void Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Slave::_onADDR(uint32_t flags)
+    {
+        //TODO state = ADDRESSED?
+        if (_addrCallback) _addrCallback(_hasFlag<Flag::DIRECTION>(flags));
+        _clrFlag<Flag::ADDRESSED>();
+    }
+
+    /**
+     * @brief MASTER_TX sent STOP condition
+     */
+    template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
+    inline void Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Slave::_onSTOP()
+    {
+        // disable IRQ
+        // clear STOPF
+        // disable ACK
+        // if DMA_TX - disable DMA_TX, upd counter (IT mode only), call DMA::abort()
+        // if DMA_RX - disable DMA_RX, upd counter (IT mode only), call DMA::abort()
+        // rx remaining data if any
+        // process callbacks LISTEN & SLAVE_RX
+        // state = READY
+    }
+
+    /**
+     * @brief MASTER_RX NACKed when slave state == SLAVE_TX
+     */
+    template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
+    inline void Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Slave::_onNACK()
+    {
+        // IF state == LISTEN - transfer not started by slave - need somehow handle this case
+        // IF state == SLAVE_TX - transfer interrupted by master
+        // ELSE - error
+
+        // disable IRQ
+        // clear AF
+        // disable ACK
+        // flush tx if any
+        // process callbacks LISTEN(?) & SLAVE_TX, error(?)
+        // state = READY
+    }
+
+    template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
+    inline void Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Slave::_onIRQError(Error e)
+    {
+        // disable IRQ
+        // disable DMA
+        // flush tx if any
+        // process callback
+        // state = READY
+    }
+
+    template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
     inline void Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Slave::_onDMAEvent(DMA::Event e)
     {
         CLR_BIT(_regs()->CR2, I2C_CR2_ITEVTEN | I2C_CR2_ITERREN | I2C_CR2_DMAEN); // disable IRQ, DMA
@@ -323,13 +421,19 @@ namespace STM32::I2C
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
     inline void Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Slave::dispatchEventIRQ()
     {
+#if defined(I2C_SR2_BUSY)
         uint32_t SR2 = _regs()->SR2; // read SR2 first to prevent clear ADDR
         uint32_t SR1 = _regs()->SR1;
+#endif
+#if defined(I2C_ISR_BUSY)
+        uint32_t SR1 = _regs()->ISR;
+        uint32_t SR2 = SR1;
+#endif
 
-        if ((SR1 & I2C_SR1_ADDR) != 0u) {
-            if (_addrCallback) _addrCallback(SR2 & I2C_SR2_TRA);
-            _clearADDR();
-        } else if ((SR1 & I2C_SR1_STOPF) != 0u) {
+        if (_hasFlag<Flag::ADDRESSED>(SR1)) {
+            _onADDR(SR2);
+        } else if (_hasFlag<Flag::STOP_DETECTED>(SR1)) {
+            _onSTOP();
             CLR_BIT(_regs()->CR2, I2C_CR2_ITEVTEN | I2C_CR2_ITBUFEN | I2C_CR2_ITERREN); // disable IRQ
             _clearSTOPF();
             CLR_BIT(_regs()->CR1, I2C_CR1_ACK);   // disable ACK
@@ -345,13 +449,19 @@ namespace STM32::I2C
     template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
     inline void Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Slave::dispatchErrorIRQ()
     {
+#if defined(I2C_SR2_BUSY)
         uint32_t SR1 = _regs()->SR1;
+#endif
+#if defined(I2C_ISR_BUSY)
+        uint32_t SR1 = _regs()->ISR;
+#endif
         Error errors = Error::NONE;
 
-        if ((SR1 & I2C_SR1_BERR) != 0u) {
+        if (_hasFlag<Flag::BUS_ERROR>(SR1)) {
             errors |= Error::BUS_ERROR;
-            CLR_BIT(_regs()->SR1, I2C_SR1_BERR); // clear flag
+            _clrFlag<Flag::BUS_ERROR>();
         }
+#if defined(I2C_SR2_BUSY)
         if ((SR1 & I2C_SR1_AF) != 0u) {
             if (_state == State::SLAVE_TX) {
                 _state = State::READY;
@@ -365,12 +475,17 @@ namespace STM32::I2C
                 CLR_BIT(_regs()->SR1, I2C_SR1_AF); // clear flag
             }
         }
-        if ((SR1 & I2C_SR1_OVR) != 0u) {
+#endif
+        if (_hasFlag<Flag::OVER_UNDERRUN>(SR1)) {
             errors |= Error::OVER_UNDERRUN;
-            CLR_BIT(_regs()->SR1, I2C_SR1_OVR); // clear flag
+            _clrFlag<Flag::OVER_UNDERRUN>();
+        }
+        if (_hasFlag<Flag::ARBITRATION_LOST>(SR1)) {
+            errors |= Error::ARBITRATION_LOST;
+            _clrFlag<Flag::ARBITRATION_LOST>();
         }
         if (errors != Error::NONE) {
-            CLR_BIT(_regs()->CR2, I2C_CR2_ITEVTEN | I2C_CR2_ITBUFEN | I2C_CR2_ITERREN); // disable IRQ
+            detachIRQ<IRQEnable::ALL>();
             if ((_regs()->CR2 & I2C_CR2_DMAEN) != 0u) {
                 CLR_BIT(_regs()->CR2, I2C_CR2_DMAEN); // disable DMA
                 if (_state == State::SLAVE_TX) DMATx::abort();
