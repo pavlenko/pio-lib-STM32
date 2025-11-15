@@ -2,10 +2,19 @@
 
 #include <stm32/dev/common/_cmsis.hpp>
 #include <stm32/dev/dma.hpp>
+#include <concepts>
 #include <type_traits>
 
 namespace STM32::I2C
 {
+    using RegsT = std::add_pointer_t<I2C_TypeDef*()>;
+
+    template <uint32_t tRegsAddr>
+    inline I2C_TypeDef* Regs()
+    {
+        return reinterpret_cast<I2C_TypeDef*>(tRegsAddr);
+    }
+
     enum class IRQEnable {
 #if defined(I2C_SR2_BUSY)
         EVENT = I2C_CR2_ITEVTEN,  //< Event (SB, ADDR, ADD10, STOPF, BTF, TXE if ITBUFEN = 1, RXNE if ITBUFEN = 1) interrupts
@@ -74,7 +83,7 @@ namespace STM32::I2C
         TRANSFER_COMPLETE_RELOAD = I2C_ISR_TCR, //< Transfer complete reload
         BUS_ERROR = I2C_ISR_BERR,               //<E Bus error
         ARBITRATION_LOST = I2C_ISR_ARLO,        //<E Arbitration lost
-        OVER_UNDERRUN = I2C_ISR_OVR,                  //<E Overrun/underrun (slave mode)
+        OVER_UNDERRUN = I2C_ISR_OVR,            //<E Overrun/underrun (slave mode)
         PEC_ERROR = I2C_ISR_PECERR,             //<E PEC error in reception
         TIMEOUT = I2C_ISR_TIMEOUT,              //<E Timeout or Tlow error
         SMB_ALERT = I2C_ISR_ALERT,              //< SMBus alert
@@ -106,7 +115,7 @@ namespace STM32::I2C
     using DataCallbackT = std::add_pointer_t<void(bool success)>;
     using ErrorCallbackT = std::add_pointer_t<void(Error errors)>;
 
-    template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
+    template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
     class Driver
     {
     protected:
@@ -120,12 +129,12 @@ namespace STM32::I2C
         static inline DataCallbackT _dataCallback;
         static inline ErrorCallbackT _errorCallback;
 
-        static inline I2C_TypeDef* _regs();
+        // static inline I2C_TypeDef* _regs();
         static inline bool _waitBusy();
         static inline bool _waitFlag(Flag flag);
 
-        static inline void _clearADDR();//< @deprecated
-        static inline void _clearSTOPF();//< @deprecated
+        static inline void _clearADDR();  //< @deprecated
+        static inline void _clearSTOPF(); //< @deprecated
 
         static inline bool _start();
         static inline bool _sendDevAddressW(uint8_t address);

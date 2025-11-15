@@ -4,9 +4,18 @@
 #include <stm32/dev/common/_callback.hpp>
 #include <stm32/dev/common/_cmsis.hpp>
 #include <stm32/dev/dma.hpp>
+#include <type_traits>
 
 namespace STM32::UART
 {
+    using RegsT = std::add_pointer_t<USART_TypeDef*()>;
+
+    template <uint32_t tRegsAddr>
+    inline USART_TypeDef* Regs()
+    {
+        return reinterpret_cast<USART_TypeDef*>(tRegsAddr);
+    }
+
     enum class Config : uint32_t {
         // Mode bits
         ENABLE_RX = USART_CR1_RE,
@@ -116,13 +125,13 @@ namespace STM32::UART
 
     using CallbackT = DMA::EventCallbackT;
 
-    template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock, typename tDMATx, typename tDMARx>
+    template <RegsT _regs, IRQn_Type tIRQn, typename tClock, typename tDMATx, typename tDMARx>
     class Driver
     {
     private:
         //static inline State _txState;
         //static inline State _rxState;
-        static inline USART_TypeDef* _regs();
+        // static inline USART_TypeDef* _regs();
 
     public:
         using DMATx = tDMATx;
