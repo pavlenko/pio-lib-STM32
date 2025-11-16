@@ -15,12 +15,13 @@ namespace STM32::I2C
         return reinterpret_cast<I2C_TypeDef*>(tRegsAddr);
     }
 
-    enum class IRQEnable {
+    enum class IRQEn {
 #if defined(I2C_SR2_BUSY)
         EVENT = I2C_CR2_ITEVTEN,  //< Event (SB, ADDR, ADD10, STOPF, BTF, TXE if ITBUFEN = 1, RXNE if ITBUFEN = 1) interrupts
         ERROR = I2C_CR2_ITERREN,  //< Error (ARLO, AF, BERR, OVR, TIMEOUT, PECERR, ALERT) interrupts
         BUFFER = I2C_CR2_ITBUFEN, //< Buffer (TXE, RXNE) interrupts
 
+        LISTEN = EVENT | ERROR,
         ALL = EVENT | ERROR | BUFFER,
 #endif
 #if defined(I2C_ISR_BUSY)
@@ -32,19 +33,30 @@ namespace STM32::I2C
         DONE = I2C_CR1_TCIE,   //< Transfer complete (TC, TCR) interrupts
         ERROR = I2C_CR1_ERRIE, //< Error (ARLO, BERR, OVR, TIMEOUT, PECERR, ALERT) interrupts
 
-        ALL = TX | RX | ADDR | NACK | STOP | DONE | ERROR,
+        LISTEN = ADDR | STOP | NACK | ERROR,
+        ALL = TX | RX | ADDR | STOP | NACK | DONE | ERROR,
 #endif
     };
 
-    inline constexpr IRQEnable operator | (IRQEnable l, IRQEnable r)
-    {
-        return IRQEnable(static_cast<uint32_t>(l) | static_cast<uint32_t>(r));
-    }
+    inline constexpr IRQEn operator | (IRQEn l, IRQEn r) { return IRQEn(static_cast<uint32_t>(l) | static_cast<uint32_t>(r)); }
 
-    inline constexpr IRQEnable operator & (IRQEnable l, IRQEnable r)
-    {
-        return IRQEnable(static_cast<uint32_t>(l) & static_cast<uint32_t>(r));
-    }
+    inline constexpr IRQEn operator & (IRQEn l, IRQEn r) { return IRQEn(static_cast<uint32_t>(l) & static_cast<uint32_t>(r)); }
+
+    enum class DMAEn {
+#if defined(I2C_SR2_BUSY)
+        TX = I2C_CR2_DMAEN,
+        RX = I2C_CR2_DMAEN,
+#endif
+#if defined(I2C_ISR_BUSY)
+        TX = I2C_CR1_TXDMAEN,
+        RX = I2C_CR1_RXDMAEN,
+#endif
+        ALL = TX | RX,
+    };
+
+    inline constexpr DMAEn operator | (DMAEn l, DMAEn r) { return DMAEn(static_cast<uint32_t>(l) | static_cast<uint32_t>(r)); }
+
+    inline constexpr DMAEn operator & (DMAEn l, DMAEn r) { return DMAEn(static_cast<uint32_t>(l) & static_cast<uint32_t>(r)); }
 
     enum class Flag : uint32_t {
 #if defined(I2C_SR2_BUSY)
@@ -59,7 +71,7 @@ namespace STM32::I2C
         BUS_ERROR = I2C_SR1_BERR,        //<E Bus errorc
         ARBITRATION_LOST = I2C_SR1_ARLO, //<E Arbitration lost
         ACK_FAILED = I2C_SR1_AF,         //<E Not acknowledge received
-        OVERRUN = I2C_SR1_OVR,           //<E Overrun/underrun (slave mode)
+        OVER_UNDERRUN = I2C_SR1_OVR,     //<E Overrun/underrun (slave mode)
         PEC_ERROR = I2C_SR1_PECERR,      //<E PEC error in reception
         TIMEOUT = I2C_SR1_TIMEOUT,       //<E Timeout or Tlow error
         SMB_ALERT = I2C_SR1_SMBALERT,    //< SMBus alert
@@ -133,9 +145,6 @@ namespace STM32::I2C
         static inline bool _waitBusy();
         static inline bool _waitFlag(Flag flag);
 
-        static inline void _clearADDR();  //< @deprecated
-        static inline void _clearSTOPF(); //< @deprecated
-
         static inline bool _start();
         static inline bool _sendDevAddressW(uint8_t address);
         static inline bool _sendDevAddressR(uint8_t address);
@@ -150,12 +159,6 @@ namespace STM32::I2C
         using DMATx = tDMATx;
         using DMARx = tDMARx;
 
-        template <IRQEnable tFlag>
-        static inline void attachIRQ();
-
-        template <IRQEnable tFlag>
-        static inline void detachIRQ();
-
         /**
          * select(): RESET|READY -> BUSY -> READY
          * tx()    : READY -> BUSY_TX -> READY
@@ -167,13 +170,6 @@ namespace STM32::I2C
         class Master
         {
         public:
-            enum class MState {
-                RESET,   // initial state
-                READY,   // bus configured
-                BUSY_TX, // busy transmit
-                BUSY_RX, // busy receive
-                ERROR,   // error occured
-            };
             static inline Status select(uint8_t address, Speed speed);
             static inline Status tx(uint8_t* data, uint16_t size);
             static inline Status rx(uint8_t* data, uint16_t size);

@@ -36,24 +36,6 @@ namespace STM32::I2C
     }
 
     template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    inline void Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::_clearADDR()
-    {
-        __IO uint32_t reg;
-        reg = _regs()->SR1;
-        reg = _regs()->SR2;
-        (void)reg;
-    }
-
-    template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    inline void Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::_clearSTOPF()
-    {
-        __IO uint32_t reg;
-        reg = _regs()->SR1;
-        SET_BIT(_regs()->CR1, I2C_CR1_PE);
-        (void)reg;
-    }
-
-    template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
     inline bool Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::_start()
     {
         _regs()->CR1 |= I2C_CR1_START;
@@ -63,54 +45,30 @@ namespace STM32::I2C
     template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
     inline bool Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::_sendDevAddressW(uint8_t address)
     {
-        _regs()->DR = (address << 1);
+        // _regs()->DR = (address << 1);
         if (!_waitFlag(Flag::ADDRESSED)) {
             return false;
         }
-        _clearADDR();
+        _clrFlag<Flag::ADDRESSED>();
         return true;
     }
 
     template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
     inline bool Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::_sendDevAddressR(uint8_t address)
     {
-        _regs()->DR = (address << 1u) | 1u;
+        // _regs()->DR = (address << 1u) | 1u;
         if (!_waitFlag(Flag::ADDRESSED)) {
             return false;
         }
-        _clearADDR();
+        _clrFlag<Flag::ADDRESSED>();
         return true;
-    }
-
-    template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    template <IRQEnable tFlag>
-    inline void Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::attachIRQ()
-    {
-#if defined(I2C_SR2_BUSY)
-        _regs()->CR2 |= static_cast<uint32_t>(tFlag);
-#endif
-#if defined(I2C_ISR_BUSY)
-        _regs()->CR1 |= static_cast<uint32_t>(tFlag);
-#endif
-    }
-
-    template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    template <IRQEnable tFlag>
-    inline void Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::detachIRQ()
-    {
-#if defined(I2C_SR2_BUSY)
-        _regs()->CR2 &= ~static_cast<uint32_t>(tFlag);
-#endif
-#if defined(I2C_ISR_BUSY)
-        _regs()->CR1 &= ~static_cast<uint32_t>(tFlag);
-#endif
     }
 
     template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
     template <Flag tFlag>
     inline bool Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::_hasFlag(uint32_t reg)
     {
-        return (reg & reinterpret_cast<uint32_t>(tFlag)) != 0u;
+        return (reg & static_cast<uint32_t>(tFlag)) != 0u;
     }
 
     template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
@@ -118,6 +76,19 @@ namespace STM32::I2C
     inline void Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::_clrFlag()
     {
 #if defined(I2C_SR2_BUSY)
+        if constexpr (tFlag == Flag::ADDRESSED) {
+            __IO uint32_t reg;
+            reg = _regs()->SR1;
+            reg = _regs()->SR2;
+            (void)reg;
+        } else if constexpr (tFlag == Flag::STOP_DETECTED) {
+            __IO uint32_t reg;
+            reg = _regs()->SR1;
+            SET_BIT(_regs()->CR1, I2C_CR1_PE);
+            (void)reg;
+        } else {
+            _regs()->SR1 = ~static_cast<uint32_t>(tFlag);
+        }
 #endif
 #if defined(I2C_ISR_BUSY)
         if constexpr (tFlag == Flag::TX_EMPTY) {
@@ -130,51 +101,94 @@ namespace STM32::I2C
 
     namespace
     {
+#if defined(I2C_SR2_BUSY)
         // F1,F2,F4
-        template <uint32_t tRegsAddr>
+        template <RegsT _regs>
         static inline void calculateTimings(Speed speed, uint32_t pclk)
         {
-            auto regs = reinterpret_cast<I2C_TypeDef*>(tRegsAddr);
-
             uint32_t freq = pclk / 1000000;
 
-            MODIFY_REG(regs->CR2, I2C_CR2_FREQ, freq);
-            MODIFY_REG(regs->TRISE, I2C_TRISE_TRISE, I2C_RISE_TIME(freq, static_cast<uint32_t>(speed)));
-            MODIFY_REG(regs->CCR, (I2C_CCR_FS | I2C_CCR_DUTY | I2C_CCR_CCR), I2C_SPEED(pclk, static_cast<uint32_t>(speed), 0));
+            MODIFY_REG(_regs()->CR2, I2C_CR2_FREQ, freq);
+            MODIFY_REG(_regs()->TRISE, I2C_TRISE_TRISE, I2C_RISE_TIME(freq, static_cast<uint32_t>(speed)));
+            MODIFY_REG(_regs()->CCR, (I2C_CCR_FS | I2C_CCR_DUTY | I2C_CCR_CCR), I2C_SPEED(pclk, static_cast<uint32_t>(speed), 0));
+        }
+
+        template <RegsT _regs>
+        static inline void enableACK()
+        {
+            _regs()->CR2 |= I2C_CR1_ACK;
+        }
+
+        template <RegsT _regs>
+        static inline void enableIRQ(IRQEn flags)
+        {
+            _regs()->CR2 |= static_cast<uint32_t>(flags);
+        }
+
+        template <RegsT _regs>
+        static inline void enableDMA(DMAEn flags)
+        {
+            _regs()->CR2 |= static_cast<uint32_t>(flags);
         }
 
         template <RegsT _regs>
         static inline void disableACK()
         {
-#if defined(I2C_SR2_BUSY)
             _regs()->CR2 &= ~I2C_CR1_ACK;
-#endif
-#if defined(I2C_ISR_BUSY)
-            _regs()->CR1 |= I2C_CR2_NACK;
-#endif
         }
 
         template <RegsT _regs>
-        static inline void disableIRQ(IRQEnable flags)
+        static inline void disableIRQ(IRQEn flags)
         {
-#if defined(I2C_SR2_BUSY)
             _regs()->CR2 &= ~static_cast<uint32_t>(flags);
-#endif
-#if defined(I2C_ISR_BUSY)
-            _regs()->CR1 &= ~static_cast<uint32_t>(flags);
-#endif
         }
 
         template <RegsT _regs>
-        static inline void disableDMA()
+        static inline void disableDMA(DMAEn flags)
         {
-#if defined(I2C_SR2_BUSY)
-            //TODO
+            _regs()->CR2 &= ~static_cast<uint32_t>(flags);
+        }
 #endif
 #if defined(I2C_ISR_BUSY)
-            //TODO
-#endif
+        template <uint32_t tRegsAddr>
+        static inline void calculateTimings(Speed speed, uint32_t pclk);
+
+        template <RegsT _regs>
+        static inline void enableACK()
+        {
+            _regs()->CR1 &= ~I2C_CR2_NACK;
         }
+
+        template <RegsT _regs>
+        static inline void enableIRQ(IRQEn flags)
+        {
+            _regs()->CR1 |= static_cast<uint32_t>(flags);
+        }
+
+        template <RegsT _regs>
+        static inline void enableDMA(DMAEn flags)
+        {
+            _regs()->CR1 |= static_cast<uint32_t>(flags);
+        }
+
+        template <RegsT _regs>
+        static inline void disableACK()
+        {
+            _regs()->CR1 |= I2C_CR2_NACK;
+        }
+
+        template <RegsT _regs>
+        static inline void disableIRQ(IRQEn flags)
+        {
+            _regs()->CR1 &= ~static_cast<uint32_t>(flags);
+        }
+
+        template <RegsT _regs>
+        static inline void disableDMA(DMAEn flags)
+        {
+            _regs()->CR1 &= ~static_cast<uint32_t>(flags);
+        }
+#endif
     }
 
     // --- MASTER ---
@@ -194,7 +208,7 @@ namespace STM32::I2C
             _regs()->CR1 |= I2C_CR1_SWRST; // software reset (F1,F2,F4)
             _regs()->CR1 &= ~I2C_CR1_SWRST;
 
-            calculateTimings<tRegsAddr>(speed, tClock::getFrequency());
+            calculateTimings<_regs>(speed, tClock::getFrequency());
 
             _regs()->CR1 |= I2C_CR1_PE; // enable peripherial
         }
@@ -328,7 +342,7 @@ namespace STM32::I2C
     template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
     inline void Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Slave::_onSTOP()
     {
-        disableIRQ<_regs>(IRQEnable::ALL); // disable IRQ
+        disableIRQ<_regs>(IRQEn::ALL); // disable IRQ
         // clear STOPF
         // disable ACK
         // if DMA_TX - disable DMA_TX, upd counter (IT mode only), call DMA::abort()
@@ -360,17 +374,27 @@ namespace STM32::I2C
     inline void Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Slave::_onIRQError(Error e)
     {
         // disable IRQ
+        if (_state == State::LISTEN) {
+        } else if (_state == State::SLAVE_TX) {
+            disableDMA<_regs>(DMAEn::TX);
+            DMATx::abort();
+        } else if (_state == State::SLAVE_RX) {
+            disableDMA<_regs>(DMAEn::RX);
+            DMARx::abort();
+        }
         // disable DMA
         // flush tx if any
-        // process callback
-        // state = READY
+
+        if (_errorCallback) {
+            _errorCallback(e);
+        }
+        _state = State::READY;
     }
 
     template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
     inline void Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Slave::_onDMAEvent(DMA::Event e)
     {
-        // CLR_BIT(_regs()->CR2, I2C_CR2_ITEVTEN | I2C_CR2_ITERREN | I2C_CR2_DMAEN); // disable IRQ, DMA
-        disableIRQ<_regs>(IRQEnable::ALL);
+        disableIRQ<_regs>(IRQEn::ALL);
         disableDMA<_regs>();
         _state = State::LISTEN;
         if (_dataCallback) _dataCallback(true);
@@ -381,7 +405,6 @@ namespace STM32::I2C
     inline void Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Slave::_onDMAError(DMA::Error e)
     {
         if (e == DMA::Error::FIFO) return;
-        // CLR_BIT(_regs()->CR2, I2C_CR1_ACK); // disable ACK
         disableACK<_regs>();
         _state = State::READY;
         if (_errorCallback) _errorCallback(Error::DMA);
@@ -394,11 +417,15 @@ namespace STM32::I2C
 
         _state = State::LISTEN;
 
-        _regs()->OAR1 = address & I2C_OAR1_ADD1_7; // set listen address
-
-        _regs()->CR1 |= I2C_CR1_PE;                        // enable peripherial
-        _regs()->CR1 |= I2C_CR1_ACK;                       // enable ACK
-        _regs()->CR2 |= I2C_CR2_ITEVTEN | I2C_CR2_ITERREN; // enable IRQ
+#if defined(I2C_SR2_BUSY)
+        _regs()->OAR1 = (address & 0xFE);
+#endif
+#if defined(I2C_ISR_BUSY)
+        _regs()->OAR1 = I2C_OAR1_OA1EN | (address & 0xFE);
+#endif
+        _regs()->CR1 |= I2C_CR1_PE; // enable peripherial
+        enableACK<_regs>();
+        enableIRQ<_regs>(IRQEn::LISTEN);
 
         _addrCallback = cb;
         return Status::OK;
@@ -415,10 +442,15 @@ namespace STM32::I2C
         DMATx::clrFlagTC();
         DMATx::setEventCallback(_onDMAEvent);
         DMATx::setErrorCallback(_onDMAError);
+#if defined(I2C_SR2_BUSY)
         DMATx::transfer(DMA::Config::PER_2_MEM | DMA::Config::MINC, data, &_regs()->DR, size);
+#endif
+#if defined(I2C_ISR_BUSY)
+        DMATx::transfer(DMA::Config::PER_2_MEM | DMA::Config::MINC, data, &_regs()->TXDR, size);
+#endif
 
-        SET_BIT(_regs()->CR1, I2C_CR1_ACK);                                       // enable ACK
-        SET_BIT(_regs()->CR2, I2C_CR2_ITEVTEN | I2C_CR2_ITERREN | I2C_CR2_DMAEN); // enable IRQ, DMA
+        enableACK<_regs>();
+        enableIRQ<_regs>(IRQEn::LISTEN);
 
         return Status::OK;
     }
@@ -434,10 +466,15 @@ namespace STM32::I2C
         DMARx::clrFlagTC();
         DMARx::setEventCallback(_onDMAEvent);
         DMARx::setErrorCallback(_onDMAError);
+#if defined(I2C_SR2_BUSY)
         DMARx::transfer(DMA::Config::MEM_2_PER | DMA::Config::MINC, data, &_regs()->DR, size);
+#endif
+#if defined(I2C_ISR_BUSY)
+        DMARx::transfer(DMA::Config::MEM_2_PER | DMA::Config::MINC, data, &_regs()->RXDR, size);
+#endif
 
-        SET_BIT(_regs()->CR1, I2C_CR1_ACK);                                       // enable ACK
-        SET_BIT(_regs()->CR2, I2C_CR2_ITEVTEN | I2C_CR2_ITERREN | I2C_CR2_DMAEN); // enable IRQ, DMA
+        enableACK<_regs>();
+        enableIRQ<_regs>(IRQEn::LISTEN);
 
         return Status::OK;
     }
@@ -459,16 +496,14 @@ namespace STM32::I2C
         } else if (_hasFlag<Flag::STOP_DETECTED>(SR1)) {
             _onSTOP();
             // CLR_BIT(_regs()->CR2, I2C_CR2_ITEVTEN | I2C_CR2_ITBUFEN | I2C_CR2_ITERREN); // disable IRQ
-            disableIRQ<_regs>(IRQEnable::ALL);
-            _clearSTOPF();
+            // _clearSTOPF();
             // CLR_BIT(_regs()->CR1, I2C_CR1_ACK);   // disable ACK
-            disableACK<_regs>();
-            CLR_BIT(_regs()->CR2, I2C_CR2_DMAEN); // disable DMA
-            DMARx::abort();
-            if (_state == State::SLAVE_RX) {
-                _state = State::READY;
-                if (_dataCallback) _dataCallback(true);
-            }
+            // CLR_BIT(_regs()->CR2, I2C_CR2_DMAEN); // disable DMA
+            // DMARx::abort();
+            // if (_state == State::SLAVE_RX) {
+            //     _state = State::READY;
+            //     if (_dataCallback) _dataCallback(true);
+            // }
         }
     }
 
@@ -511,14 +546,15 @@ namespace STM32::I2C
             _clrFlag<Flag::ARBITRATION_LOST>();
         }
         if (errors != Error::NONE) {
-            detachIRQ<IRQEnable::ALL>();
-            if ((_regs()->CR2 & I2C_CR2_DMAEN) != 0u) {
-                CLR_BIT(_regs()->CR2, I2C_CR2_DMAEN); // disable DMA
-                if (_state == State::SLAVE_TX) DMATx::abort();
-                if (_state == State::SLAVE_RX) DMARx::abort();
-            }
-            _state = State::READY;
-            if (_errorCallback) _errorCallback(errors);
+            _onIRQError(errors);
+            // detachIRQ<IRQEn::ALL>();
+            // if ((_regs()->CR2 & I2C_CR2_DMAEN) != 0u) {
+            //     CLR_BIT(_regs()->CR2, I2C_CR2_DMAEN); // disable DMA
+            //     if (_state == State::SLAVE_TX) DMATx::abort();
+            //     if (_state == State::SLAVE_RX) DMARx::abort();
+            // }
+            // _state = State::READY;
+            // if (_errorCallback) _errorCallback(errors);
         }
     }
 }
