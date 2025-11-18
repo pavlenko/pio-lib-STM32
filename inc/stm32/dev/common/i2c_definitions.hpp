@@ -83,6 +83,9 @@ namespace STM32::I2C
         SMB_DEFAULT = I2C_SR2_SMBDEFAULT << 16u, //< SMBus device default address (Slave mode)
         SMB_HOST = I2C_SR2_SMBHOST << 16u,       //< SMBus host header (Slave mode)c
         DUAL_FLAG = I2C_SR2_DUALF << 16u,        //< Dual flag (Slave mode) 0: ADDR = OAR1; 1: ADDR = OAR2
+
+        SR1Mask = 0x0000FFFF,
+        SR2Mask = 0xFFFF0000,
 #endif
 #if defined(I2C_ISR_BUSY)
         TX_EMPTY = I2C_ISR_TXE,                 //< Data register empty (transmitters)
@@ -105,6 +108,10 @@ namespace STM32::I2C
 #endif
     };
 
+    inline constexpr Flag operator | (Flag l, Flag r) { return Flag(static_cast<uint32_t>(l) | static_cast<uint32_t>(r)); }
+
+    inline constexpr Flag operator & (Flag l, Flag r) { return Flag(static_cast<uint32_t>(l) & static_cast<uint32_t>(r)); }
+
     // When the PCLK frequency is a multiple of 10 MHz, the DUTY bit must be set in order to reach the 400 kHz maximum I2C frequency.
     enum class Speed {
         STANDARD = 100000,
@@ -121,7 +128,18 @@ namespace STM32::I2C
         SLAVE_RX, //< Slave busy rx
     };
 
-    enum class Error : uint8_t { NONE, BUS_ERROR = 0b00000001u, ARBITRATION_LOST = 0b00000010u, ACK_FAILURE = 0b00000100u, OVER_UNDERRUN = 0b00001000u, DMA = 0b00010000u };
+    enum class Error : uint8_t {
+        NONE = 0x00,             //< No error
+        BUS_ERROR = 0x01,        //< Bus error
+        ARBITRATION_LOST = 0x02, //< Arbitration lost (master mode)
+        ACK_FAILURE = 0x04,      //< NACK received
+        OVER_UNDERRUN = 0x08,    //< Overrun/Underrun error
+        DMA = 0x10,              //< DMA any error
+    };
+
+    inline constexpr Error operator |= (Error l, Error r) { return Error(static_cast<uint32_t>(l) | static_cast<uint32_t>(r)); }
+
+    inline constexpr Error operator & (Error l, Error r) { return Error(static_cast<uint32_t>(l) & static_cast<uint32_t>(r)); }
 
     using AddrCallbackT = std::add_pointer_t<void(bool masterTx)>;
     using DataCallbackT = std::add_pointer_t<void(bool success)>;
@@ -142,7 +160,7 @@ namespace STM32::I2C
         static inline ErrorCallbackT _errorCallback;
 
         // static inline I2C_TypeDef* _regs();
-        static inline bool _waitBusy();
+        // static inline bool _waitBusy();
         static inline bool _waitFlag(Flag flag);
 
         static inline bool _start();
@@ -158,6 +176,8 @@ namespace STM32::I2C
     public:
         using DMATx = tDMATx;
         using DMARx = tDMARx;
+
+        static inline bool isBusy();
 
         /**
          * select(): RESET|READY -> BUSY -> READY

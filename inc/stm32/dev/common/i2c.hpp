@@ -1,27 +1,15 @@
 #pragma once
 
-#include <stm32/dev/common/i2c_definitions.hpp>
-#include <stm32/dev/dma.hpp>
-#include <concepts>
-#include <type_traits>
+#if defined(I2C_SR2_BUSY)
+#include <stm32/dev/common/i2c_v1.hpp>
+#endif
+#if defined(I2C_ISR_BUSY)
+#include <stm32/dev/common/i2c_v2.hpp>
+#endif
 
 namespace STM32::I2C
 {
-    inline constexpr Flag operator | (Flag l, Flag r) { return Flag(static_cast<uint32_t>(l) | static_cast<uint32_t>(r)); }
-
-    inline constexpr Flag operator & (Flag l, Flag r) { return Flag(static_cast<uint32_t>(l) & static_cast<uint32_t>(r)); }
-
-    inline constexpr Error operator |= (Error l, Error r) { return Error(static_cast<uint32_t>(l) | static_cast<uint32_t>(r)); }
-
-    inline constexpr Error operator & (Error l, Error r) { return Error(static_cast<uint32_t>(l) & static_cast<uint32_t>(r)); }
-
     // --- DRIVER ---
-    // template <uint32_t tRegsAddr, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    // inline I2C_TypeDef* Driver<tRegsAddr, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::_regs()
-    // {
-    //     return reinterpret_cast<I2C_TypeDef*>(tRegsAddr);
-    // }
-
     template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
     inline bool Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::_waitFlag(Flag flag)
     {
@@ -148,10 +136,52 @@ namespace STM32::I2C
         {
             _regs()->CR2 &= ~static_cast<uint32_t>(flags);
         }
+
+        template <RegsT _regs>
+        static inline void flushTx()
+        {
+            if ((_regs()->SR1 & I2C_SR1_TXE) != 0u) {
+                _regs()->DR = 0x00U;
+            }
+        }
 #endif
 #if defined(I2C_ISR_BUSY)
-        template <uint32_t tRegsAddr>
-        static inline void calculateTimings(Speed speed, uint32_t pclk);
+        template <RegsT _regs>
+        static inline void calculateTimings(Speed speed, uint32_t clock)
+        {
+            // STANDARD ns: tLOW = 4700; tHIGH = 4000; tRISE = 1000; tFALL = 300; tDATASETUP = 250
+            // FAST ns: tLOW = 1300; tHIGH = 600; tRISE = 300; tFALL = 300; tDATASETUP = 100
+            // FAST+ ns: tLOW = 500; tHIGH = 260; tRISE = 120; tFALL = 120; tDATASETUP = 50
+            uint32_t tCLOCKx4us = 4000000000u / clock;
+            uint32_t tSPEEDx2us = 2000000000u / static_cast<uint32_t>(speed);
+
+            bool speed100k = speed == Speed::STANDARD;
+            bool speed400k = speed == Speed::FAST;
+
+            uint32_t tRISEx4us = (speed100k ? 1000 : speed400k ? 300 : 120) * 4;
+            uint32_t tFALLx4us = (speed400k ? 300 : 120) * 4;
+            uint32_t tDATASETUPx4us = (speed100k ? 250 : speed400k ? 100 : 50) * 4;
+
+            uint32_t tL = (tSPEEDx2us) - (speed100k ? tFALLx4us : 0) - (3 * tCLOCKx4us);
+            uint32_t tH = (tSPEEDx2us) - (speed100k ? 0 : tFALLx4us) - tRISEx4us - (3 * tCLOCKx4us);
+
+            uint32_t scll = tH / tCLOCKx4us;
+            uint32_t sclh = tL / tCLOCKx4us;
+            uint32_t scldel = tDATASETUPx4us / tCLOCKx4us;
+
+            if (scll > 0) scll--;
+            if (sclh > 0) sclh--;
+            if (scldel > 0) scldel--;
+
+            uint32_t presc = scll / 256u;
+            if (presc > 0) {
+                sclh /= (presc + 1);
+                scll /= (presc + 1);
+                scldel /= (presc + 1);
+            }
+
+            _regs()->TIMINGR = (scll << I2C_TIMINGR_SCLL_Pos) | (sclh << I2C_TIMINGR_SCLH_Pos) | (scldel << I2C_TIMINGR_SCLDEL_Pos) | (presc << I2C_TIMINGR_PRESC_Pos);
+        }
 
         template <RegsT _regs>
         static inline void enableACK()
@@ -188,6 +218,18 @@ namespace STM32::I2C
         {
             _regs()->CR1 &= ~static_cast<uint32_t>(flags);
         }
+
+        template <RegsT _regs>
+        static inline void flushTx()
+        {
+            // TODO use _has/_clrFlag
+            if ((_regs()->ISR & I2C_ISR_TXIS) != 0u) {
+                _regs()->TXDR = 0x00U;
+            }
+            if ((_regs()->ISR & I2C_ISR_TXE) == 0u) {
+                _regs()->ISR |= I2C_ISR_TXE;
+            }
+        }
 #endif
     }
 
@@ -214,53 +256,6 @@ namespace STM32::I2C
         }
 
         _devAddress = address;
-        _state = State::READY;
-        return Status::OK;
-    }
-
-    template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    inline Status Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Master::tx(uint8_t* data, uint16_t size)
-    {
-        if (_state != State::READY) return Status::BUSY;
-
-        _regs()->CR1 &= ~I2C_CR1_POS; // clear POS
-
-        if (!_start()) return Status::ERROR;
-        if (!_sendDevAddressW(_devAddress)) return Status::ERROR;
-
-        for (uint16_t i = 0; i < size; i++) {
-            _regs()->DR = data[i];                        // transmit byte
-            while ((_regs()->SR1 & I2C_SR1_TXE) == 0u) {} // wait until TXE is set
-        }
-
-        _regs()->CR1 |= I2C_CR1_STOP; // send STOP
-
-        _state = State::READY;
-        return Status::OK;
-    }
-
-    template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    inline Status Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Master::rx(uint8_t* data, uint16_t size)
-    {
-        if (_state != State::READY) return Status::BUSY;
-
-        _regs()->CR1 &= ~I2C_CR1_POS; // clear POS
-        _regs()->CR1 |= I2C_CR1_ACK;  // enable ACK
-
-        if (!_start()) return Status::ERROR;
-        if (!_sendDevAddressR(_devAddress)) return Status::ERROR;
-
-        for (uint16_t i = 0; i < size - 1; i++) {
-            while ((_regs()->SR1 & I2C_SR1_RXNE) == 0u) {} // wait until TXE is set
-            data[i] = _regs()->DR;                         // receive byte
-        }
-
-        _regs()->CR1 &= ~I2C_CR1_ACK; // disable ACK
-        _regs()->CR1 |= I2C_CR1_STOP; // send STOP
-
-        while ((_regs()->SR1 & I2C_SR1_RXNE) == 0u) {} // wait until TXE is set
-        data[size] = _regs()->DR;                      // receive byte
-
         _state = State::READY;
         return Status::OK;
     }
@@ -342,14 +337,14 @@ namespace STM32::I2C
     template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
     inline void Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Slave::_onSTOP()
     {
-        disableIRQ<_regs>(IRQEn::ALL); // disable IRQ
-        // clear STOPF
-        // disable ACK
+        disableIRQ<_regs>(IRQEn::ALL);
+        _clrFlag<Flag::STOP_DETECTED>();
+        disableACK<_regs>();
         // if DMA_TX - disable DMA_TX, upd counter (IT mode only), call DMA::abort()
         // if DMA_RX - disable DMA_RX, upd counter (IT mode only), call DMA::abort()
         // rx remaining data if any
         // process callbacks LISTEN & SLAVE_RX
-        // state = READY
+        _state = State::READY;
     }
 
     /**
@@ -362,29 +357,27 @@ namespace STM32::I2C
         // IF state == SLAVE_TX - transfer interrupted by master
         // ELSE - error
 
-        // disable IRQ
-        // clear AF
-        // disable ACK
+        disableIRQ<_regs>(IRQEn::ALL);
+        _clrFlag<Flag::ACK_FAILED>();
+        disableACK<_regs>();
+        if (_state == State::SLAVE_TX) flushTx<_regs>();
         // flush tx if any
         // process callbacks LISTEN(?) & SLAVE_TX, error(?)
-        // state = READY
+        _state = State::READY;
     }
 
     template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
     inline void Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Slave::_onIRQError(Error e)
     {
-        // disable IRQ
-        if (_state == State::LISTEN) {
-        } else if (_state == State::SLAVE_TX) {
+        disableIRQ<_regs>(IRQEn::ALL);
+        if (_state == State::SLAVE_TX) {
             disableDMA<_regs>(DMAEn::TX);
             DMATx::abort();
-        } else if (_state == State::SLAVE_RX) {
+        }
+        if (_state == State::SLAVE_RX) {
             disableDMA<_regs>(DMAEn::RX);
             DMARx::abort();
         }
-        // disable DMA
-        // flush tx if any
-
         if (_errorCallback) {
             _errorCallback(e);
         }
@@ -398,7 +391,7 @@ namespace STM32::I2C
         disableDMA<_regs>();
         _state = State::LISTEN;
         if (_dataCallback) _dataCallback(true);
-        // SET_BIT(_regs()->CR2, I2C_CR2_ITEVTEN | I2C_CR2_ITERREN); // re-enable IRQ
+        // SET_BIT(_regs()->CR2, I2C_CR2_ITEVTEN | I2C_CR2_ITERREN); // re-enable IRQ(?)
     }
 
     template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
@@ -547,14 +540,6 @@ namespace STM32::I2C
         }
         if (errors != Error::NONE) {
             _onIRQError(errors);
-            // detachIRQ<IRQEn::ALL>();
-            // if ((_regs()->CR2 & I2C_CR2_DMAEN) != 0u) {
-            //     CLR_BIT(_regs()->CR2, I2C_CR2_DMAEN); // disable DMA
-            //     if (_state == State::SLAVE_TX) DMATx::abort();
-            //     if (_state == State::SLAVE_RX) DMARx::abort();
-            // }
-            // _state = State::READY;
-            // if (_errorCallback) _errorCallback(errors);
         }
     }
 }
