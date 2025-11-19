@@ -120,12 +120,14 @@ namespace STM32::I2C
     };
 
     enum class State {
-        RESET,    //< Not initialized
-        READY,    //< Initialized and ready
-        BUSY,     //< Internal process ongoing
-        LISTEN,   //< Listen for ADDR
-        SLAVE_TX, //< Slave busy tx
-        SLAVE_RX, //< Slave busy rx
+        RESET,     //< Not initialized
+        READY,     //< Initialized and ready
+        BUSY,      //< Internal process ongoing
+        MASTER_TX, //< Master busy tx
+        MASTER_RX, //< Master busy rx
+        LISTEN,    //< Listen for ADDR
+        SLAVE_TX,  //< Slave busy tx
+        SLAVE_RX,  //< Slave busy rx
     };
 
     enum class Error : uint8_t {
@@ -163,15 +165,15 @@ namespace STM32::I2C
         // static inline bool _waitBusy();
         static inline bool _waitFlag(Flag flag);
 
-        static inline bool _start();
-        static inline bool _sendDevAddressW(uint8_t address);
-        static inline bool _sendDevAddressR(uint8_t address);
+        // static inline bool _start();
+        // static inline bool _sendDevAddressW(uint8_t address);
+        // static inline bool _sendDevAddressR(uint8_t address);
 
-        template <Flag tFlag>
-        static inline bool _hasFlag(uint32_t reg);
+        // template <Flag tFlag>
+        // static inline bool _hasFlag(uint32_t reg);
 
-        template <Flag tFlag>
-        static inline void _clrFlag();
+        // template <Flag tFlag>
+        // static inline void _clrFlag();
 
     public:
         using DMATx = tDMATx;

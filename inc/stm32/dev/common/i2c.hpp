@@ -9,84 +9,6 @@
 
 namespace STM32::I2C
 {
-    // --- DRIVER ---
-    template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    inline bool Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::_waitFlag(Flag flag)
-    {
-        uint32_t timeout = _timeout;
-        while ((_regs()->SR1 & static_cast<uint32_t>(flag)) == 0u) {
-            if (timeout == 0) {
-                return false;
-            }
-            timeout--;
-        }
-        return true;
-    }
-
-    template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    inline bool Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::_start()
-    {
-        _regs()->CR1 |= I2C_CR1_START;
-        return _waitFlag(Flag::START_BIT);
-    }
-
-    template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    inline bool Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::_sendDevAddressW(uint8_t address)
-    {
-        // _regs()->DR = (address << 1);
-        if (!_waitFlag(Flag::ADDRESSED)) {
-            return false;
-        }
-        _clrFlag<Flag::ADDRESSED>();
-        return true;
-    }
-
-    template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    inline bool Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::_sendDevAddressR(uint8_t address)
-    {
-        // _regs()->DR = (address << 1u) | 1u;
-        if (!_waitFlag(Flag::ADDRESSED)) {
-            return false;
-        }
-        _clrFlag<Flag::ADDRESSED>();
-        return true;
-    }
-
-    template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    template <Flag tFlag>
-    inline bool Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::_hasFlag(uint32_t reg)
-    {
-        return (reg & static_cast<uint32_t>(tFlag)) != 0u;
-    }
-
-    template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    template <Flag tFlag>
-    inline void Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::_clrFlag()
-    {
-#if defined(I2C_SR2_BUSY)
-        if constexpr (tFlag == Flag::ADDRESSED) {
-            __IO uint32_t reg;
-            reg = _regs()->SR1;
-            reg = _regs()->SR2;
-            (void)reg;
-        } else if constexpr (tFlag == Flag::STOP_DETECTED) {
-            __IO uint32_t reg;
-            reg = _regs()->SR1;
-            SET_BIT(_regs()->CR1, I2C_CR1_PE);
-            (void)reg;
-        } else {
-            _regs()->SR1 = ~static_cast<uint32_t>(tFlag);
-        }
-#endif
-#if defined(I2C_ISR_BUSY)
-        if constexpr (tFlag == Flag::TX_EMPTY) {
-            _regs()->ISR |= static_cast<uint32_t>(tFlag);
-        } else {
-            _regs()->ICR = static_cast<uint32_t>(tFlag);
-        }
-#endif
-    }
-
     namespace
     {
 #if defined(I2C_SR2_BUSY)
@@ -260,75 +182,13 @@ namespace STM32::I2C
         return Status::OK;
     }
 
-    // --- MEMORY ---
-    template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    inline Status Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Memory::set(uint16_t regAddress, uint8_t* data, uint16_t size)
-    {
-        if (_state != State::READY) return Status::BUSY;
-
-        _regs()->CR1 &= ~I2C_CR1_POS; // clear POS
-        _regs()->CR1 |= I2C_CR1_ACK;  // enable ACK
-
-        if (!_start()) return Status::ERROR;
-        if (!_sendDevAddressW(_devAddress)) return Status::ERROR;
-
-        // transmit 16-bit reg address
-        _regs()->DR = static_cast<uint8_t>(regAddress >> 8);
-        while ((_regs()->SR1 & I2C_SR1_TXE) == 0u) {} // wait until TXE is set
-        _regs()->DR = static_cast<uint8_t>(regAddress);
-        while ((_regs()->SR1 & I2C_SR1_TXE) == 0u) {} // wait until TXE is set
-
-        for (uint16_t i = 0; i < size; i++) {
-            _regs()->DR = data[i];                        // transmit byte
-            while ((_regs()->SR1 & I2C_SR1_TXE) == 0u) {} // wait until TXE is set
-        }
-
-        _regs()->CR1 |= I2C_CR1_STOP; // send STOP
-
-        return Status::OK;
-    }
-
-    template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    inline Status Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Memory::get(uint16_t regAddress, uint8_t* data, uint16_t size)
-    {
-        if (_state != State::READY) return Status::BUSY;
-
-        _regs()->CR1 &= ~I2C_CR1_POS; // clear POS
-        _regs()->CR1 |= I2C_CR1_ACK;  // enable ACK
-
-        if (!_start()) return Status::ERROR;
-        if (!_sendDevAddressW(_devAddress)) return Status::ERROR;
-
-        // transmit 16-bit reg address
-        _regs()->DR = static_cast<uint8_t>(regAddress >> 8);
-        while ((_regs()->SR1 & I2C_SR1_TXE) == 0u) {} // wait until TXE is set
-        _regs()->DR = static_cast<uint8_t>(regAddress);
-        while ((_regs()->SR1 & I2C_SR1_TXE) == 0u) {} // wait until TXE is set
-
-        if (!_start()) return Status::ERROR;
-        if (!_sendDevAddressR(_devAddress)) return Status::ERROR;
-
-        for (uint16_t i = 0; i < size - 1; i++) {
-            while ((_regs()->SR1 & I2C_SR1_RXNE) == 0u) {} // wait until TXE is set
-            data[i] = _regs()->DR;                         // receive byte
-        }
-
-        _regs()->CR1 &= ~I2C_CR1_ACK; // disable ACK
-        _regs()->CR1 |= I2C_CR1_STOP; // send STOP
-
-        while ((_regs()->SR1 & I2C_SR1_RXNE) == 0u) {} // wait until TXE is set
-        data[size] = _regs()->DR;                      // receive byte
-
-        return Status::OK;
-    }
-
     // --- SLAVE ---
     template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
     inline void Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Slave::_onADDR(uint32_t flags)
     {
         // TODO state = ADDRESSED?
-        if (_addrCallback) _addrCallback(_hasFlag<Flag::DIRECTION>(flags));
-        _clrFlag<Flag::ADDRESSED>();
+        if (_addrCallback) _addrCallback(issetFlag<_regs, Flag::DIRECTION>(flags));
+        clearFlag<_regs, Flag::ADDRESSED>();
     }
 
     /**
@@ -338,7 +198,7 @@ namespace STM32::I2C
     inline void Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Slave::_onSTOP()
     {
         disableIRQ<_regs>(IRQEn::ALL);
-        _clrFlag<Flag::STOP_DETECTED>();
+        clearFlag<_regs, Flag::STOP_DETECTED>();
         disableACK<_regs>();
         // if DMA_TX - disable DMA_TX, upd counter (IT mode only), call DMA::abort()
         // if DMA_RX - disable DMA_RX, upd counter (IT mode only), call DMA::abort()
@@ -358,7 +218,7 @@ namespace STM32::I2C
         // ELSE - error
 
         disableIRQ<_regs>(IRQEn::ALL);
-        _clrFlag<Flag::ACK_FAILED>();
+        clearFlag<_regs, Flag::ACK_FAILED>();
         disableACK<_regs>();
         if (_state == State::SLAVE_TX) flushTx<_regs>();
         // flush tx if any
@@ -484,9 +344,9 @@ namespace STM32::I2C
         uint32_t SR2 = SR1;
 #endif
 
-        if (_hasFlag<Flag::ADDRESSED>(SR1)) {
+        if (issetFlag<_regs, Flag::ADDRESSED>(SR1)) {
             _onADDR(SR2);
-        } else if (_hasFlag<Flag::STOP_DETECTED>(SR1)) {
+        } else if (issetFlag<_regs, Flag::STOP_DETECTED>(SR1)) {
             _onSTOP();
             // CLR_BIT(_regs()->CR2, I2C_CR2_ITEVTEN | I2C_CR2_ITBUFEN | I2C_CR2_ITERREN); // disable IRQ
             // _clearSTOPF();
@@ -511,9 +371,9 @@ namespace STM32::I2C
 #endif
         Error errors = Error::NONE;
 
-        if (_hasFlag<Flag::BUS_ERROR>(SR1)) {
+        if (checkFlag(SR1, Flag::BUS_ERROR)) {
             errors |= Error::BUS_ERROR;
-            _clrFlag<Flag::BUS_ERROR>();
+            clearFlag<_regs, Flag::BUS_ERROR>();
         }
 #if defined(I2C_SR2_BUSY)
         if ((SR1 & I2C_SR1_AF) != 0u) {
@@ -530,13 +390,13 @@ namespace STM32::I2C
             }
         }
 #endif
-        if (_hasFlag<Flag::OVER_UNDERRUN>(SR1)) {
+        if (checkFlag(SR1, Flag::OVER_UNDERRUN)) {
             errors |= Error::OVER_UNDERRUN;
-            _clrFlag<Flag::OVER_UNDERRUN>();
+            clearFlag<_regs, Flag::OVER_UNDERRUN>();
         }
-        if (_hasFlag<Flag::ARBITRATION_LOST>(SR1)) {
+        if (checkFlag(SR1, Flag::ARBITRATION_LOST)) {
             errors |= Error::ARBITRATION_LOST;
-            _clrFlag<Flag::ARBITRATION_LOST>();
+            clearFlag<_regs, Flag::ARBITRATION_LOST>();
         }
         if (errors != Error::NONE) {
             _onIRQError(errors);

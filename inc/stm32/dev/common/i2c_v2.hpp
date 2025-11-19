@@ -29,16 +29,25 @@ namespace STM32::I2C
         template <RegsT _regs>
         static inline bool waitBusy(uint32_t timeout)
         {
-            while (hasFlag<_regs>(Flag::BUSY) && --timeout > 0) {}
-            return !hasFlag<_regs>(Flag::BUSY);
+            while (issetFlag<_regs, Flag::BUSY>() && --timeout > 0) {}
+            return !issetFlag<_regs, Flag::BUSY>();
+        }
+
+        template <RegsT _regs, Flag tFlag, bool tState>
+        static inline bool waitFlag(uint32_t timeout)
+        {
+            while (issetFlag<_regs, tFlag>() == tState && --timeout > 0) {}
+            return issetFlag<_regs, tFlag>() != tState;
         }
     }
 
     template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
     inline bool Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::isBusy()
     {
-        return hasFlag<_regs>(Flag::BUSY);
+        return issetFlag<_regs>(Flag::BUSY);
     }
+
+#define CR2_CLR_MASK (I2C_CR2_START | I2C_CR2_STOP | I2C_CR2_NBYTES | I2C_CR2_RELOAD | I2C_CR2_AUTOEND)
 
     template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
     inline Status Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Master::tx(uint8_t* data, uint16_t size)
@@ -46,15 +55,45 @@ namespace STM32::I2C
         if (_state != State::READY) return Status::BUSY;
         if (!waitBusy<_regs>(1000)) return Status::ERROR;
 
-        if (!_start()) return Status::ERROR;
-        if (!_sendDevAddressW(_devAddress)) return Status::ERROR;
+        _state = State::MASTER_TX;
 
-        for (uint16_t i = 0; i < size; i++) {
-            _regs()->TXDR = data[i];                      // transmit byte
-            while ((_regs()->ISR & I2C_ISR_TXE) == 0u) {} // wait until TXE is set
+        uint8_t* buf = data;
+        uint32_t cnt = size;
+        uint32_t len = cnt > 255 ? 255 : cnt;
+
+        MODIFY_REG(_regs()->CR2, (I2C_CR2_SADD | I2C_CR2_RD_WRN), _devAddress);
+
+        if (len > 0) {
+            _regs()->TXDR = *buf;
+            buf++;
+            cnt--;
+            len--;
+
+            MODIFY_REG(_regs()->CR2, CR2_CLR_MASK, (((len + 1) << I2C_CR2_NBYTES_Pos) | I2C_CR2_START | (cnt > 255 ? I2C_CR2_RELOAD : I2C_CR2_AUTOEND)));
+        } else {
+            MODIFY_REG(_regs()->CR2, CR2_CLR_MASK, (I2C_CR2_START | I2C_CR2_AUTOEND));
         }
 
-        _regs()->CR1 |= I2C_CR1_STOP; // send STOP
+        while (cnt > 0) {
+            if (!waitFlag<_regs, Flag::TX_INTERRUPT, false>(1000)) return Status::ERROR;
+            _regs()->TXDR = *buf;
+            buf++;
+            cnt--;
+            len--;
+            if (cnt != 0 && len == 0) {
+                if (!waitFlag<_regs, Flag::TRANSFER_COMPLETE_RELOAD, false>(1000)) return Status::ERROR;
+                if (cnt > 255) {
+                    len = 255;
+                    MODIFY_REG(_regs()->CR2, CR2_CLR_MASK, ((len << I2C_CR2_NBYTES_Pos) | I2C_CR2_RELOAD));
+                } else {
+                    len = cnt;
+                    MODIFY_REG(_regs()->CR2, CR2_CLR_MASK, ((len << I2C_CR2_NBYTES_Pos) | I2C_CR2_AUTOEND));
+                }
+            }
+        }
+
+        if (!waitFlag<_regs, Flag::STOP_DETECTED, false>(1000)) return Status::ERROR;
+        clearFlag<_regs, Flag::STOP_DETECTED>();
 
         _state = State::READY;
         return Status::OK;
@@ -64,26 +103,149 @@ namespace STM32::I2C
     inline Status Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Master::rx(uint8_t* data, uint16_t size)
     {
         if (_state != State::READY) return Status::BUSY;
+        if (!waitBusy<_regs>(1000)) return Status::ERROR;
 
-        _regs()->CR1 &= ~I2C_CR1_POS; // clear POS
-        _regs()->CR1 |= I2C_CR1_ACK;  // enable ACK
+        _state = State::MASTER_RX;
 
-        generateSTART<_regs>();
-        if (!_waitFlag(Flag::START_BIT)) return Status::ERROR;
-        if (!_sendDevAddressR(_devAddress)) return Status::ERROR;
+        uint8_t* buf = data;
+        uint32_t cnt = size;
+        uint32_t len;
 
-        for (uint16_t i = 0; i < size - 1; i++) {
-            while ((_regs()->SR1 & I2C_SR1_RXNE) == 0u) {} // wait until TXE is set
-            data[i] = _regs()->DR;                         // receive byte
+        MODIFY_REG(_regs()->CR2, (I2C_CR2_SADD | I2C_CR2_RD_WRN), _devAddress | I2C_CR2_RD_WRN);
+
+        if (cnt > 255) {
+            len = 1u; //<-- for enter while loop after first byte received
+            MODIFY_REG(_regs()->CR2, CR2_CLR_MASK, ((len << I2C_CR2_NBYTES_Pos) | I2C_CR2_START | I2C_CR2_RELOAD));
+        } else {
+            len = cnt;
+            MODIFY_REG(_regs()->CR2, CR2_CLR_MASK, ((len << I2C_CR2_NBYTES_Pos) | I2C_CR2_START | I2C_CR2_AUTOEND));
         }
 
-        _regs()->CR1 &= ~I2C_CR1_ACK; // disable ACK
-        _regs()->CR1 |= I2C_CR1_STOP; // send STOP
+        while (cnt > 0) {
+            if (!waitFlag<_regs, Flag::RX_NOT_EMPTY, false>(1000)) return Status::ERROR;
+            *buf = _regs()->RXDR;
+            buf++;
+            cnt--;
+            len--;
+            if (cnt != 0 && len == 0) {
+                if (!waitFlag<_regs, Flag::TRANSFER_COMPLETE_RELOAD, false>(1000)) return Status::ERROR;
+                if (cnt > 255) {
+                    len = 255;
+                    MODIFY_REG(_regs()->CR2, CR2_CLR_MASK, ((len << I2C_CR2_NBYTES_Pos) | I2C_CR2_RELOAD));
+                } else {
+                    len = cnt;
+                    MODIFY_REG(_regs()->CR2, CR2_CLR_MASK, ((len << I2C_CR2_NBYTES_Pos) | I2C_CR2_AUTOEND));
+                }
+            }
+        }
 
-        while ((_regs()->SR1 & I2C_SR1_RXNE) == 0u) {} // wait until TXE is set
-        data[size] = _regs()->DR;                      // receive byte
+        if (!waitFlag<_regs, Flag::STOP_DETECTED, false>(1000)) return Status::ERROR;
+        clearFlag<_regs, Flag::STOP_DETECTED>();
 
         _state = State::READY;
+        return Status::OK;
+    }
+
+    // --- MEMORY ---
+    template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
+    inline Status Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Memory::set(uint16_t regAddress, uint8_t* data, uint16_t size)
+    {
+        if (_state != State::READY) return Status::BUSY;
+        if (!waitBusy<_regs>(1000)) return Status::ERROR;
+
+        _state = State::MASTER_TX;
+
+        uint8_t* buf = data;
+        uint32_t cnt = size;
+        uint32_t len = 0;
+
+        MODIFY_REG(_regs()->CR2, (I2C_CR2_SADD | I2C_CR2_RD_WRN), _devAddress);
+
+        // Send mem address
+        MODIFY_REG(_regs()->CR2, I2C_CR2_NBYTES, (2u << I2C_CR2_NBYTES_Pos) | I2C_CR2_START | I2C_CR2_RELOAD);
+
+        if (!waitFlag<_regs, Flag::TX_INTERRUPT, false>(1000)) return Status::ERROR;
+        _regs()->TXDR = static_cast<uint8_t>(regAddress >> 8u);
+
+        if (!waitFlag<_regs, Flag::TX_INTERRUPT, false>(1000)) return Status::ERROR;
+        _regs()->TXDR = static_cast<uint8_t>(regAddress);
+
+        if (!waitFlag<_regs, Flag::TRANSFER_COMPLETE_RELOAD, false>(1000)) return Status::ERROR;
+        // Send mem address end
+
+        // Send data
+        if (cnt > 255) {
+            len = 255;
+            MODIFY_REG(_regs()->CR2, CR2_CLR_MASK, ((len << I2C_CR2_NBYTES_Pos) | I2C_CR2_RELOAD));
+        } else {
+            len = cnt;
+            MODIFY_REG(_regs()->CR2, CR2_CLR_MASK, ((len << I2C_CR2_NBYTES_Pos) | I2C_CR2_AUTOEND));
+        }
+
+        do {
+            if (!waitFlag<_regs, Flag::TX_INTERRUPT, false>(1000)) return Status::ERROR;
+
+            _regs()->TXDR = *buf;
+            buf++;
+            cnt--;
+            len--;
+
+            if (cnt != 0 && len == 0) {
+                if (!waitFlag<_regs, Flag::TRANSFER_COMPLETE_RELOAD, false>(1000)) return Status::ERROR;
+                if (cnt > 255) {
+                    len = 255;
+                    MODIFY_REG(_regs()->CR2, CR2_CLR_MASK, ((len << I2C_CR2_NBYTES_Pos) | I2C_CR2_RELOAD));
+                } else {
+                    len = cnt;
+                    MODIFY_REG(_regs()->CR2, CR2_CLR_MASK, ((len << I2C_CR2_NBYTES_Pos) | I2C_CR2_AUTOEND));
+                }
+            }
+        } while (cnt > 0);
+
+        if (!waitFlag<_regs, Flag::STOP_DETECTED, false>(1000)) return Status::ERROR;
+        clearFlag<_regs, Flag::STOP_DETECTED>();
+        // Send data end
+
+        _state = State::READY;
+        return Status::OK;
+    }
+
+    template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
+    inline Status Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Memory::get(uint16_t regAddress, uint8_t* data, uint16_t size)
+    {
+        if (_state != State::READY) return Status::BUSY;
+        if (!waitBusy<_regs>(1000)) return Status::ERROR;
+
+        _state = State::MASTER_TX;
+
+        // _regs()->CR1 &= ~I2C_CR1_POS; // clear POS
+        // _regs()->CR1 |= I2C_CR1_ACK;  // enable ACK
+
+        // if (!_start()) return Status::ERROR;
+        // if (!_sendDevAddressW(_devAddress)) return Status::ERROR;
+
+        // // transmit 16-bit reg address
+        // _regs()->DR = static_cast<uint8_t>(regAddress >> 8);
+        // while ((_regs()->SR1 & I2C_SR1_TXE) == 0u) {} // wait until TXE is set
+        // _regs()->DR = static_cast<uint8_t>(regAddress);
+        // while ((_regs()->SR1 & I2C_SR1_TXE) == 0u) {} // wait until TXE is set
+
+        // _state = State::MASTER_RX;
+
+        // if (!_start()) return Status::ERROR;
+        // if (!_sendDevAddressR(_devAddress)) return Status::ERROR;
+
+        // for (uint16_t i = 0; i < size - 1; i++) {
+        //     while ((_regs()->SR1 & I2C_SR1_RXNE) == 0u) {} // wait until TXE is set
+        //     data[i] = _regs()->DR;                         // receive byte
+        // }
+
+        // _regs()->CR1 &= ~I2C_CR1_ACK; // disable ACK
+        // _regs()->CR1 |= I2C_CR1_STOP; // send STOP
+
+        // while ((_regs()->SR1 & I2C_SR1_RXNE) == 0u) {} // wait until TXE is set
+        // data[size] = _regs()->DR;                      // receive byte
+
         return Status::OK;
     }
 #endif
