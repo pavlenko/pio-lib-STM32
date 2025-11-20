@@ -156,8 +156,8 @@ namespace STM32::I2C
     }
 
     // --- MASTER ---
-    template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    inline Status Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Master::select(uint8_t address, Speed speed)
+    __DRIVER_TPL__
+    inline Status __DRIVER_DEF__::Master::select(uint8_t address, Speed speed)
     {
         // Only if state is reset or ready re-configuration is possible
         if (_state != State::RESET && _state != State::READY) return Status::BUSY;
@@ -183,8 +183,8 @@ namespace STM32::I2C
     }
 
     // --- SLAVE ---
-    template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    inline void Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Slave::_onADDR(uint32_t flags)
+    __DRIVER_TPL__
+    inline void __DRIVER_DEF__::Slave::_onADDR(uint32_t flags)
     {
         // TODO state = ADDRESSED?
         if (_addrCallback) _addrCallback(issetFlag<_regs, Flag::DIRECTION>(flags));
@@ -194,8 +194,8 @@ namespace STM32::I2C
     /**
      * @brief MASTER_TX sent STOP condition
      */
-    template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    inline void Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Slave::_onSTOP()
+    __DRIVER_TPL__
+    inline void __DRIVER_DEF__::Slave::_onSTOP()
     {
         disableIRQ<_regs>(IRQEn::ALL);
         clearFlag<_regs, Flag::STOP_DETECTED>();
@@ -210,8 +210,8 @@ namespace STM32::I2C
     /**
      * @brief MASTER_RX NACKed when slave state == SLAVE_TX
      */
-    template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    inline void Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Slave::_onNACK()
+    __DRIVER_TPL__
+    inline void __DRIVER_DEF__::Slave::_onNACK()
     {
         // IF state == LISTEN - transfer not started by slave - need somehow handle this case
         // IF state == SLAVE_TX - transfer interrupted by master
@@ -226,8 +226,8 @@ namespace STM32::I2C
         _state = State::READY;
     }
 
-    template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    inline void Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Slave::_onIRQError(Error e)
+    __DRIVER_TPL__
+    inline void __DRIVER_DEF__::Slave::_onIRQError(Error e)
     {
         disableIRQ<_regs>(IRQEn::ALL);
         if (_state == State::SLAVE_TX) {
@@ -244,8 +244,8 @@ namespace STM32::I2C
         _state = State::READY;
     }
 
-    template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    inline void Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Slave::_onDMAEvent(DMA::Event e)
+    __DRIVER_TPL__
+    inline void __DRIVER_DEF__::Slave::_onDMAEvent(DMA::Event e)
     {
         disableIRQ<_regs>(IRQEn::ALL);
         disableDMA<_regs>();
@@ -254,8 +254,8 @@ namespace STM32::I2C
         // SET_BIT(_regs()->CR2, I2C_CR2_ITEVTEN | I2C_CR2_ITERREN); // re-enable IRQ(?)
     }
 
-    template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    inline void Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Slave::_onDMAError(DMA::Error e)
+    __DRIVER_TPL__
+    inline void __DRIVER_DEF__::Slave::_onDMAError(DMA::Error e)
     {
         if (e == DMA::Error::FIFO) return;
         disableACK<_regs>();
@@ -263,8 +263,8 @@ namespace STM32::I2C
         if (_errorCallback) _errorCallback(Error::DMA);
     }
 
-    template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    inline Status Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Slave::listen(uint8_t address, AddrCallbackT cb)
+    __DRIVER_TPL__
+    inline Status __DRIVER_DEF__::Slave::listen(uint8_t address, AddrCallbackT cb)
     {
         if (_state != State::RESET && _state != State::READY) return Status::BUSY;
 
@@ -284,8 +284,8 @@ namespace STM32::I2C
         return Status::OK;
     }
 
-    template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    inline Status Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Slave::txDMA(uint8_t* data, uint16_t size, DataCallbackT cb)
+    __DRIVER_TPL__
+    inline Status __DRIVER_DEF__::Slave::txDMA(uint8_t* data, uint16_t size, DataCallbackT cb)
     {
         if (_state != State::LISTEN) return Status::BUSY;
 
@@ -308,8 +308,8 @@ namespace STM32::I2C
         return Status::OK;
     }
 
-    template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    inline Status Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Slave::rxDMA(uint8_t* data, uint16_t size, DataCallbackT cb)
+    __DRIVER_TPL__
+    inline Status __DRIVER_DEF__::Slave::rxDMA(uint8_t* data, uint16_t size, DataCallbackT cb)
     {
         if (_state != State::LISTEN) return Status::BUSY;
 
@@ -332,8 +332,8 @@ namespace STM32::I2C
         return Status::OK;
     }
 
-    template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    inline void Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Slave::dispatchEventIRQ()
+    __DRIVER_TPL__
+    inline void __DRIVER_DEF__::Slave::dispatchEventIRQ()
     {
 #if defined(I2C_SR2_BUSY)
         uint32_t SR2 = _regs()->SR2; // read SR2 first to prevent clear ADDR
@@ -348,20 +348,11 @@ namespace STM32::I2C
             _onADDR(SR2);
         } else if (issetFlag<_regs, Flag::STOP_DETECTED>(SR1)) {
             _onSTOP();
-            // CLR_BIT(_regs()->CR2, I2C_CR2_ITEVTEN | I2C_CR2_ITBUFEN | I2C_CR2_ITERREN); // disable IRQ
-            // _clearSTOPF();
-            // CLR_BIT(_regs()->CR1, I2C_CR1_ACK);   // disable ACK
-            // CLR_BIT(_regs()->CR2, I2C_CR2_DMAEN); // disable DMA
-            // DMARx::abort();
-            // if (_state == State::SLAVE_RX) {
-            //     _state = State::READY;
-            //     if (_dataCallback) _dataCallback(true);
-            // }
         }
     }
 
-    template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    inline void Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Slave::dispatchErrorIRQ()
+    __DRIVER_TPL__
+    inline void __DRIVER_DEF__::Slave::dispatchErrorIRQ()
     {
 #if defined(I2C_SR2_BUSY)
         uint32_t SR1 = _regs()->SR1;

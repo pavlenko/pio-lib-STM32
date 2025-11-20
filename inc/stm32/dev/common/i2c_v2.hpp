@@ -146,8 +146,20 @@ namespace STM32::I2C
         return Status::OK;
     }
 
+    __DRIVER_TPL__
+    inline Status __DRIVER_DEF__::Master::txDMA(uint8_t* data, uint16_t size, DataCallbackT cb)
+    {
+        return Status::OK;
+    }
+
+    __DRIVER_TPL__
+    inline Status __DRIVER_DEF__::Master::rxDMA(uint8_t* data, uint16_t size, DataCallbackT cb)
+    {
+        return Status::OK;
+    }
+
     // --- MEMORY ---
-    template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
+    __DRIVER_TPL__
     inline Status Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Memory::set(uint16_t regAddress, uint8_t* data, uint16_t size)
     {
         if (_state != State::READY) return Status::BUSY;
@@ -211,7 +223,7 @@ namespace STM32::I2C
         return Status::OK;
     }
 
-    template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
+    __DRIVER_TPL__
     inline Status Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Memory::get(uint16_t regAddress, uint8_t* data, uint16_t size)
     {
         if (_state != State::READY) return Status::BUSY;

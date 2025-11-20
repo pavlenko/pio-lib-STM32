@@ -53,14 +53,14 @@ namespace STM32::I2C
         }
     }
 
-    template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    inline bool Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::isBusy()
+    __DRIVER_TPL__
+    inline bool __DRIVER_DEF__::isBusy()
     {
         return issetFlag<_regs>(Flag::BUSY);
     }
 
-    template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    inline Status Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Master::tx(uint8_t* data, uint16_t size)
+    __DRIVER_TPL__
+    inline Status __DRIVER_DEF__::Master::tx(uint8_t* data, uint16_t size)
     {
         if (_state != State::READY) return Status::BUSY;
         if (!waitBusy<_regs>(1000)) return Status::ERROR;
@@ -69,10 +69,10 @@ namespace STM32::I2C
 
         // request write
         _regs()->CR1 |= I2C_CR1_START;
-        if (!waitFlag<_regs, Flag::START_BIT, false>(1000))  return Status::ERROR;
+        if (!waitFlag<_regs, Flag::START_BIT, false>(1000)) return Status::ERROR;
 
         _regs()->DR = _devAddress << 1u | 0u;
-        if (!waitFlag<_regs, Flag::ADDRESSED, false>(1000))  return Status::ERROR;
+        if (!waitFlag<_regs, Flag::ADDRESSED, false>(1000)) return Status::ERROR;
         // request write end
 
         for (uint16_t i = 0; i < size; i++) {
@@ -86,8 +86,8 @@ namespace STM32::I2C
         return Status::OK;
     }
 
-    template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    inline Status Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Master::rx(uint8_t* data, uint16_t size)
+    __DRIVER_TPL__
+    inline Status __DRIVER_DEF__::Master::rx(uint8_t* data, uint16_t size)
     {
         if (_state != State::READY) return Status::BUSY;
         if (!waitBusy<_regs>(1000)) return Status::ERROR;
@@ -97,10 +97,10 @@ namespace STM32::I2C
 
         // request read
         _regs()->CR1 |= I2C_CR1_START;
-        if (!waitFlag<_regs, Flag::START_BIT, false>(1000))  return Status::ERROR;
+        if (!waitFlag<_regs, Flag::START_BIT, false>(1000)) return Status::ERROR;
 
         _regs()->DR = _devAddress << 1u | 1u;
-        if (!waitFlag<_regs, Flag::ADDRESSED, false>(1000))  return Status::ERROR;
+        if (!waitFlag<_regs, Flag::ADDRESSED, false>(1000)) return Status::ERROR;
         // request read end
 
         for (uint16_t i = 0; i < size - 1; i++) {
@@ -118,9 +118,21 @@ namespace STM32::I2C
         return Status::OK;
     }
 
+    __DRIVER_TPL__
+    inline Status __DRIVER_DEF__::Master::txDMA(uint8_t* data, uint16_t size, DataCallbackT cb)
+    {
+        return Status::OK;
+    }
+
+    __DRIVER_TPL__
+    inline Status __DRIVER_DEF__::Master::rxDMA(uint8_t* data, uint16_t size, DataCallbackT cb)
+    {
+        return Status::OK;
+    }
+
     // --- MEMORY ---
-    template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    inline Status Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Memory::set(uint16_t regAddress, uint8_t* data, uint16_t size)
+    __DRIVER_TPL__
+    inline Status __DRIVER_DEF__::Memory::set(uint16_t regAddress, uint8_t* data, uint16_t size)
     {
         if (_state != State::READY) return Status::BUSY;
 
@@ -129,10 +141,10 @@ namespace STM32::I2C
 
         // request write
         _regs()->CR1 |= I2C_CR1_START;
-        if (!waitFlag<_regs, Flag::START_BIT, false>(1000))  return Status::ERROR;
+        if (!waitFlag<_regs, Flag::START_BIT, false>(1000)) return Status::ERROR;
 
         _regs()->DR = _devAddress << 1u | 0u;
-        if (!waitFlag<_regs, Flag::ADDRESSED, false>(1000))  return Status::ERROR;
+        if (!waitFlag<_regs, Flag::ADDRESSED, false>(1000)) return Status::ERROR;
         // request write end
 
         // transmit 16-bit reg address
@@ -151,8 +163,8 @@ namespace STM32::I2C
         return Status::OK;
     }
 
-    template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    inline Status Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Memory::get(uint16_t regAddress, uint8_t* data, uint16_t size)
+    __DRIVER_TPL__
+    inline Status __DRIVER_DEF__::Memory::get(uint16_t regAddress, uint8_t* data, uint16_t size)
     {
         if (_state != State::READY) return Status::BUSY;
 
@@ -161,10 +173,10 @@ namespace STM32::I2C
 
         // request write
         _regs()->CR1 |= I2C_CR1_START;
-        if (!waitFlag<_regs, Flag::START_BIT, false>(1000))  return Status::ERROR;
+        if (!waitFlag<_regs, Flag::START_BIT, false>(1000)) return Status::ERROR;
 
         _regs()->DR = _devAddress << 1u | 0u;
-        if (!waitFlag<_regs, Flag::ADDRESSED, false>(1000))  return Status::ERROR;
+        if (!waitFlag<_regs, Flag::ADDRESSED, false>(1000)) return Status::ERROR;
         // request write end
 
         // transmit 16-bit reg address
@@ -175,10 +187,10 @@ namespace STM32::I2C
 
         // request read
         _regs()->CR1 |= I2C_CR1_START;
-        if (!waitFlag<_regs, Flag::START_BIT, false>(1000))  return Status::ERROR;
+        if (!waitFlag<_regs, Flag::START_BIT, false>(1000)) return Status::ERROR;
 
         _regs()->DR = _devAddress << 1u | 1u;
-        if (!waitFlag<_regs, Flag::ADDRESSED, false>(1000))  return Status::ERROR;
+        if (!waitFlag<_regs, Flag::ADDRESSED, false>(1000)) return Status::ERROR;
         // request read end
 
         for (uint16_t i = 0; i < size - 1; i++) {

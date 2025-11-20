@@ -147,6 +147,9 @@ namespace STM32::I2C
     using DataCallbackT = std::add_pointer_t<void(bool success)>;
     using ErrorCallbackT = std::add_pointer_t<void(Error errors)>;
 
+#define __DRIVER_TPL__ template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
+#define __DRIVER_DEF__ Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>
+
     template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
     class Driver
     {
@@ -160,20 +163,6 @@ namespace STM32::I2C
         static inline AddrCallbackT _addrCallback;
         static inline DataCallbackT _dataCallback;
         static inline ErrorCallbackT _errorCallback;
-
-        // static inline I2C_TypeDef* _regs();
-        // static inline bool _waitBusy();
-        static inline bool _waitFlag(Flag flag);
-
-        // static inline bool _start();
-        // static inline bool _sendDevAddressW(uint8_t address);
-        // static inline bool _sendDevAddressR(uint8_t address);
-
-        // template <Flag tFlag>
-        // static inline bool _hasFlag(uint32_t reg);
-
-        // template <Flag tFlag>
-        // static inline void _clrFlag();
 
     public:
         using DMATx = tDMATx;
@@ -195,6 +184,8 @@ namespace STM32::I2C
             static inline Status select(uint8_t address, Speed speed);
             static inline Status tx(uint8_t* data, uint16_t size);
             static inline Status rx(uint8_t* data, uint16_t size);
+            static inline Status txDMA(uint8_t* data, uint16_t size, DataCallbackT cb);
+            static inline Status rxDMA(uint8_t* data, uint16_t size, DataCallbackT cb);
         };
 
         class Memory : public Master
