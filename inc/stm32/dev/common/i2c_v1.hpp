@@ -127,8 +127,13 @@ namespace STM32::I2C
         _regs()->CR1 &= ~I2C_CR1_POS; // clear POS
         _regs()->CR1 |= I2C_CR1_ACK;  // enable ACK
 
-        if (!_start()) return Status::ERROR;
-        if (!_sendDevAddressW(_devAddress)) return Status::ERROR;
+        // request write
+        _regs()->CR1 |= I2C_CR1_START;
+        if (!waitFlag<_regs, Flag::START_BIT, false>(1000))  return Status::ERROR;
+
+        _regs()->DR = _devAddress << 1u | 0u;
+        if (!waitFlag<_regs, Flag::ADDRESSED, false>(1000))  return Status::ERROR;
+        // request write end
 
         // transmit 16-bit reg address
         _regs()->DR = static_cast<uint8_t>(regAddress >> 8);
@@ -154,8 +159,13 @@ namespace STM32::I2C
         _regs()->CR1 &= ~I2C_CR1_POS; // clear POS
         _regs()->CR1 |= I2C_CR1_ACK;  // enable ACK
 
-        if (!_start()) return Status::ERROR;
-        if (!_sendDevAddressW(_devAddress)) return Status::ERROR;
+        // request write
+        _regs()->CR1 |= I2C_CR1_START;
+        if (!waitFlag<_regs, Flag::START_BIT, false>(1000))  return Status::ERROR;
+
+        _regs()->DR = _devAddress << 1u | 0u;
+        if (!waitFlag<_regs, Flag::ADDRESSED, false>(1000))  return Status::ERROR;
+        // request write end
 
         // transmit 16-bit reg address
         _regs()->DR = static_cast<uint8_t>(regAddress >> 8);
@@ -163,8 +173,13 @@ namespace STM32::I2C
         _regs()->DR = static_cast<uint8_t>(regAddress);
         while ((_regs()->SR1 & I2C_SR1_TXE) == 0u) {} // wait until TXE is set
 
-        if (!_start()) return Status::ERROR;
-        if (!_sendDevAddressR(_devAddress)) return Status::ERROR;
+        // request read
+        _regs()->CR1 |= I2C_CR1_START;
+        if (!waitFlag<_regs, Flag::START_BIT, false>(1000))  return Status::ERROR;
+
+        _regs()->DR = _devAddress << 1u | 1u;
+        if (!waitFlag<_regs, Flag::ADDRESSED, false>(1000))  return Status::ERROR;
+        // request read end
 
         for (uint16_t i = 0; i < size - 1; i++) {
             while ((_regs()->SR1 & I2C_SR1_RXNE) == 0u) {} // wait until TXE is set

@@ -59,11 +59,11 @@ namespace STM32::I2C
 
         uint8_t* buf = data;
         uint32_t cnt = size;
-        uint32_t len = cnt > 255 ? 255 : cnt;
+        uint32_t len = cnt > 255u ? 255u : cnt;
 
         MODIFY_REG(_regs()->CR2, (I2C_CR2_SADD | I2C_CR2_RD_WRN), _devAddress);
 
-        if (len > 0) {
+        if (len > 0u) {
             _regs()->TXDR = *buf;
             buf++;
             cnt--;
@@ -74,7 +74,7 @@ namespace STM32::I2C
             MODIFY_REG(_regs()->CR2, CR2_CLR_MASK, (I2C_CR2_START | I2C_CR2_AUTOEND));
         }
 
-        while (cnt > 0) {
+        while (cnt > 0u) {
             if (!waitFlag<_regs, Flag::TX_INTERRUPT, false>(1000)) return Status::ERROR;
             _regs()->TXDR = *buf;
             buf++;
@@ -82,8 +82,8 @@ namespace STM32::I2C
             len--;
             if (cnt != 0 && len == 0) {
                 if (!waitFlag<_regs, Flag::TRANSFER_COMPLETE_RELOAD, false>(1000)) return Status::ERROR;
-                if (cnt > 255) {
-                    len = 255;
+                if (cnt > 255u) {
+                    len = 255u;
                     MODIFY_REG(_regs()->CR2, CR2_CLR_MASK, ((len << I2C_CR2_NBYTES_Pos) | I2C_CR2_RELOAD));
                 } else {
                     len = cnt;
@@ -113,7 +113,7 @@ namespace STM32::I2C
 
         MODIFY_REG(_regs()->CR2, (I2C_CR2_SADD | I2C_CR2_RD_WRN), _devAddress | I2C_CR2_RD_WRN);
 
-        if (cnt > 255) {
+        if (cnt > 255u) {
             len = 1u; //<-- for enter while loop after first byte received
             MODIFY_REG(_regs()->CR2, CR2_CLR_MASK, ((len << I2C_CR2_NBYTES_Pos) | I2C_CR2_START | I2C_CR2_RELOAD));
         } else {
@@ -129,8 +129,8 @@ namespace STM32::I2C
             len--;
             if (cnt != 0 && len == 0) {
                 if (!waitFlag<_regs, Flag::TRANSFER_COMPLETE_RELOAD, false>(1000)) return Status::ERROR;
-                if (cnt > 255) {
-                    len = 255;
+                if (cnt > 255u) {
+                    len = 255u;
                     MODIFY_REG(_regs()->CR2, CR2_CLR_MASK, ((len << I2C_CR2_NBYTES_Pos) | I2C_CR2_RELOAD));
                 } else {
                     len = cnt;
@@ -157,8 +157,9 @@ namespace STM32::I2C
 
         uint8_t* buf = data;
         uint32_t cnt = size;
-        uint32_t len = 0;
+        uint32_t len;
 
+        // Set dev address WR
         MODIFY_REG(_regs()->CR2, (I2C_CR2_SADD | I2C_CR2_RD_WRN), _devAddress);
 
         // Send mem address
@@ -174,8 +175,8 @@ namespace STM32::I2C
         // Send mem address end
 
         // Send data
-        if (cnt > 255) {
-            len = 255;
+        if (cnt > 255u) {
+            len = 255u;
             MODIFY_REG(_regs()->CR2, CR2_CLR_MASK, ((len << I2C_CR2_NBYTES_Pos) | I2C_CR2_RELOAD));
         } else {
             len = cnt;
@@ -192,8 +193,8 @@ namespace STM32::I2C
 
             if (cnt != 0 && len == 0) {
                 if (!waitFlag<_regs, Flag::TRANSFER_COMPLETE_RELOAD, false>(1000)) return Status::ERROR;
-                if (cnt > 255) {
-                    len = 255;
+                if (cnt > 255u) {
+                    len = 255u;
                     MODIFY_REG(_regs()->CR2, CR2_CLR_MASK, ((len << I2C_CR2_NBYTES_Pos) | I2C_CR2_RELOAD));
                 } else {
                     len = cnt;
@@ -218,34 +219,61 @@ namespace STM32::I2C
 
         _state = State::MASTER_TX;
 
-        // _regs()->CR1 &= ~I2C_CR1_POS; // clear POS
-        // _regs()->CR1 |= I2C_CR1_ACK;  // enable ACK
+        uint8_t* buf = data;
+        uint32_t cnt = size;
+        uint32_t len = 0;
 
-        // if (!_start()) return Status::ERROR;
-        // if (!_sendDevAddressW(_devAddress)) return Status::ERROR;
+        // Set dev address WR
+        MODIFY_REG(_regs()->CR2, (I2C_CR2_SADD | I2C_CR2_RD_WRN), _devAddress);
 
-        // // transmit 16-bit reg address
-        // _regs()->DR = static_cast<uint8_t>(regAddress >> 8);
-        // while ((_regs()->SR1 & I2C_SR1_TXE) == 0u) {} // wait until TXE is set
-        // _regs()->DR = static_cast<uint8_t>(regAddress);
-        // while ((_regs()->SR1 & I2C_SR1_TXE) == 0u) {} // wait until TXE is set
+        // Send mem address
+        MODIFY_REG(_regs()->CR2, I2C_CR2_NBYTES, (2u << I2C_CR2_NBYTES_Pos) | I2C_CR2_START | I2C_CR2_RELOAD);
 
-        // _state = State::MASTER_RX;
+        if (!waitFlag<_regs, Flag::TX_INTERRUPT, false>(1000)) return Status::ERROR;
+        _regs()->TXDR = static_cast<uint8_t>(regAddress >> 8u);
 
-        // if (!_start()) return Status::ERROR;
-        // if (!_sendDevAddressR(_devAddress)) return Status::ERROR;
+        if (!waitFlag<_regs, Flag::TX_INTERRUPT, false>(1000)) return Status::ERROR;
+        _regs()->TXDR = static_cast<uint8_t>(regAddress);
 
-        // for (uint16_t i = 0; i < size - 1; i++) {
-        //     while ((_regs()->SR1 & I2C_SR1_RXNE) == 0u) {} // wait until TXE is set
-        //     data[i] = _regs()->DR;                         // receive byte
-        // }
+        if (!waitFlag<_regs, Flag::TRANSFER_COMPLETE_RELOAD, false>(1000)) return Status::ERROR;
+        // Send mem address end
 
-        // _regs()->CR1 &= ~I2C_CR1_ACK; // disable ACK
-        // _regs()->CR1 |= I2C_CR1_STOP; // send STOP
+        _state = State::MASTER_RX;
 
-        // while ((_regs()->SR1 & I2C_SR1_RXNE) == 0u) {} // wait until TXE is set
-        // data[size] = _regs()->DR;                      // receive byte
+        // Set dev address RD
+        MODIFY_REG(_regs()->CR2, (I2C_CR2_SADD | I2C_CR2_RD_WRN), _devAddress | I2C_CR2_RD_WRN);
 
+        // Send data
+        if (cnt > 255u) {
+            len = 1u;
+            MODIFY_REG(_regs()->CR2, CR2_CLR_MASK, ((len << I2C_CR2_NBYTES_Pos) | I2C_CR2_RELOAD));
+        } else {
+            len = cnt;
+            MODIFY_REG(_regs()->CR2, CR2_CLR_MASK, ((len << I2C_CR2_NBYTES_Pos) | I2C_CR2_AUTOEND));
+        }
+
+        do {
+            if (!waitFlag<_regs, Flag::RX_NOT_EMPTY, false>(1000)) return Status::ERROR;
+            *buf = _regs()->RXDR;
+            buf++;
+            cnt--;
+            len--;
+            if (cnt != 0 && len == 0) {
+                if (!waitFlag<_regs, Flag::TRANSFER_COMPLETE_RELOAD, false>(1000)) return Status::ERROR;
+                if (cnt > 255u) {
+                    len = 1u;
+                    MODIFY_REG(_regs()->CR2, CR2_CLR_MASK, ((len << I2C_CR2_NBYTES_Pos) | I2C_CR2_RELOAD));
+                } else {
+                    len = cnt;
+                    MODIFY_REG(_regs()->CR2, CR2_CLR_MASK, ((len << I2C_CR2_NBYTES_Pos) | I2C_CR2_AUTOEND));
+                }
+            }
+        } while (cnt > 0u);
+
+        if (!waitFlag<_regs, Flag::STOP_DETECTED, false>(1000)) return Status::ERROR;
+        clearFlag<_regs, Flag::STOP_DETECTED>();
+
+        _state = State::READY;
         return Status::OK;
     }
 #endif
