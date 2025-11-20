@@ -51,7 +51,7 @@ namespace STM32::UART
 
         DMATx::clrFlagTC();
         DMATx::setEventCallback(cb);
-        DMATx::setErrorCallback([](DMA::Error e){
+        DMATx::setErrorCallback([](DMA::Error e, uint16_t n){
             detachIRQ<IRQEnable::TX_EMPTY | IRQEnable::TX_COMPLETE>();
             // state = ready
             // err callback
@@ -75,7 +75,7 @@ namespace STM32::UART
 
         DMARx::clrFlagTC();
         DMARx::setEventCallback(cb);
-        DMARx::setErrorCallback([](DMA::Error e){
+        DMARx::setErrorCallback([](DMA::Error e, uint16_t n){
             detachIRQ<IRQEnable::RX_NOT_EMPTY | IRQEnable::IDLE | IRQEnable::PARITY_ERROR | IRQEnable::ERROR>();
             // state = ready
             // err callback

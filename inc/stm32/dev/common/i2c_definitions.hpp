@@ -156,6 +156,10 @@ namespace STM32::I2C
     protected:
         static const uint32_t _timeout = 10000;
 
+        static inline uint8_t* _buf;
+        static inline uint16_t _cnt;
+        static inline uint16_t _len;
+
         static inline Speed _speed;
         static inline State _state;
         static inline uint8_t _devAddress;
@@ -170,16 +174,13 @@ namespace STM32::I2C
 
         static inline bool isBusy();
 
-        /**
-         * select(): RESET|READY -> BUSY -> READY
-         * tx()    : READY -> BUSY_TX -> READY
-         * txDMA() : READY -> BUSY_TX
-         * rx()    : READY -> BUSY_RX -> READY
-         * rxDMA() : READY -> BUSY_RX
-         * DMA [TC]: BUSY_TX|BUSY_RX -> READY
-         */
         class Master
         {
+        private:
+            static inline void _onDMAEventTx(DMA::Event, uint16_t n);
+            static inline void _onDMAEventRx(DMA::Event, uint16_t n);
+            static inline void _onDMAError(DMA::Error, uint16_t n);
+
         public:
             static inline Status select(uint8_t address, Speed speed);
             static inline Status tx(uint8_t* data, uint16_t size);

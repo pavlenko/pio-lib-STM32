@@ -96,7 +96,7 @@ namespace STM32::DMA
         if (hasFlag<Flag::HALF_TRANSFER>()) {
             clrFlag<Flag::HALF_TRANSFER>();
             if (!isCircular()) disable();
-            if (_eventCallback) _eventCallback(Event::PARTIAL);
+            if (_eventCallback) _eventCallback(Event::PARTIAL, getRemaining());
         }
         if (hasFlag<Flag::TRANSFER_COMPLETE>()) {
             clrFlag<Flag::TRANSFER_COMPLETE>();
@@ -104,11 +104,11 @@ namespace STM32::DMA
                 disable();
                 _state = State::READY;
             }
-            if (_eventCallback) _eventCallback(Event::COMPLETE);
+            if (_eventCallback) _eventCallback(Event::COMPLETE, getRemaining());
         }
         if (error != Error::NONE) {
             if ((error & Error::TRANSFER) == Error::TRANSFER) disable();
-            if (_errorCallback) _errorCallback(error);
+            if (_errorCallback) _errorCallback(error, getRemaining());
         }
     }
 

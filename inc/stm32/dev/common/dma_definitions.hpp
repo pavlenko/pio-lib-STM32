@@ -156,8 +156,8 @@ namespace STM32::DMA
         return Error(static_cast<uint32_t>(lft) | static_cast<uint32_t>(rgt));
     }
 
-    using EventCallbackT = std::add_pointer_t<void(Event)>;
-    using ErrorCallbackT = std::add_pointer_t<void(Error)>;
+    using EventCallbackT = std::add_pointer_t<void(Event, uint16_t)>;
+    using ErrorCallbackT = std::add_pointer_t<void(Error, uint16_t)>;
 
     /**
      * @brief DMA channel APIs

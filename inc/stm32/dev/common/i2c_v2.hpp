@@ -41,16 +41,13 @@ namespace STM32::I2C
         }
     }
 
-    template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    inline bool Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::isBusy()
-    {
-        return issetFlag<_regs>(Flag::BUSY);
-    }
+    __DRIVER_TPL__
+    inline bool __DRIVER_DEF__::isBusy() { return issetFlag<_regs>(Flag::BUSY); }
 
 #define CR2_CLR_MASK (I2C_CR2_START | I2C_CR2_STOP | I2C_CR2_NBYTES | I2C_CR2_RELOAD | I2C_CR2_AUTOEND)
 
-    template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    inline Status Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Master::tx(uint8_t* data, uint16_t size)
+    __DRIVER_TPL__
+    inline Status __DRIVER_DEF__::Master::tx(uint8_t* data, uint16_t size)
     {
         if (_state != State::READY) return Status::BUSY;
         if (!waitBusy<_regs>(1000)) return Status::ERROR;
@@ -99,8 +96,8 @@ namespace STM32::I2C
         return Status::OK;
     }
 
-    template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    inline Status Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Master::rx(uint8_t* data, uint16_t size)
+    __DRIVER_TPL__
+    inline Status __DRIVER_DEF__::Master::rx(uint8_t* data, uint16_t size)
     {
         if (_state != State::READY) return Status::BUSY;
         if (!waitBusy<_regs>(1000)) return Status::ERROR;
@@ -147,20 +144,115 @@ namespace STM32::I2C
     }
 
     __DRIVER_TPL__
+    inline void __DRIVER_DEF__::Master::_onDMAEventTx(DMA::Event e, uint16_t n)
+    {
+        _cnt -= n;
+        _buf += n;
+
+        bool isset;
+        if (_cnt > 0) {
+            isset = waitFlag<_regs, Flag::TRANSFER_COMPLETE_RELOAD, false>(1000);
+        } else {
+            isset = waitFlag<_regs, Flag::TRANSFER_COMPLETE, false>(1000);
+        }
+        if (!isset) {
+            //TODO error
+            return;
+        }
+        if (_cnt > 255u) {
+            MODIFY_REG(_regs()->CR2, CR2_CLR_MASK, ((255u << I2C_CR2_NBYTES_Pos) | I2C_CR2_RELOAD));
+            DMATx::clrFlagTC();
+            DMATx::transfer(DMA::Config::PER_2_MEM | DMA::Config::MINC, _buf, &_regs()->RXDR, 255u);
+            return;
+        }
+        if (_cnt > 0) {
+            MODIFY_REG(_regs()->CR2, CR2_CLR_MASK, ((_cnt << I2C_CR2_NBYTES_Pos) | I2C_CR2_AUTOEND));
+            DMATx::clrFlagTC();
+            DMATx::transfer(DMA::Config::PER_2_MEM | DMA::Config::MINC, _buf, &_regs()->RXDR, _cnt);
+            return;
+        }
+        disableDMA<_regs>(DMAEn::RX);
+        if (_dataCallback) _dataCallback(true);
+    }
+
+    __DRIVER_TPL__
+    inline void __DRIVER_DEF__::Master::_onDMAEventRx(DMA::Event e, uint16_t n)
+    {
+        _cnt -= n;
+        _buf += n;
+
+        bool isset;
+        if (_cnt > 0) {
+            isset = waitFlag<_regs, Flag::TRANSFER_COMPLETE_RELOAD, false>(1000);
+        } else {
+            isset = waitFlag<_regs, Flag::TRANSFER_COMPLETE, false>(1000);
+        }
+        if (!isset) {
+            //TODO error
+            return;
+        }
+        if (_cnt > 255u) {
+            MODIFY_REG(_regs()->CR2, CR2_CLR_MASK, ((255u << I2C_CR2_NBYTES_Pos) | I2C_CR2_RELOAD));
+            DMATx::clrFlagTC();
+            DMATx::transfer(DMA::Config::MEM_2_PER | DMA::Config::MINC, _buf, &_regs()->TXDR, 255u);
+            return;
+        }
+        if (_cnt > 0) {
+            MODIFY_REG(_regs()->CR2, CR2_CLR_MASK, ((_cnt << I2C_CR2_NBYTES_Pos) | I2C_CR2_AUTOEND));
+            DMATx::clrFlagTC();
+            DMATx::transfer(DMA::Config::MEM_2_PER | DMA::Config::MINC, _buf, &_regs()->TXDR, _cnt);
+            return;
+        }
+        disableDMA<_regs>(DMAEn::RX);
+        if (_dataCallback) _dataCallback(true);
+    }
+
+    __DRIVER_TPL__
+    inline void __DRIVER_DEF__::Master::_onDMAError(DMA::Error e, uint16_t n) {}
+
+    __DRIVER_TPL__
     inline Status __DRIVER_DEF__::Master::txDMA(uint8_t* data, uint16_t size, DataCallbackT cb)
     {
+        if (_state != State::READY) return Status::BUSY;
+        if (!waitBusy<_regs>(1000)) return Status::ERROR;
+
+        _state = State::MASTER_TX;
+
+        _buf = data;
+        _cnt = size;
+
+        DMATx::setEventCallback(_onDMAEventTx);
+        DMATx::setErrorCallback(_onDMAError);
+        DMATx::clrFlagTC();
+        DMATx::transfer(DMA::Config::MEM_2_PER | DMA::Config::MINC, _buf, &_regs()->TXDR, _cnt > 255u ? 255u : _cnt);
+
+        enableDMA<_regs>(DMAEn::TX);
+
         return Status::OK;
     }
 
     __DRIVER_TPL__
     inline Status __DRIVER_DEF__::Master::rxDMA(uint8_t* data, uint16_t size, DataCallbackT cb)
     {
+        if (_state != State::READY) return Status::BUSY;
+        if (!waitBusy<_regs>(1000)) return Status::ERROR;
+
+        _state = State::MASTER_RX;
+
+        _buf = data;
+        _cnt = size;
+
+        DMARx::setEventCallback(_onDMAEventTx);
+        DMARx::setErrorCallback(_onDMAError);
+        DMARx::clrFlagTC();
+        DMARx::transfer(DMA::Config::PER_2_MEM | DMA::Config::MINC, _buf, &_regs()->RXDR, _cnt);
+
         return Status::OK;
     }
 
     // --- MEMORY ---
     __DRIVER_TPL__
-    inline Status Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Memory::set(uint16_t regAddress, uint8_t* data, uint16_t size)
+    inline Status __DRIVER_DEF__::Memory::set(uint16_t regAddress, uint8_t* data, uint16_t size)
     {
         if (_state != State::READY) return Status::BUSY;
         if (!waitBusy<_regs>(1000)) return Status::ERROR;
@@ -224,7 +316,7 @@ namespace STM32::I2C
     }
 
     __DRIVER_TPL__
-    inline Status Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>::Memory::get(uint16_t regAddress, uint8_t* data, uint16_t size)
+    inline Status __DRIVER_DEF__::Memory::get(uint16_t regAddress, uint8_t* data, uint16_t size)
     {
         if (_state != State::READY) return Status::BUSY;
         if (!waitBusy<_regs>(1000)) return Status::ERROR;
