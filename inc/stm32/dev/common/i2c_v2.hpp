@@ -53,6 +53,17 @@ namespace STM32::I2C
             while (issetFlag<_regs, tFlag>() == tState && --timeout > 0) {}
             return issetFlag<_regs, tFlag>() != tState;
         }
+
+        template <RegsT _regs>
+        static inline void flushTx()
+        {
+            if (issetFlag<_regs, Flag::TX_INTERRUPT>()) {
+                _regs()->TXDR = 0x00U;
+            }
+            if (!issetFlag<_regs, Flag::TX_EMPTY>()) {
+                clearFlag<_regs, Flag::TX_EMPTY>();
+            }
+        }
     }
 
     __DRIVER_TPL__

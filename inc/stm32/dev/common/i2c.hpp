@@ -58,14 +58,6 @@ namespace STM32::I2C
         {
             _regs()->CR2 &= ~static_cast<uint32_t>(flags);
         }
-
-        template <RegsT _regs>
-        static inline void flushTx()
-        {
-            if ((_regs()->SR1 & I2C_SR1_TXE) != 0u) {
-                _regs()->DR = 0x00U;
-            }
-        }
 #endif
 #if defined(I2C_ISR_BUSY)
         template <RegsT _regs>
@@ -139,18 +131,6 @@ namespace STM32::I2C
         static inline void disableDMA(DMAEn flags)
         {
             _regs()->CR1 &= ~static_cast<uint32_t>(flags);
-        }
-
-        template <RegsT _regs>
-        static inline void flushTx()
-        {
-            // TODO use _has/_clrFlag
-            if ((_regs()->ISR & I2C_ISR_TXIS) != 0u) {
-                _regs()->TXDR = 0x00U;
-            }
-            if ((_regs()->ISR & I2C_ISR_TXE) == 0u) {
-                _regs()->ISR |= I2C_ISR_TXE;
-            }
         }
 #endif
     }
