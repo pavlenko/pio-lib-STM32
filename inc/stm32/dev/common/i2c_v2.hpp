@@ -5,6 +5,20 @@
 namespace STM32::I2C
 {
 #if defined(I2C_ISR_BUSY)
+    enum CR2 {
+        SADD = I2C_CR2_SADD,
+        READ = I2C_CR2_RD_WRN,
+        START = I2C_CR2_START,
+        STOP = I2C_CR2_STOP,
+        NACK = I2C_CR2_NACK,
+        NBYTES = I2C_CR2_NBYTES,
+        NBYTES_Pos = I2C_CR2_NBYTES_Pos,
+        RELOAD = I2C_CR2_RELOAD,
+        AUTOEND = I2C_CR2_AUTOEND,
+        ADDRMsk = SADD | READ,
+        MODEMsk = RELOAD | AUTOEND,
+    };
+
     // Private
     namespace
     {
@@ -58,7 +72,7 @@ namespace STM32::I2C
         uint32_t cnt = size;
         uint32_t len = cnt > 255u ? 255u : cnt;
 
-        MODIFY_REG(_regs()->CR2, (I2C_CR2_SADD | I2C_CR2_RD_WRN), _devAddress);
+        MODIFY_REG(_regs()->CR2, CR2::ADDRMsk, _devAddress);
 
         if (len > 0u) {
             _regs()->TXDR = *buf;
@@ -78,13 +92,13 @@ namespace STM32::I2C
             cnt--;
             len--;
             if (cnt != 0 && len == 0) {
-                if (!waitFlag<_regs, Flag::TRANSFER_COMPLETE_RELOAD, false>(1000)) return Status::ERROR;
+                if (!waitFlag<_regs, Flag::TRANSFER_RELOAD, false>(1000)) return Status::ERROR;
                 if (cnt > 255u) {
                     len = 255u;
-                    MODIFY_REG(_regs()->CR2, CR2_CLR_MASK, ((len << I2C_CR2_NBYTES_Pos) | I2C_CR2_RELOAD));
+                    MODIFY_REG(_regs()->CR2, (CR2::NBYTES | CR2::MODEMsk), ((len << I2C_CR2_NBYTES_Pos) | I2C_CR2_RELOAD));
                 } else {
                     len = cnt;
-                    MODIFY_REG(_regs()->CR2, CR2_CLR_MASK, ((len << I2C_CR2_NBYTES_Pos) | I2C_CR2_AUTOEND));
+                    MODIFY_REG(_regs()->CR2, (CR2::NBYTES | CR2::MODEMsk), ((len << I2C_CR2_NBYTES_Pos) | I2C_CR2_AUTOEND));
                 }
             }
         }
@@ -108,7 +122,7 @@ namespace STM32::I2C
         uint32_t cnt = size;
         uint32_t len;
 
-        MODIFY_REG(_regs()->CR2, (I2C_CR2_SADD | I2C_CR2_RD_WRN), _devAddress | I2C_CR2_RD_WRN);
+        MODIFY_REG(_regs()->CR2, CR2::ADDRMsk, _devAddress | CR2::READ);
 
         if (cnt > 255u) {
             len = 1u; //<-- for enter while loop after first byte received
@@ -125,13 +139,13 @@ namespace STM32::I2C
             cnt--;
             len--;
             if (cnt != 0 && len == 0) {
-                if (!waitFlag<_regs, Flag::TRANSFER_COMPLETE_RELOAD, false>(1000)) return Status::ERROR;
+                if (!waitFlag<_regs, Flag::TRANSFER_RELOAD, false>(1000)) return Status::ERROR;
                 if (cnt > 255u) {
                     len = 255u;
-                    MODIFY_REG(_regs()->CR2, CR2_CLR_MASK, ((len << I2C_CR2_NBYTES_Pos) | I2C_CR2_RELOAD));
+                    MODIFY_REG(_regs()->CR2, (CR2::NBYTES | CR2::MODEMsk), ((len << I2C_CR2_NBYTES_Pos) | I2C_CR2_RELOAD));
                 } else {
                     len = cnt;
-                    MODIFY_REG(_regs()->CR2, CR2_CLR_MASK, ((len << I2C_CR2_NBYTES_Pos) | I2C_CR2_AUTOEND));
+                    MODIFY_REG(_regs()->CR2, (CR2::NBYTES | CR2::MODEMsk), ((len << I2C_CR2_NBYTES_Pos) | I2C_CR2_AUTOEND));
                 }
             }
         }
@@ -144,6 +158,38 @@ namespace STM32::I2C
     }
 
     __DRIVER_TPL__
+    inline Status __DRIVER_DEF__::Master::txIRQ(uint8_t* data, uint16_t size, DataCallbackT cb)
+    {
+        if (_state != State::READY) return Status::BUSY;
+        if (!waitBusy<_regs>(1000)) return Status::ERROR;
+
+        _state = State::MASTER_TX;
+        _buf = data;
+        _cnt = size;
+
+        // TODO
+
+        enableIRQ<_regs>(IRQEn::ERROR | IRQEn::DONE | IRQEn::STOP | IRQEn::NACK | IRQEn::TX);
+        return Status::OK;
+    }
+
+    __DRIVER_TPL__
+    inline Status __DRIVER_DEF__::Master::rxIRQ(uint8_t* data, uint16_t size, DataCallbackT cb)
+    {
+        if (_state != State::READY) return Status::BUSY;
+        if (!waitBusy<_regs>(1000)) return Status::ERROR;
+
+        _state = State::MASTER_RX;
+        _buf = data;
+        _cnt = size;
+
+        // TODO
+
+        enableIRQ<_regs>(IRQEn::ERROR | IRQEn::DONE | IRQEn::STOP | IRQEn::NACK | IRQEn::TX);
+        return Status::OK;
+    }
+
+    __DRIVER_TPL__
     inline void __DRIVER_DEF__::Master::_onDMAEventTx(DMA::Event e, uint16_t n)
     {
         _cnt -= n;
@@ -151,22 +197,22 @@ namespace STM32::I2C
 
         bool isset;
         if (_cnt > 0) {
-            isset = waitFlag<_regs, Flag::TRANSFER_COMPLETE_RELOAD, false>(1000);
+            isset = waitFlag<_regs, Flag::TRANSFER_RELOAD, false>(1000);
         } else {
             isset = waitFlag<_regs, Flag::TRANSFER_COMPLETE, false>(1000);
         }
         if (!isset) {
-            //TODO error
+            // TODO error
             return;
         }
         if (_cnt > 255u) {
-            MODIFY_REG(_regs()->CR2, CR2_CLR_MASK, ((255u << I2C_CR2_NBYTES_Pos) | I2C_CR2_RELOAD));
+            MODIFY_REG(_regs()->CR2, (CR2::NBYTES | CR2::MODEMsk), ((255u << I2C_CR2_NBYTES_Pos) | I2C_CR2_RELOAD));
             DMATx::clrFlagTC();
             DMATx::transfer(DMA::Config::PER_2_MEM | DMA::Config::MINC, _buf, &_regs()->RXDR, 255u);
             return;
         }
         if (_cnt > 0) {
-            MODIFY_REG(_regs()->CR2, CR2_CLR_MASK, ((_cnt << I2C_CR2_NBYTES_Pos) | I2C_CR2_AUTOEND));
+            MODIFY_REG(_regs()->CR2, (CR2::NBYTES | CR2::MODEMsk), ((_cnt << I2C_CR2_NBYTES_Pos) | I2C_CR2_AUTOEND));
             DMATx::clrFlagTC();
             DMATx::transfer(DMA::Config::PER_2_MEM | DMA::Config::MINC, _buf, &_regs()->RXDR, _cnt);
             return;
@@ -183,22 +229,22 @@ namespace STM32::I2C
 
         bool isset;
         if (_cnt > 0) {
-            isset = waitFlag<_regs, Flag::TRANSFER_COMPLETE_RELOAD, false>(1000);
+            isset = waitFlag<_regs, Flag::TRANSFER_RELOAD, false>(1000);
         } else {
             isset = waitFlag<_regs, Flag::TRANSFER_COMPLETE, false>(1000);
         }
         if (!isset) {
-            //TODO error
+            // TODO error
             return;
         }
         if (_cnt > 255u) {
-            MODIFY_REG(_regs()->CR2, CR2_CLR_MASK, ((255u << I2C_CR2_NBYTES_Pos) | I2C_CR2_RELOAD));
+            MODIFY_REG(_regs()->CR2, (CR2::NBYTES | CR2::MODEMsk), ((255u << I2C_CR2_NBYTES_Pos) | I2C_CR2_RELOAD));
             DMATx::clrFlagTC();
             DMATx::transfer(DMA::Config::MEM_2_PER | DMA::Config::MINC, _buf, &_regs()->TXDR, 255u);
             return;
         }
         if (_cnt > 0) {
-            MODIFY_REG(_regs()->CR2, CR2_CLR_MASK, ((_cnt << I2C_CR2_NBYTES_Pos) | I2C_CR2_AUTOEND));
+            MODIFY_REG(_regs()->CR2, (CR2::NBYTES | CR2::MODEMsk), ((_cnt << I2C_CR2_NBYTES_Pos) | I2C_CR2_AUTOEND));
             DMATx::clrFlagTC();
             DMATx::transfer(DMA::Config::MEM_2_PER | DMA::Config::MINC, _buf, &_regs()->TXDR, _cnt);
             return;
@@ -250,6 +296,74 @@ namespace STM32::I2C
         return Status::OK;
     }
 
+    __DRIVER_TPL__
+    inline void __DRIVER_DEF__::Master::dispatchEventIRQ()
+    {
+        uint32_t flags = _regs()->ISR;
+        if (checkFlag(flags, Flag::ACK_FAILED)) {
+            clearFlag<_regs, Flag::ACK_FAILED>;
+            _error |= Error::ACK_FAILURE;
+            flushTx<_regs>();
+        } else if (checkFlag(flags, Flag::RX_NOT_EMPTY)) {
+            *_buf = static_cast<uint8_t>(_regs()->RXDR);
+            _buf++;
+            _cnt--;
+            _len--;
+        } else if (checkFlag(flags, Flag::TX_INTERRUPT)) {
+            _regs()->TXDR = *_buf;
+            _buf++;
+            _cnt--;
+            _len--;
+        } else if (checkFlag(flags, Flag::TRANSFER_RELOAD)) {
+            if (_cnt != 0u && _len == 0u) {
+                if (_cnt > 255u) {
+                    _len = 255u;
+                    MODIFY_REG(_regs()->CR2, (CR2::NBYTES | CR2::MODEMsk), (_len << CR2::NBYTES_Pos) | CR2::RELOAD);
+                } else {
+                    _len = _cnt;
+                    MODIFY_REG(_regs()->CR2, (CR2::NBYTES | CR2::MODEMsk), (_len << CR2::NBYTES_Pos) | CR2::AUTOEND);
+                }
+            } else {
+                // TODO size error
+            }
+        } else if (checkFlag(flags, Flag::TRANSFER_COMPLETE)) {
+            // TODO handle change direction
+            if (_cnt > 255u) {
+                _len = 255u;
+                MODIFY_REG(_regs()->CR2, (CR2::NBYTES | CR2::MODEMsk), (_len << CR2::NBYTES_Pos) | CR2::RELOAD);
+            } else {
+                _len = _cnt;
+                MODIFY_REG(_regs()->CR2, (CR2::NBYTES | CR2::MODEMsk), (_len << CR2::NBYTES_Pos) | CR2::AUTOEND);
+            }
+        }
+
+        if (checkFlag(flags, Flag::STOP_DETECTED)) {
+            clearFlag<_regs, Flag::STOP_DETECTED>;
+            // TODO master complete
+        }
+    }
+
+    __DRIVER_TPL__
+    inline void __DRIVER_DEF__::Master::dispatchErrorIRQ()
+    {
+        uint32_t flags = _regs()->ISR;
+        if (checkFlag(flags, Flag::BUS_ERROR)) {
+            clearFlag<_regs, Flag::BUS_ERROR>;
+            _error |= Error::BUS_ERROR;
+        }
+        if (checkFlag(flags, Flag::OVER_UNDERRUN)) {
+            clearFlag<_regs, Flag::OVER_UNDERRUN>;
+            _error |= Error::OVER_UNDERRUN;
+        }
+        if (checkFlag(flags, Flag::ARBITRATION_LOST)) {
+            clearFlag<_regs, Flag::ARBITRATION_LOST>;
+            _error |= Error::ARBITRATION_LOST;
+        }
+        if (_error != Error::NONE) {
+            // TODO error callback??? maybe check only this handler errors
+        }
+    }
+
     // --- MEMORY ---
     __DRIVER_TPL__
     inline Status __DRIVER_DEF__::Memory::set(uint16_t regAddress, uint8_t* data, uint16_t size)
@@ -275,7 +389,7 @@ namespace STM32::I2C
         if (!waitFlag<_regs, Flag::TX_INTERRUPT, false>(1000)) return Status::ERROR;
         _regs()->TXDR = static_cast<uint8_t>(regAddress);
 
-        if (!waitFlag<_regs, Flag::TRANSFER_COMPLETE_RELOAD, false>(1000)) return Status::ERROR;
+        if (!waitFlag<_regs, Flag::TRANSFER_RELOAD, false>(1000)) return Status::ERROR;
         // Send mem address end
 
         // Send data
@@ -296,7 +410,7 @@ namespace STM32::I2C
             len--;
 
             if (cnt != 0 && len == 0) {
-                if (!waitFlag<_regs, Flag::TRANSFER_COMPLETE_RELOAD, false>(1000)) return Status::ERROR;
+                if (!waitFlag<_regs, Flag::TRANSFER_RELOAD, false>(1000)) return Status::ERROR;
                 if (cnt > 255u) {
                     len = 255u;
                     MODIFY_REG(_regs()->CR2, CR2_CLR_MASK, ((len << I2C_CR2_NBYTES_Pos) | I2C_CR2_RELOAD));
@@ -339,7 +453,7 @@ namespace STM32::I2C
         if (!waitFlag<_regs, Flag::TX_INTERRUPT, false>(1000)) return Status::ERROR;
         _regs()->TXDR = static_cast<uint8_t>(regAddress);
 
-        if (!waitFlag<_regs, Flag::TRANSFER_COMPLETE_RELOAD, false>(1000)) return Status::ERROR;
+        if (!waitFlag<_regs, Flag::TRANSFER_RELOAD, false>(1000)) return Status::ERROR;
         // Send mem address end
 
         _state = State::MASTER_RX;
@@ -363,7 +477,7 @@ namespace STM32::I2C
             cnt--;
             len--;
             if (cnt != 0 && len == 0) {
-                if (!waitFlag<_regs, Flag::TRANSFER_COMPLETE_RELOAD, false>(1000)) return Status::ERROR;
+                if (!waitFlag<_regs, Flag::TRANSFER_RELOAD, false>(1000)) return Status::ERROR;
                 if (cnt > 255u) {
                     len = 1u;
                     MODIFY_REG(_regs()->CR2, CR2_CLR_MASK, ((len << I2C_CR2_NBYTES_Pos) | I2C_CR2_RELOAD));

@@ -95,7 +95,7 @@ namespace STM32::I2C
         ACK_FAILED = I2C_ISR_NACKF,             //< Not acknowledge received
         STOP_DETECTED = I2C_ISR_STOPF,          //< Stop condition detected
         TRANSFER_COMPLETE = I2C_ISR_TC,         //< Transfer complete (master mode)
-        TRANSFER_COMPLETE_RELOAD = I2C_ISR_TCR, //< Transfer complete reload
+        TRANSFER_RELOAD = I2C_ISR_TCR, //< Transfer complete reload
         BUS_ERROR = I2C_ISR_BERR,               //<E Bus error
         ARBITRATION_LOST = I2C_ISR_ARLO,        //<E Arbitration lost
         OVER_UNDERRUN = I2C_ISR_OVR,            //<E Overrun/underrun (slave mode)
@@ -162,6 +162,8 @@ namespace STM32::I2C
 
         static inline Speed _speed;
         static inline State _state;
+        static inline Error _error;
+
         static inline uint8_t _devAddress;
 
         static inline AddrCallbackT _addrCallback;
@@ -185,8 +187,12 @@ namespace STM32::I2C
             static inline Status select(uint8_t address, Speed speed);
             static inline Status tx(uint8_t* data, uint16_t size);
             static inline Status rx(uint8_t* data, uint16_t size);
+            static inline Status txIRQ(uint8_t* data, uint16_t size, DataCallbackT cb);
+            static inline Status rxIRQ(uint8_t* data, uint16_t size, DataCallbackT cb);
             static inline Status txDMA(uint8_t* data, uint16_t size, DataCallbackT cb);
             static inline Status rxDMA(uint8_t* data, uint16_t size, DataCallbackT cb);
+            static inline void dispatchEventIRQ();
+            static inline void dispatchErrorIRQ();
         };
 
         class Memory : public Master
