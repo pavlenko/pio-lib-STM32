@@ -263,7 +263,11 @@ namespace STM32::I2C
     }
 
     __DRIVER_TPL__
-    inline void __DRIVER_DEF__::Master::_onDMAError(DMA::Error e, uint16_t n) {}
+    inline void __DRIVER_DEF__::Master::_onDMAError(DMA::Error e, uint16_t n)
+    {
+        // disable ack
+        //  call irq error -> need separate callback
+    }
 
     __DRIVER_TPL__
     inline Status __DRIVER_DEF__::Master::txDMA(uint8_t* data, uint16_t size, DataCallbackT cb)
@@ -344,11 +348,12 @@ namespace STM32::I2C
                 _len = _cnt;
                 MODIFY_REG(_regs()->CR2, (CR2::NBYTES | CR2::MODEMsk), (_len << CR2::NBYTES_Pos) | CR2::AUTOEND);
             }
-        }
-
-        if (checkFlag(flags, Flag::STOP_DETECTED)) {
+        } else if (checkFlag(flags, Flag::STOP_DETECTED)) {
             clearFlag<_regs, Flag::STOP_DETECTED>;
             // TODO master complete
+            // disable IRQ
+            // flush tx/rx
+            // execute callback
         }
     }
 
@@ -370,6 +375,10 @@ namespace STM32::I2C
         }
         if (_error != Error::NONE) {
             // TODO error callback??? maybe check only this handler errors
+            // disable IRQ
+            // flush tx
+            // check stop+af
+            // disable DMA
         }
     }
 
@@ -451,10 +460,10 @@ namespace STM32::I2C
         uint32_t len = 0;
 
         // Set dev address WR
-        MODIFY_REG(_regs()->CR2, (I2C_CR2_SADD | I2C_CR2_RD_WRN), _devAddress);
+        MODIFY_REG(_regs()->CR2, CR2::ADDRMsk, _devAddress);
 
         // Send mem address
-        MODIFY_REG(_regs()->CR2, I2C_CR2_NBYTES, (2u << I2C_CR2_NBYTES_Pos) | CR2::START | CR2::RELOAD);
+        MODIFY_REG(_regs()->CR2, (CR2::NBYTES | CR2::MODEMsk), (2u << I2C_CR2_NBYTES_Pos) | CR2::START | CR2::RELOAD);
 
         if (!waitFlag<_regs, Flag::TX_INTERRUPT, false>(1000)) return Status::ERROR;
         _regs()->TXDR = static_cast<uint8_t>(regAddress >> 8u);
@@ -468,7 +477,7 @@ namespace STM32::I2C
         _state = State::MASTER_RX;
 
         // Set dev address RD
-        MODIFY_REG(_regs()->CR2, (I2C_CR2_SADD | I2C_CR2_RD_WRN), _devAddress | I2C_CR2_RD_WRN);
+        MODIFY_REG(_regs()->CR2, CR2::ADDRMsk, _devAddress | I2C_CR2_RD_WRN);
 
         // Send data
         if (cnt > 255u) {

@@ -66,7 +66,7 @@ namespace STM32::DMA
         _regs()->CPAR = reinterpret_cast<uint32_t>(periph);
 
         if (_eventCallback || _errorCallback) {
-            attachIRQ<IRQEnable::TRANSFER_COMPLETE | IRQEnable::TRANSFER_ERROR>();
+            attachIRQ<IRQEn::TRANSFER_COMPLETE | IRQEn::TRANSFER_ERROR>();
         }
 
         NVIC_EnableIRQ(tIRQn);
@@ -82,7 +82,7 @@ namespace STM32::DMA
 
         _state = State::ABORTING;
 
-        detachIRQ<IRQEnable::ALL>();
+        detachIRQ<IRQEn::ALL>();
         disable();
         clrFlags();
 

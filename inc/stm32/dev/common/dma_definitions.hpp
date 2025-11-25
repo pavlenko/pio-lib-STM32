@@ -61,20 +61,17 @@ namespace STM32::DMA
         PRIORITY_MEDIUM = DMA_SxCR_PL_0,
         PRIORITY_HIGH = DMA_SxCR_PL_1,
         PRIORITY_VERY_HIGH = DMA_SxCR_PL_1 | DMA_SxCR_PL_0,
-    // Enable IRQ
-    IE_TRANSFER_ERROR = DMA_SxCR_TEIE,
-    IE_HALF_TRANSFER = DMA_SxCR_HTIE,
-    IE_TRANSFER_COMPLETE = DMA_SxCR_TCIE,
-    IE_DIRECT_MODE_ERROR = DMA_SxCR_DMEIE,
+        // Enable IRQ
+        IE_TRANSFER_ERROR = DMA_SxCR_TEIE,
+        IE_HALF_TRANSFER = DMA_SxCR_HTIE,
+        IE_TRANSFER_COMPLETE = DMA_SxCR_TCIE,
+        IE_DIRECT_MODE_ERROR = DMA_SxCR_DMEIE,
 #endif
     };
 
-    constexpr inline Config operator|(Config lft, Config rgt)
-    {
-        return Config(static_cast<uint32_t>(lft) | static_cast<uint32_t>(rgt));
-    }
+    constexpr inline Config operator | (Config l, Config r) { return Config(static_cast<uint32_t>(l) | static_cast<uint32_t>(r)); }
 
-    enum class IRQEnable : uint32_t {
+    enum class IRQEn : uint32_t {
 #ifdef DMA_CCR_EN
         TRANSFER_ERROR = DMA_CCR_TEIE,
         TRANSFER_COMPLETE = DMA_CCR_TCIE,
@@ -91,20 +88,9 @@ namespace STM32::DMA
 #endif
     };
 
-    constexpr inline IRQEnable operator|(IRQEnable lft, IRQEnable rgt)
-    {
-        return IRQEnable(static_cast<uint32_t>(lft) | static_cast<uint32_t>(rgt));
-    }
-
-    constexpr inline IRQEnable operator&(IRQEnable lft, IRQEnable rgt)
-    {
-        return IRQEnable(static_cast<uint32_t>(lft) & static_cast<uint32_t>(rgt));
-    }
-
-    constexpr inline IRQEnable operator~(IRQEnable v)
-    {
-        return IRQEnable(~static_cast<uint32_t>(v));
-    }
+    constexpr inline IRQEn operator | (IRQEn l, IRQEn r) { return IRQEn(static_cast<uint32_t>(l) | static_cast<uint32_t>(r)); }
+    constexpr inline IRQEn operator & (IRQEn l, IRQEn r) { return IRQEn(static_cast<uint32_t>(l) & static_cast<uint32_t>(r)); }
+    constexpr inline IRQEn operator ~(IRQEn v) { return IRQEn(~static_cast<uint32_t>(v)); }
 
     /**
      * @brief DMA interrupt flags
@@ -146,15 +132,8 @@ namespace STM32::DMA
         DIRECT_MODE = 0b00000100,
     };
 
-    constexpr inline Error operator|(Error lft, Error rgt)
-    {
-        return Error(static_cast<uint32_t>(lft) | static_cast<uint32_t>(rgt));
-    }
-
-    constexpr inline Error operator&(Error lft, Error rgt)
-    {
-        return Error(static_cast<uint32_t>(lft) | static_cast<uint32_t>(rgt));
-    }
+    constexpr inline Error operator | (Error l, Error r) { return Error(static_cast<uint32_t>(l) | static_cast<uint32_t>(r)); }
+    constexpr inline Error operator & (Error l, Error r) { return Error(static_cast<uint32_t>(l) | static_cast<uint32_t>(r)); }
 
     using EventCallbackT = std::add_pointer_t<void(Event, uint16_t)>;
     using ErrorCallbackT = std::add_pointer_t<void(Error, uint16_t)>;
@@ -201,10 +180,10 @@ namespace STM32::DMA
          */
         static inline void disable();
 
-        template <IRQEnable tFlags>
+        template <IRQEn tFlags>
         static inline void attachIRQ();
 
-        template <IRQEnable tFlags>
+        template <IRQEn tFlags>
         static inline void detachIRQ();
 
         /**

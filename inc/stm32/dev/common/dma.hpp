@@ -6,7 +6,7 @@ namespace STM32::DMA
 {
     // CHANNEL
     template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
-    template <IRQEnable tFlags>
+    template <IRQEn tFlags>
     inline void Channel<tDriver, tRegsAddress, tChannel, tIRQn>::attachIRQ()
     {
 #ifdef DMA_CCR_EN
@@ -27,7 +27,7 @@ namespace STM32::DMA
     }
 
     template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
-    template <IRQEnable tFlags>
+    template <IRQEn tFlags>
     inline void Channel<tDriver, tRegsAddress, tChannel, tIRQn>::detachIRQ()
     {
 #ifdef DMA_CCR_EN

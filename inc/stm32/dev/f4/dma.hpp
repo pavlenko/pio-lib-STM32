@@ -81,7 +81,7 @@ namespace STM32::DMA
 
         _state = State::ABORTING;
 
-        detachIRQ<IRQEnable::ALL>();
+        detachIRQ<IRQEn::ALL>();
         disable();
 
         uint32_t timeout = 5u;

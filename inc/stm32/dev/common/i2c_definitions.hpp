@@ -38,9 +38,8 @@ namespace STM32::I2C
 #endif
     };
 
-    inline constexpr IRQEn operator | (IRQEn l, IRQEn r) { return IRQEn(static_cast<uint32_t>(l) | static_cast<uint32_t>(r)); }
-
-    inline constexpr IRQEn operator & (IRQEn l, IRQEn r) { return IRQEn(static_cast<uint32_t>(l) & static_cast<uint32_t>(r)); }
+    constexpr inline IRQEn operator | (IRQEn l, IRQEn r) { return IRQEn(static_cast<uint32_t>(l) | static_cast<uint32_t>(r)); }
+    constexpr inline IRQEn operator & (IRQEn l, IRQEn r) { return IRQEn(static_cast<uint32_t>(l) & static_cast<uint32_t>(r)); }
 
     enum class DMAEn {
 #if defined(I2C_SR2_BUSY)
@@ -54,9 +53,8 @@ namespace STM32::I2C
         ALL = TX | RX,
     };
 
-    inline constexpr DMAEn operator | (DMAEn l, DMAEn r) { return DMAEn(static_cast<uint32_t>(l) | static_cast<uint32_t>(r)); }
-
-    inline constexpr DMAEn operator & (DMAEn l, DMAEn r) { return DMAEn(static_cast<uint32_t>(l) & static_cast<uint32_t>(r)); }
+    constexpr inline DMAEn operator | (DMAEn l, DMAEn r) { return DMAEn(static_cast<uint32_t>(l) | static_cast<uint32_t>(r)); }
+    constexpr inline DMAEn operator & (DMAEn l, DMAEn r) { return DMAEn(static_cast<uint32_t>(l) & static_cast<uint32_t>(r)); }
 
     enum class Flag : uint32_t {
 #if defined(I2C_SR2_BUSY)
@@ -108,9 +106,8 @@ namespace STM32::I2C
 #endif
     };
 
-    inline constexpr Flag operator | (Flag l, Flag r) { return Flag(static_cast<uint32_t>(l) | static_cast<uint32_t>(r)); }
-
-    inline constexpr Flag operator & (Flag l, Flag r) { return Flag(static_cast<uint32_t>(l) & static_cast<uint32_t>(r)); }
+    constexpr inline Flag operator | (Flag l, Flag r) { return Flag(static_cast<uint32_t>(l) | static_cast<uint32_t>(r)); }
+    constexpr inline Flag operator & (Flag l, Flag r) { return Flag(static_cast<uint32_t>(l) & static_cast<uint32_t>(r)); }
 
     // When the PCLK frequency is a multiple of 10 MHz, the DUTY bit must be set in order to reach the 400 kHz maximum I2C frequency.
     enum class Speed {
@@ -139,9 +136,8 @@ namespace STM32::I2C
         DMA = 0x10,              //< DMA any error
     };
 
-    inline constexpr Error operator |= (Error l, Error r) { return Error(static_cast<uint32_t>(l) | static_cast<uint32_t>(r)); }
-
-    inline constexpr Error operator & (Error l, Error r) { return Error(static_cast<uint32_t>(l) & static_cast<uint32_t>(r)); }
+    constexpr inline Error operator |= (Error l, Error r) { return Error(static_cast<uint32_t>(l) | static_cast<uint32_t>(r)); }
+    constexpr inline Error operator & (Error l, Error r) { return Error(static_cast<uint32_t>(l) & static_cast<uint32_t>(r)); }
 
     using AddrCallbackT = std::add_pointer_t<void(bool masterTx)>;
     using DataCallbackT = std::add_pointer_t<void(bool success)>;
