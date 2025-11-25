@@ -55,6 +55,79 @@ namespace STM32::I2C
         }
 
         template <RegsT _regs>
+        static inline void calculateTimings(Speed speed, uint32_t clock)
+        {
+            // STANDARD ns: tLOW = 4700; tHIGH = 4000; tRISE = 1000; tFALL = 300; tDATASETUP = 250
+            // FAST ns: tLOW = 1300; tHIGH = 600; tRISE = 300; tFALL = 300; tDATASETUP = 100
+            // FAST+ ns: tLOW = 500; tHIGH = 260; tRISE = 120; tFALL = 120; tDATASETUP = 50
+            uint32_t tCLOCKx4us = 4000000000u / clock;
+            uint32_t tSPEEDx2us = 2000000000u / static_cast<uint32_t>(speed);
+
+            bool speed100k = speed == Speed::STANDARD;
+            bool speed400k = speed == Speed::FAST;
+
+            uint32_t tRISEx4us = (speed100k ? 1000 : speed400k ? 300 : 120) * 4;
+            uint32_t tFALLx4us = (speed400k ? 300 : 120) * 4;
+            uint32_t tDATASETUPx4us = (speed100k ? 250 : speed400k ? 100 : 50) * 4;
+
+            uint32_t tL = (tSPEEDx2us) - (speed100k ? tFALLx4us : 0) - (3 * tCLOCKx4us);
+            uint32_t tH = (tSPEEDx2us) - (speed100k ? 0 : tFALLx4us) - tRISEx4us - (3 * tCLOCKx4us);
+
+            uint32_t scll = tH / tCLOCKx4us;
+            uint32_t sclh = tL / tCLOCKx4us;
+            uint32_t scldel = tDATASETUPx4us / tCLOCKx4us;
+
+            if (scll > 0) scll--;
+            if (sclh > 0) sclh--;
+            if (scldel > 0) scldel--;
+
+            uint32_t presc = scll / 256u;
+            if (presc > 0) {
+                sclh /= (presc + 1);
+                scll /= (presc + 1);
+                scldel /= (presc + 1);
+            }
+
+            _regs()->TIMINGR = (scll << I2C_TIMINGR_SCLL_Pos) | (sclh << I2C_TIMINGR_SCLH_Pos) | (scldel << I2C_TIMINGR_SCLDEL_Pos) | (presc << I2C_TIMINGR_PRESC_Pos);
+        }
+
+        template <RegsT _regs>
+        static inline void enableACK()
+        {
+            _regs()->CR1 &= ~I2C_CR2_NACK;
+        }
+
+        template <RegsT _regs>
+        static inline void enableIRQ(IRQEn flags)
+        {
+            _regs()->CR1 |= static_cast<uint32_t>(flags);
+        }
+
+        template <RegsT _regs>
+        static inline void enableDMA(DMAEn flags)
+        {
+            _regs()->CR1 |= static_cast<uint32_t>(flags);
+        }
+
+        template <RegsT _regs>
+        static inline void disableACK()
+        {
+            _regs()->CR1 |= I2C_CR2_NACK;
+        }
+
+        template <RegsT _regs>
+        static inline void disableIRQ(IRQEn flags)
+        {
+            _regs()->CR1 &= ~static_cast<uint32_t>(flags);
+        }
+
+        template <RegsT _regs>
+        static inline void disableDMA(DMAEn flags)
+        {
+            _regs()->CR1 &= ~static_cast<uint32_t>(flags);
+        }
+
+        template <RegsT _regs>
         static inline void flushTx()
         {
             if (issetFlag<_regs, Flag::TX_INTERRUPT>()) {
@@ -265,8 +338,18 @@ namespace STM32::I2C
     __I2C_DRIVER_TPL__
     inline void __I2C_DRIVER_DEF__::Master::_onDMAError(DMA::Error e, uint16_t n)
     {
-        // disable ack
-        //  call irq error -> need separate callback
+        disableACK<_regs>();
+        disableIRQ<_regs>(IRQEn::ALL);
+
+        if (_state == State::MASTER_TX) {
+            disableDMA<_regs>(DMAEn::TX);
+            DMATx::abort();
+        }
+        if (_state == State::MASTER_RX) {
+            disableDMA<_regs>(DMAEn::RX);
+            DMARx::abort();
+        }
+        if (_errorCallback) _errorCallback(Error::DMA);
     }
 
     __I2C_DRIVER_TPL__

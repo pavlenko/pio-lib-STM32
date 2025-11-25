@@ -53,6 +53,52 @@ namespace STM32::I2C
         }
 
         template <RegsT _regs>
+        static inline void calculateTimings(Speed speed, uint32_t pclk)
+        {
+            uint32_t freq = pclk / 1000000;
+
+            MODIFY_REG(_regs()->CR2, I2C_CR2_FREQ, freq);
+            MODIFY_REG(_regs()->TRISE, I2C_TRISE_TRISE, I2C_RISE_TIME(freq, static_cast<uint32_t>(speed)));
+            MODIFY_REG(_regs()->CCR, (I2C_CCR_FS | I2C_CCR_DUTY | I2C_CCR_CCR), I2C_SPEED(pclk, static_cast<uint32_t>(speed), 0));
+        }
+
+        template <RegsT _regs>
+        static inline void enableACK()
+        {
+            _regs()->CR2 |= I2C_CR1_ACK;
+        }
+
+        template <RegsT _regs>
+        static inline void enableIRQ(IRQEn flags)
+        {
+            _regs()->CR2 |= static_cast<uint32_t>(flags);
+        }
+
+        template <RegsT _regs>
+        static inline void enableDMA(DMAEn flags)
+        {
+            _regs()->CR2 |= static_cast<uint32_t>(flags);
+        }
+
+        template <RegsT _regs>
+        static inline void disableACK()
+        {
+            _regs()->CR2 &= ~I2C_CR1_ACK;
+        }
+
+        template <RegsT _regs>
+        static inline void disableIRQ(IRQEn flags)
+        {
+            _regs()->CR2 &= ~static_cast<uint32_t>(flags);
+        }
+
+        template <RegsT _regs>
+        static inline void disableDMA(DMAEn flags)
+        {
+            _regs()->CR2 &= ~static_cast<uint32_t>(flags);
+        }
+
+        template <RegsT _regs>
         static inline void flushTx()
         {
             if ((_regs()->SR1 & I2C_SR1_TXE) != 0u) {
