@@ -136,8 +136,8 @@ namespace STM32::I2C
     }
 
     // --- MASTER ---
-    __DRIVER_TPL__
-    inline Status __DRIVER_DEF__::Master::select(uint8_t address, Speed speed)
+    __I2C_DRIVER_TPL__
+    inline Status __I2C_DRIVER_DEF__::Master::select(uint8_t address, Speed speed)
     {
         // Only if state is reset or ready re-configuration is possible
         if (_state != State::RESET && _state != State::READY) return Status::BUSY;
@@ -163,8 +163,8 @@ namespace STM32::I2C
     }
 
     // --- SLAVE ---
-    __DRIVER_TPL__
-    inline void __DRIVER_DEF__::Slave::_onADDR(uint32_t flags)
+    __I2C_DRIVER_TPL__
+    inline void __I2C_DRIVER_DEF__::Slave::_onADDR(uint32_t flags)
     {
         // TODO state = ADDRESSED?
         if (_addrCallback) _addrCallback(issetFlag<_regs, Flag::DIRECTION>(flags));
@@ -174,8 +174,8 @@ namespace STM32::I2C
     /**
      * @brief MASTER_TX sent STOP condition
      */
-    __DRIVER_TPL__
-    inline void __DRIVER_DEF__::Slave::_onSTOP()
+    __I2C_DRIVER_TPL__
+    inline void __I2C_DRIVER_DEF__::Slave::_onSTOP()
     {
         disableIRQ<_regs>(IRQEn::ALL);
         clearFlag<_regs, Flag::STOP_DETECTED>();
@@ -190,8 +190,8 @@ namespace STM32::I2C
     /**
      * @brief MASTER_RX NACKed when slave state == SLAVE_TX
      */
-    __DRIVER_TPL__
-    inline void __DRIVER_DEF__::Slave::_onNACK()
+    __I2C_DRIVER_TPL__
+    inline void __I2C_DRIVER_DEF__::Slave::_onNACK()
     {
         // IF state == LISTEN - transfer not started by slave - need somehow handle this case
         // IF state == SLAVE_TX - transfer interrupted by master
@@ -206,8 +206,8 @@ namespace STM32::I2C
         _state = State::READY;
     }
 
-    __DRIVER_TPL__
-    inline void __DRIVER_DEF__::Slave::_onIRQError(Error e)
+    __I2C_DRIVER_TPL__
+    inline void __I2C_DRIVER_DEF__::Slave::_onIRQError(Error e)
     {
         disableIRQ<_regs>(IRQEn::ALL);
         if (_state == State::SLAVE_TX) {
@@ -224,8 +224,8 @@ namespace STM32::I2C
         _state = State::READY;
     }
 
-    __DRIVER_TPL__
-    inline void __DRIVER_DEF__::Slave::_onDMAEvent(DMA::Event e)
+    __I2C_DRIVER_TPL__
+    inline void __I2C_DRIVER_DEF__::Slave::_onDMAEvent(DMA::Event e)
     {
         disableIRQ<_regs>(IRQEn::ALL);
         disableDMA<_regs>();
@@ -234,8 +234,8 @@ namespace STM32::I2C
         // SET_BIT(_regs()->CR2, I2C_CR2_ITEVTEN | I2C_CR2_ITERREN); // re-enable IRQ(?)
     }
 
-    __DRIVER_TPL__
-    inline void __DRIVER_DEF__::Slave::_onDMAError(DMA::Error e)
+    __I2C_DRIVER_TPL__
+    inline void __I2C_DRIVER_DEF__::Slave::_onDMAError(DMA::Error e)
     {
         if (e == DMA::Error::FIFO) return;
         disableACK<_regs>();
@@ -243,8 +243,8 @@ namespace STM32::I2C
         if (_errorCallback) _errorCallback(Error::DMA);
     }
 
-    __DRIVER_TPL__
-    inline Status __DRIVER_DEF__::Slave::listen(uint8_t address, AddrCallbackT cb)
+    __I2C_DRIVER_TPL__
+    inline Status __I2C_DRIVER_DEF__::Slave::listen(uint8_t address, AddrCallbackT cb)
     {
         if (_state != State::RESET && _state != State::READY) return Status::BUSY;
 
@@ -264,8 +264,8 @@ namespace STM32::I2C
         return Status::OK;
     }
 
-    __DRIVER_TPL__
-    inline Status __DRIVER_DEF__::Slave::txDMA(uint8_t* data, uint16_t size, DataCallbackT cb)
+    __I2C_DRIVER_TPL__
+    inline Status __I2C_DRIVER_DEF__::Slave::txDMA(uint8_t* data, uint16_t size, DataCallbackT cb)
     {
         if (_state != State::LISTEN) return Status::BUSY;
 
@@ -288,8 +288,8 @@ namespace STM32::I2C
         return Status::OK;
     }
 
-    __DRIVER_TPL__
-    inline Status __DRIVER_DEF__::Slave::rxDMA(uint8_t* data, uint16_t size, DataCallbackT cb)
+    __I2C_DRIVER_TPL__
+    inline Status __I2C_DRIVER_DEF__::Slave::rxDMA(uint8_t* data, uint16_t size, DataCallbackT cb)
     {
         if (_state != State::LISTEN) return Status::BUSY;
 
@@ -312,8 +312,8 @@ namespace STM32::I2C
         return Status::OK;
     }
 
-    __DRIVER_TPL__
-    inline void __DRIVER_DEF__::Slave::dispatchEventIRQ()
+    __I2C_DRIVER_TPL__
+    inline void __I2C_DRIVER_DEF__::Slave::dispatchEventIRQ()
     {
 #if defined(I2C_SR2_BUSY)
         uint32_t SR2 = _regs()->SR2; // read SR2 first to prevent clear ADDR
@@ -331,8 +331,8 @@ namespace STM32::I2C
         }
     }
 
-    __DRIVER_TPL__
-    inline void __DRIVER_DEF__::Slave::dispatchErrorIRQ()
+    __I2C_DRIVER_TPL__
+    inline void __I2C_DRIVER_DEF__::Slave::dispatchErrorIRQ()
     {
 #if defined(I2C_SR2_BUSY)
         uint32_t SR1 = _regs()->SR1;

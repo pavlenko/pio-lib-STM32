@@ -143,8 +143,9 @@ namespace STM32::I2C
     using DataCallbackT = std::add_pointer_t<void(bool success)>;
     using ErrorCallbackT = std::add_pointer_t<void(Error errors)>;
 
-#define __DRIVER_TPL__ template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
-#define __DRIVER_DEF__ Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>
+    //TODO add prefix
+#define __I2C_DRIVER_TPL__ template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
+#define __I2C_DRIVER_DEF__ Driver<_regs, tEventIRQn, tErrorIRQn, tClock, tDMATx, tDMARx>
 
     template <RegsT _regs, IRQn_Type tEventIRQn, IRQn_Type tErrorIRQn, typename tClock, typename tDMATx, typename tDMARx>
     class Driver

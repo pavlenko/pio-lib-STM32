@@ -61,14 +61,14 @@ namespace STM32::I2C
         }
     }
 
-    __DRIVER_TPL__
-    inline bool __DRIVER_DEF__::isBusy()
+    __I2C_DRIVER_TPL__
+    inline bool __I2C_DRIVER_DEF__::isBusy()
     {
         return issetFlag<_regs>(Flag::BUSY);
     }
 
-    __DRIVER_TPL__
-    inline Status __DRIVER_DEF__::Master::tx(uint8_t* data, uint16_t size)
+    __I2C_DRIVER_TPL__
+    inline Status __I2C_DRIVER_DEF__::Master::tx(uint8_t* data, uint16_t size)
     {
         if (_state != State::READY) return Status::BUSY;
         if (!waitBusy<_regs>(1000)) return Status::ERROR;
@@ -94,8 +94,8 @@ namespace STM32::I2C
         return Status::OK;
     }
 
-    __DRIVER_TPL__
-    inline Status __DRIVER_DEF__::Master::rx(uint8_t* data, uint16_t size)
+    __I2C_DRIVER_TPL__
+    inline Status __I2C_DRIVER_DEF__::Master::rx(uint8_t* data, uint16_t size)
     {
         if (_state != State::READY) return Status::BUSY;
         if (!waitBusy<_regs>(1000)) return Status::ERROR;
@@ -126,21 +126,21 @@ namespace STM32::I2C
         return Status::OK;
     }
 
-    __DRIVER_TPL__
-    inline Status __DRIVER_DEF__::Master::txDMA(uint8_t* data, uint16_t size, DataCallbackT cb)
+    __I2C_DRIVER_TPL__
+    inline Status __I2C_DRIVER_DEF__::Master::txDMA(uint8_t* data, uint16_t size, DataCallbackT cb)
     {
         return Status::OK;
     }
 
-    __DRIVER_TPL__
-    inline Status __DRIVER_DEF__::Master::rxDMA(uint8_t* data, uint16_t size, DataCallbackT cb)
+    __I2C_DRIVER_TPL__
+    inline Status __I2C_DRIVER_DEF__::Master::rxDMA(uint8_t* data, uint16_t size, DataCallbackT cb)
     {
         return Status::OK;
     }
 
     // --- MEMORY ---
-    __DRIVER_TPL__
-    inline Status __DRIVER_DEF__::Memory::set(uint16_t regAddress, uint8_t* data, uint16_t size)
+    __I2C_DRIVER_TPL__
+    inline Status __I2C_DRIVER_DEF__::Memory::set(uint16_t regAddress, uint8_t* data, uint16_t size)
     {
         if (_state != State::READY) return Status::BUSY;
 
@@ -171,8 +171,8 @@ namespace STM32::I2C
         return Status::OK;
     }
 
-    __DRIVER_TPL__
-    inline Status __DRIVER_DEF__::Memory::get(uint16_t regAddress, uint8_t* data, uint16_t size)
+    __I2C_DRIVER_TPL__
+    inline Status __I2C_DRIVER_DEF__::Memory::get(uint16_t regAddress, uint8_t* data, uint16_t size)
     {
         if (_state != State::READY) return Status::BUSY;
 

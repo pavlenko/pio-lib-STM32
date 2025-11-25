@@ -66,11 +66,11 @@ namespace STM32::I2C
         }
     }
 
-    __DRIVER_TPL__
-    inline bool __DRIVER_DEF__::isBusy() { return issetFlag<_regs>(Flag::BUSY); }
+    __I2C_DRIVER_TPL__
+    inline bool __I2C_DRIVER_DEF__::isBusy() { return issetFlag<_regs>(Flag::BUSY); }
 
-    __DRIVER_TPL__
-    inline Status __DRIVER_DEF__::Master::tx(uint8_t* data, uint16_t size)
+    __I2C_DRIVER_TPL__
+    inline Status __I2C_DRIVER_DEF__::Master::tx(uint8_t* data, uint16_t size)
     {
         if (_state != State::READY) return Status::BUSY;
         if (!waitBusy<_regs>(1000)) return Status::ERROR;
@@ -119,8 +119,8 @@ namespace STM32::I2C
         return Status::OK;
     }
 
-    __DRIVER_TPL__
-    inline Status __DRIVER_DEF__::Master::rx(uint8_t* data, uint16_t size)
+    __I2C_DRIVER_TPL__
+    inline Status __I2C_DRIVER_DEF__::Master::rx(uint8_t* data, uint16_t size)
     {
         if (_state != State::READY) return Status::BUSY;
         if (!waitBusy<_regs>(1000)) return Status::ERROR;
@@ -166,8 +166,8 @@ namespace STM32::I2C
         return Status::OK;
     }
 
-    __DRIVER_TPL__
-    inline Status __DRIVER_DEF__::Master::txIRQ(uint8_t* data, uint16_t size, DataCallbackT cb)
+    __I2C_DRIVER_TPL__
+    inline Status __I2C_DRIVER_DEF__::Master::txIRQ(uint8_t* data, uint16_t size, DataCallbackT cb)
     {
         if (_state != State::READY) return Status::BUSY;
         if (!waitBusy<_regs>(1000)) return Status::ERROR;
@@ -182,8 +182,8 @@ namespace STM32::I2C
         return Status::OK;
     }
 
-    __DRIVER_TPL__
-    inline Status __DRIVER_DEF__::Master::rxIRQ(uint8_t* data, uint16_t size, DataCallbackT cb)
+    __I2C_DRIVER_TPL__
+    inline Status __I2C_DRIVER_DEF__::Master::rxIRQ(uint8_t* data, uint16_t size, DataCallbackT cb)
     {
         if (_state != State::READY) return Status::BUSY;
         if (!waitBusy<_regs>(1000)) return Status::ERROR;
@@ -198,8 +198,8 @@ namespace STM32::I2C
         return Status::OK;
     }
 
-    __DRIVER_TPL__
-    inline void __DRIVER_DEF__::Master::_onDMAEventTx(DMA::Event e, uint16_t n)
+    __I2C_DRIVER_TPL__
+    inline void __I2C_DRIVER_DEF__::Master::_onDMAEventTx(DMA::Event e, uint16_t n)
     {
         _cnt -= n;
         _buf += n;
@@ -230,8 +230,8 @@ namespace STM32::I2C
         if (_dataCallback) _dataCallback(true);
     }
 
-    __DRIVER_TPL__
-    inline void __DRIVER_DEF__::Master::_onDMAEventRx(DMA::Event e, uint16_t n)
+    __I2C_DRIVER_TPL__
+    inline void __I2C_DRIVER_DEF__::Master::_onDMAEventRx(DMA::Event e, uint16_t n)
     {
         _cnt -= n;
         _buf += n;
@@ -262,15 +262,15 @@ namespace STM32::I2C
         if (_dataCallback) _dataCallback(true);
     }
 
-    __DRIVER_TPL__
-    inline void __DRIVER_DEF__::Master::_onDMAError(DMA::Error e, uint16_t n)
+    __I2C_DRIVER_TPL__
+    inline void __I2C_DRIVER_DEF__::Master::_onDMAError(DMA::Error e, uint16_t n)
     {
         // disable ack
         //  call irq error -> need separate callback
     }
 
-    __DRIVER_TPL__
-    inline Status __DRIVER_DEF__::Master::txDMA(uint8_t* data, uint16_t size, DataCallbackT cb)
+    __I2C_DRIVER_TPL__
+    inline Status __I2C_DRIVER_DEF__::Master::txDMA(uint8_t* data, uint16_t size, DataCallbackT cb)
     {
         if (_state != State::READY) return Status::BUSY;
         if (!waitBusy<_regs>(1000)) return Status::ERROR;
@@ -290,8 +290,8 @@ namespace STM32::I2C
         return Status::OK;
     }
 
-    __DRIVER_TPL__
-    inline Status __DRIVER_DEF__::Master::rxDMA(uint8_t* data, uint16_t size, DataCallbackT cb)
+    __I2C_DRIVER_TPL__
+    inline Status __I2C_DRIVER_DEF__::Master::rxDMA(uint8_t* data, uint16_t size, DataCallbackT cb)
     {
         if (_state != State::READY) return Status::BUSY;
         if (!waitBusy<_regs>(1000)) return Status::ERROR;
@@ -309,8 +309,8 @@ namespace STM32::I2C
         return Status::OK;
     }
 
-    __DRIVER_TPL__
-    inline void __DRIVER_DEF__::Master::dispatchEventIRQ()
+    __I2C_DRIVER_TPL__
+    inline void __I2C_DRIVER_DEF__::Master::dispatchEventIRQ()
     {
         uint32_t flags = _regs()->ISR;
         if (checkFlag(flags, Flag::ACK_FAILED)) {
@@ -357,8 +357,8 @@ namespace STM32::I2C
         }
     }
 
-    __DRIVER_TPL__
-    inline void __DRIVER_DEF__::Master::dispatchErrorIRQ()
+    __I2C_DRIVER_TPL__
+    inline void __I2C_DRIVER_DEF__::Master::dispatchErrorIRQ()
     {
         uint32_t flags = _regs()->ISR;
         if (checkFlag(flags, Flag::BUS_ERROR)) {
@@ -383,8 +383,8 @@ namespace STM32::I2C
     }
 
     // --- MEMORY ---
-    __DRIVER_TPL__
-    inline Status __DRIVER_DEF__::Memory::set(uint16_t regAddress, uint8_t* data, uint16_t size)
+    __I2C_DRIVER_TPL__
+    inline Status __I2C_DRIVER_DEF__::Memory::set(uint16_t regAddress, uint8_t* data, uint16_t size)
     {
         if (_state != State::READY) return Status::BUSY;
         if (!waitBusy<_regs>(1000)) return Status::ERROR;
@@ -447,8 +447,8 @@ namespace STM32::I2C
         return Status::OK;
     }
 
-    __DRIVER_TPL__
-    inline Status __DRIVER_DEF__::Memory::get(uint16_t regAddress, uint8_t* data, uint16_t size)
+    __I2C_DRIVER_TPL__
+    inline Status __I2C_DRIVER_DEF__::Memory::get(uint16_t regAddress, uint8_t* data, uint16_t size)
     {
         if (_state != State::READY) return Status::BUSY;
         if (!waitBusy<_regs>(1000)) return Status::ERROR;
