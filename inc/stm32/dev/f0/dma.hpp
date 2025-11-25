@@ -10,44 +10,38 @@
 
 namespace STM32::DMA
 {
-    template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
-    inline DMA_Channel_TypeDef* Channel<tDriver, tRegsAddress, tChannel, tIRQn>::_regs()
-    {
-        return reinterpret_cast<DMA_Channel_TypeDef*>(tRegsAddress);
-    }
-
-    template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
-    inline void Channel<tDriver, tRegsAddress, tChannel, tIRQn>::enable()
+    __DMA_CHANNEL_TPL__
+    inline void __DMA_CHANNEL_DEF__::enable()
     {
         _regs()->CCR |= DMA_CCR_EN;
     }
 
-    template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
-    inline void Channel<tDriver, tRegsAddress, tChannel, tIRQn>::disable()
+    __DMA_CHANNEL_TPL__
+    inline void __DMA_CHANNEL_DEF__::disable()
     {
         _regs()->CCR &= ~DMA_CCR_EN;
     }
 
-    template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
-    inline bool Channel<tDriver, tRegsAddress, tChannel, tIRQn>::isEnabled()
+    __DMA_CHANNEL_TPL__
+    inline bool __DMA_CHANNEL_DEF__::isEnabled()
     {
         return (_regs()->CCR & DMA_CCR_EN) != 0u;
     }
 
-    template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
-    inline bool Channel<tDriver, tRegsAddress, tChannel, tIRQn>::isCircular()
+    __DMA_CHANNEL_TPL__
+    inline bool __DMA_CHANNEL_DEF__::isCircular()
     {
         return (_regs()->CCR & DMA_CCR_CIRC) != 0u;
     }
 
-    template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
-    inline uint32_t Channel<tDriver, tRegsAddress, tChannel, tIRQn>::getRemaining()
+    __DMA_CHANNEL_TPL__
+    inline uint32_t __DMA_CHANNEL_DEF__::getRemaining()
     {
         return _regs()->CNDTR;
     }
 
-    template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
-    inline void Channel<tDriver, tRegsAddress, tChannel, tIRQn>::transfer(Config config, const void* buffer, volatile void* periph, uint32_t size)
+    __DMA_CHANNEL_TPL__
+    inline void __DMA_CHANNEL_DEF__::transfer(Config config, const void* buffer, volatile void* periph, uint32_t size)
     {
         tDriver::enable();
         if (!hasFlag<Flag::TRANSFER_ERROR>()) {
@@ -69,8 +63,8 @@ namespace STM32::DMA
         _regs()->CCR = static_cast<uint32_t>(config) | DMA_CCR_EN;
     }
 
-    template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
-    inline Status Channel<tDriver, tRegsAddress, tChannel, tIRQn>::abort()
+    __DMA_CHANNEL_TPL__
+    inline Status __DMA_CHANNEL_DEF__::abort()
     {
         if (_state != State::TRANSFER) return Status::ERROR;
 
@@ -84,34 +78,34 @@ namespace STM32::DMA
         return Status::OK;
     }
 
-    template <uint32_t tRegsAddress, typename tClock>
+    __DMA_DRIVER_TPL__
     template <uint8_t tChannel, Flag tFlag>
-    inline bool Driver<tRegsAddress, tClock>::hasChannelFlag()
+    inline bool __DMA_DRIVER_DEF__::hasChannelFlag()
     {
         static constexpr const uint8_t _4bit_pos = tChannel * 4;
         return _regs()->ISR & (static_cast<uint32_t>(tFlag) << _4bit_pos);
     }
 
-    template <uint32_t tRegsAddress, typename tClock>
+    __DMA_DRIVER_TPL__
     template <uint8_t tChannel, Flag tFlag>
-    inline void Driver<tRegsAddress, tClock>::clrChannelFlag()
+    inline void __DMA_DRIVER_DEF__::clrChannelFlag()
     {
         static constexpr const uint8_t _4bit_pos = tChannel * 4;
         _regs()->IFCR = (static_cast<uint32_t>(tFlag) << _4bit_pos);
     }
 
-    template <uint32_t tRegsAddress, typename tClock>
+    __DMA_DRIVER_TPL__
     template <uint8_t tChannel>
-    inline void Driver<tRegsAddress, tClock>::clrChannelFlags()
+    inline void __DMA_DRIVER_DEF__::clrChannelFlags()
     {
         static constexpr const uint8_t _4bit_pos = tChannel * 4;
         _regs()->IFCR = (static_cast<uint32_t>(Flag::ALL) << _4bit_pos);
     }
 
-    using DMA1 = Driver<DMA1_BASE, Clock::DMA1Clock>;
-    using DMA1Channel1 = Channel<DMA1, DMA1_Channel1_BASE, 0, DMA1_Channel1_IRQn>;
-    using DMA1Channel2 = Channel<DMA1, DMA1_Channel2_BASE, 1, DMA1_Channel2_3_IRQn>;
-    using DMA1Channel3 = Channel<DMA1, DMA1_Channel3_BASE, 2, DMA1_Channel2_3_IRQn>;
-    using DMA1Channel4 = Channel<DMA1, DMA1_Channel4_BASE, 3, DMA1_Channel4_5_IRQn>;
-    using DMA1Channel5 = Channel<DMA1, DMA1_Channel5_BASE, 4, DMA1_Channel4_5_IRQn>;
+    using DMA1 = Driver<DriverRegs<DMA1_BASE>, Clock::DMA1Clock>;
+    using DMA1Channel1 = Channel<DMA1, ChannelRegs<DMA1_Channel1_BASE>, 0, DMA1_Channel1_IRQn>;
+    using DMA1Channel2 = Channel<DMA1, ChannelRegs<DMA1_Channel2_BASE>, 1, DMA1_Channel2_3_IRQn>;
+    using DMA1Channel3 = Channel<DMA1, ChannelRegs<DMA1_Channel3_BASE>, 2, DMA1_Channel2_3_IRQn>;
+    using DMA1Channel4 = Channel<DMA1, ChannelRegs<DMA1_Channel4_BASE>, 3, DMA1_Channel4_5_IRQn>;
+    using DMA1Channel5 = Channel<DMA1, ChannelRegs<DMA1_Channel5_BASE>, 4, DMA1_Channel4_5_IRQn>;
 }

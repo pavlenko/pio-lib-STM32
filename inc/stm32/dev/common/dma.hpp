@@ -5,9 +5,9 @@
 namespace STM32::DMA
 {
     // CHANNEL
-    template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
+    __DMA_CHANNEL_TPL__
     template <IRQEn tFlags>
-    inline void Channel<tDriver, tRegsAddress, tChannel, tIRQn>::attachIRQ()
+    inline void __DMA_CHANNEL_DEF__::attachIRQ()
     {
 #ifdef DMA_CCR_EN
         static constexpr const uint32_t flags = static_cast<uint32_t>(tFlags);
@@ -16,19 +16,19 @@ namespace STM32::DMA
         }
 #endif
 #ifdef DMA_SxCR_EN
-        static constexpr const uint32_t flags = static_cast<uint32_t>(tFlags & ~IRQEnable::FIFO_ERROR);
+        static constexpr const uint32_t flags = static_cast<uint32_t>(tFlags & ~IRQEn::FIFO_ERROR);
         if constexpr (flags != 0u) {
             _regs()->CR |= flags;
         }
-        if constexpr ((tFlags & IRQEnable::FIFO_ERROR) == IRQEnable::FIFO_ERROR) {
-            _regs()->FCR |= static_cast<uint32_t>(IRQEnable::FIFO_ERROR);
+        if constexpr ((tFlags & IRQEn::FIFO_ERROR) == IRQEn::FIFO_ERROR) {
+            _regs()->FCR |= static_cast<uint32_t>(IRQEn::FIFO_ERROR);
         }
 #endif
     }
 
-    template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
+    __DMA_CHANNEL_TPL__
     template <IRQEn tFlags>
-    inline void Channel<tDriver, tRegsAddress, tChannel, tIRQn>::detachIRQ()
+    inline void __DMA_CHANNEL_DEF__::detachIRQ()
     {
 #ifdef DMA_CCR_EN
         static constexpr const uint32_t flags = static_cast<uint32_t>(tFlags);
@@ -37,44 +37,44 @@ namespace STM32::DMA
         }
 #endif
 #ifdef DMA_SxCR_EN
-        static constexpr const uint32_t flags = static_cast<uint32_t>(tFlags & ~IRQEnable::FIFO_ERROR);
+        static constexpr const uint32_t flags = static_cast<uint32_t>(tFlags & ~IRQEn::FIFO_ERROR);
         if constexpr (flags != 0u) {
             _regs()->CR &= ~flags;
         }
-        if constexpr ((tFlags & IRQEnable::FIFO_ERROR) == IRQEnable::FIFO_ERROR) {
-            _regs()->FCR &= ~(static_cast<uint32_t>(IRQEnable::FIFO_ERROR));
+        if constexpr ((tFlags & IRQEn::FIFO_ERROR) == IRQEn::FIFO_ERROR) {
+            _regs()->FCR &= ~(static_cast<uint32_t>(IRQEn::FIFO_ERROR));
         }
 #endif
     }
 
-    template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
-    inline bool Channel<tDriver, tRegsAddress, tChannel, tIRQn>::isReady()
+    __DMA_CHANNEL_TPL__
+    inline bool __DMA_CHANNEL_DEF__::isReady()
     {
         return getRemaining() == 0 || !isEnabled() || hasFlag<Flag::TRANSFER_COMPLETE>();
     }
 
-    template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
+    __DMA_CHANNEL_TPL__
     template <Flag tFlag>
-    inline bool Channel<tDriver, tRegsAddress, tChannel, tIRQn>::hasFlag()
+    inline bool __DMA_CHANNEL_DEF__::hasFlag()
     {
         return tDriver::template hasChannelFlag<tChannel, tFlag>();
     }
 
-    template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
+    __DMA_CHANNEL_TPL__
     template <Flag tFlag>
-    inline void Channel<tDriver, tRegsAddress, tChannel, tIRQn>::clrFlag()
+    inline void __DMA_CHANNEL_DEF__::clrFlag()
     {
         tDriver::template clrChannelFlag<tChannel, tFlag>();
     }
 
-    template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
-    inline void Channel<tDriver, tRegsAddress, tChannel, tIRQn>::clrFlags()
+    __DMA_CHANNEL_TPL__
+    inline void __DMA_CHANNEL_DEF__::clrFlags()
     {
         tDriver::template clrChannelFlags<tChannel>();
     }
 
-    template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
-    inline void Channel<tDriver, tRegsAddress, tChannel, tIRQn>::dispatchIRQ()
+    __DMA_CHANNEL_TPL__
+    inline void __DMA_CHANNEL_DEF__::dispatchIRQ()
     {
         Error error = Error::NONE;
 
@@ -112,21 +112,14 @@ namespace STM32::DMA
         }
     }
 
-    // DRIVER
-    template <uint32_t tRegsAddress, typename tClock>
-    inline DMA_TypeDef* Driver<tRegsAddress, tClock>::_regs()
-    {
-        return reinterpret_cast<DMA_TypeDef*>(tRegsAddress);
-    }
-
-    template <uint32_t tRegsAddress, typename tClock>
-    inline void Driver<tRegsAddress, tClock>::enable()
+    __DMA_DRIVER_TPL__
+    inline void __DMA_DRIVER_DEF__::enable()
     {
         tClock::enable();
     }
 
-    template <uint32_t tRegsAddress, typename tClock>
-    inline void Driver<tRegsAddress, tClock>::disable()
+    __DMA_DRIVER_TPL__
+    inline void __DMA_DRIVER_DEF__::disable()
     {
         tClock::disable();
     }

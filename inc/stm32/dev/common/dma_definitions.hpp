@@ -6,6 +6,21 @@
 
 namespace STM32::DMA
 {
+    using DriverRegsT = std::add_pointer_t<DMA_TypeDef*()>;
+
+    template <uint32_t tRegsAddr> inline DMA_TypeDef* DriverRegs() { return reinterpret_cast<DMA_TypeDef*>(tRegsAddr); }
+
+#ifdef DMA_CCR_EN
+    using ChannelRegsT = std::add_pointer_t<DMA_Channel_TypeDef*()>;
+
+    template <uint32_t tRegsAddr> inline DMA_Channel_TypeDef* ChannelRegs() { return reinterpret_cast<DMA_Channel_TypeDef*>(tRegsAddr); }
+#endif
+#ifdef DMA_SxCR_EN
+    using ChannelRegsT = std::add_pointer_t<DMA_Stream_TypeDef*()>;
+
+    template <uint32_t tRegsAddr> inline DMA_Stream_TypeDef* ChannelRegs() { return reinterpret_cast<DMA_Stream_TypeDef*>(tRegsAddr); }
+#endif
+
     /**
      * @brief DMA config options
      */
@@ -119,7 +134,7 @@ namespace STM32::DMA
         ABORTING,
     };
 
-    enum class Event {
+    enum class Event : uint8_t {
         COMPLETE,
         PARTIAL,
         ABORTED,
@@ -138,15 +153,10 @@ namespace STM32::DMA
     using EventCallbackT = std::add_pointer_t<void(Event, uint16_t)>;
     using ErrorCallbackT = std::add_pointer_t<void(Error, uint16_t)>;
 
-    /**
-     * @brief DMA channel APIs
-     *
-     * @tparam tDriver      Bus driver
-     * @tparam tRegsAddress Base address of channel registers
-     * @tparam tChannel     Channel number 0-baseed
-     * @tparam tIRQn        Channel IRQ number
-     */
-    template <typename tDriver, uint32_t tRegsAddress, uint32_t tChannel, IRQn_Type tIRQn>
+#define __DMA_CHANNEL_TPL__ template <typename tDriver, ChannelRegsT _regs, uint32_t tChannel, IRQn_Type tIRQn>
+#define __DMA_CHANNEL_DEF__ Channel<tDriver, _regs, tChannel, tIRQn>
+
+    template <typename tDriver, ChannelRegsT _regs, uint32_t tChannel, IRQn_Type tIRQn>
     class Channel
     {
     private:
@@ -157,17 +167,17 @@ namespace STM32::DMA
         static inline EventCallbackT _eventCallback;
         static inline ErrorCallbackT _errorCallback;
 
-        /**
-         * @brief Get ptr to DMA channel registers
-         *
-         * @return Registers struct ptr
-         */
-#ifdef DMA_CCR_EN
-        static inline DMA_Channel_TypeDef* _regs();
-#endif
-#ifdef DMA_SxCR_EN
-        static inline DMA_Stream_TypeDef* _regs();
-#endif
+//         /**
+//          * @brief Get ptr to DMA channel registers
+//          *
+//          * @return Registers struct ptr
+//          */
+// #ifdef DMA_CCR_EN
+//         static inline DMA_Channel_TypeDef* _regs();
+// #endif
+// #ifdef DMA_SxCR_EN
+//         static inline DMA_Stream_TypeDef* _regs();
+// #endif
 
     public:
         /**
@@ -273,13 +283,16 @@ namespace STM32::DMA
         static inline void dispatchIRQ();
     };
 
+#define __DMA_DRIVER_TPL__ template <DriverRegsT _regs, typename tClock>
+#define __DMA_DRIVER_DEF__ Driver<_regs, tClock>
+
     /**
      * @brief DMA bus APIs
      *
      * @tparam tRegsAddress Base address of bus registers
      * @tparam tClock       Bus clock control
      */
-    template <uint32_t tRegsAddress, typename tClock>
+    template <DriverRegsT _regs, typename tClock>
     class Driver
     {
     private:
@@ -288,7 +301,7 @@ namespace STM32::DMA
          *
          * @return Registers struct ptr
          */
-        static inline DMA_TypeDef* _regs();
+        // static inline DMA_TypeDef* _regs();
 
     public:
         /**
