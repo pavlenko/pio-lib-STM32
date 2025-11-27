@@ -21,112 +21,15 @@ namespace STM32::DMA
     template <uint32_t tRegsAddr> inline DMA_Stream_TypeDef* ChannelRegs() { return reinterpret_cast<DMA_Stream_TypeDef*>(tRegsAddr); }
 #endif
 
-    /**
-     * @brief DMA config options
-     */
-    enum class Config {
-#ifdef DMA_CCR_EN
-        // Direction
-        PER_2_MEM = 0x00000000u,
-        MEM_2_PER = DMA_CCR_DIR,
-        MEM_2_MEM = DMA_CCR_MEM2MEM,
-        // Circular mode
-        CIRCULAR = DMA_CCR_CIRC,
-        // Increments
-        PINC = DMA_CCR_PINC,
-        MINC = DMA_CCR_MINC,
-        // Periph data size
-        PSIZE_8BIT = 0x00000000u,
-        PSIZE_16BIT = DMA_CCR_PSIZE_0,
-        PSIZE_32BIT = DMA_CCR_PSIZE_1,
-        // Memory data size
-        MSIZE_8BIT = 0x00000000u,
-        MSIZE_16BIT = DMA_CCR_MSIZE_0,
-        MSIZE_32BIT = DMA_CCR_MSIZE_1,
-        // Priority
-        PRIORITY_LOW = 0x00000000u,
-        PRIORITY_MEDIUM = DMA_CCR_PL_0,
-        PRIORITY_HIGH = DMA_CCR_PL_1,
-        PRIORITY_VERY_HIGH = DMA_CCR_PL,
-    // Interrupts
-    // IE_TRANSFER_ERROR = DMA_CCR_TEIE,
-    // IE_TRANSFER_COMPLETE = DMA_CCR_TCIE,
-    // IE_HALF_TRANSFER = DMA_CCR_HTIE,
-#endif
-#ifdef DMA_SxCR_EN
-        // Direction
-        PER_2_MEM = 0x00000000,
-        MEM_2_PER = DMA_SxCR_DIR_0,
-        MEM_2_MEM = DMA_SxCR_DIR_1,
-        // Circular mode
-        CIRCULAR = DMA_SxCR_CIRC,
-        // Increments
-        MINC = DMA_SxCR_MINC,
-        PINC = DMA_SxCR_PINC,
-        // Periph data size
-        PSIZE_8BIT = 0x00000000,
-        PSIZE_16BIT = DMA_SxCR_PSIZE_0,
-        PSIZE_32BIT = DMA_SxCR_PSIZE_1,
-        // Memory data size
-        MSIZE_8BIT = 0x00000000,
-        MSIZE_16BIT = DMA_SxCR_MSIZE_0,
-        MSIZE_32BIT = DMA_SxCR_MSIZE_1,
-        // Priority
-        PRIORITY_LOW = 0x00000000u,
-        PRIORITY_MEDIUM = DMA_SxCR_PL_0,
-        PRIORITY_HIGH = DMA_SxCR_PL_1,
-        PRIORITY_VERY_HIGH = DMA_SxCR_PL_1 | DMA_SxCR_PL_0,
-        // Enable IRQ
-        IE_TRANSFER_ERROR = DMA_SxCR_TEIE,
-        IE_HALF_TRANSFER = DMA_SxCR_HTIE,
-        IE_TRANSFER_COMPLETE = DMA_SxCR_TCIE,
-        IE_DIRECT_MODE_ERROR = DMA_SxCR_DMEIE,
-#endif
-    };
-
+    enum class Config : uint32_t;
     constexpr inline Config operator | (Config l, Config r) { return Config(static_cast<uint32_t>(l) | static_cast<uint32_t>(r)); }
 
-    enum class IRQEn : uint32_t {
-#ifdef DMA_CCR_EN
-        TRANSFER_ERROR = DMA_CCR_TEIE,
-        TRANSFER_COMPLETE = DMA_CCR_TCIE,
-        HALF_TRANSFER = DMA_CCR_HTIE,
-        ALL = HALF_TRANSFER | TRANSFER_COMPLETE | TRANSFER_ERROR,
-#endif
-#ifdef DMA_SxCR_EN
-        HALF_TRANSFER = DMA_SxCR_HTIE,
-        TRANSFER_COMPLETE = DMA_SxCR_TCIE,
-        TRANSFER_ERROR = DMA_SxCR_TEIE,
-        DIRECT_MODE_ERROR = DMA_SxCR_DMEIE,
-        FIFO_ERROR = DMA_SxFCR_FEIE << 16u,
-        ALL = HALF_TRANSFER | TRANSFER_COMPLETE | TRANSFER_ERROR | DIRECT_MODE_ERROR | FIFO_ERROR,
-#endif
-    };
-
+    enum class IRQEn : uint32_t;
     constexpr inline IRQEn operator | (IRQEn l, IRQEn r) { return IRQEn(static_cast<uint32_t>(l) | static_cast<uint32_t>(r)); }
     constexpr inline IRQEn operator & (IRQEn l, IRQEn r) { return IRQEn(static_cast<uint32_t>(l) & static_cast<uint32_t>(r)); }
     constexpr inline IRQEn operator ~(IRQEn v) { return IRQEn(~static_cast<uint32_t>(v)); }
 
-    /**
-     * @brief DMA interrupt flags
-     */
-    enum class Flag {
-#ifdef DMA_CCR_EN
-        GLOBAL = DMA_IFCR_CGIF1,
-        TRANSFER_COMPLETE = DMA_IFCR_CTCIF1,
-        HALF_TRANSFER = DMA_IFCR_CHTIF1,
-        TRANSFER_ERROR = DMA_IFCR_CTEIF1,
-        ALL = GLOBAL | TRANSFER_COMPLETE | HALF_TRANSFER | TRANSFER_ERROR,
-#endif
-#ifdef DMA_SxCR_EN
-        TRANSFER_COMPLETE = DMA_LISR_TCIF0,
-        HALF_TRANSFER = DMA_LISR_HTIF0,
-        TRANSFER_ERROR = DMA_LISR_TEIF0,
-        FIFO_ERROR = DMA_LISR_FEIF0,
-        DIRECT_MODE_ERROR = DMA_LISR_DMEIF0,
-        ALL = TRANSFER_COMPLETE | HALF_TRANSFER | TRANSFER_ERROR | FIFO_ERROR | DIRECT_MODE_ERROR,
-#endif
-    };
+    enum class Flag : uint32_t;
 
     enum class State : uint8_t {
         READY,
@@ -166,18 +69,6 @@ namespace STM32::DMA
 
         static inline EventCallbackT _eventCallback;
         static inline ErrorCallbackT _errorCallback;
-
-//         /**
-//          * @brief Get ptr to DMA channel registers
-//          *
-//          * @return Registers struct ptr
-//          */
-// #ifdef DMA_CCR_EN
-//         static inline DMA_Channel_TypeDef* _regs();
-// #endif
-// #ifdef DMA_SxCR_EN
-//         static inline DMA_Stream_TypeDef* _regs();
-// #endif
 
     public:
         /**
@@ -270,7 +161,7 @@ namespace STM32::DMA
         /**
          * @brief Clear flag TC
          */
-        static inline void clrFlagTC() { clrFlag<Flag::TRANSFER_COMPLETE>(); }
+        static inline void clrFlagTC();
 
         /**
          * @brief Clear all flags
@@ -295,14 +186,6 @@ namespace STM32::DMA
     template <DriverRegsT _regs, typename tClock>
     class Driver
     {
-    private:
-        /**
-         * @brief Get ptr to DMA registers struct
-         *
-         * @return Registers struct ptr
-         */
-        // static inline DMA_TypeDef* _regs();
-
     public:
         /**
          * @brief Enable DMA clock

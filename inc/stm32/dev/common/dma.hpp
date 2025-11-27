@@ -2,6 +2,13 @@
 
 #include <stm32/dev/common/dma_definitions.hpp>
 
+#ifdef DMA_CCR_EN
+#include <stm32/dev/common/dma_v1.hpp>
+#endif
+#ifdef DMA_SxCR_EN
+#include <stm32/dev/common/dma_v2.hpp>
+#endif
+
 namespace STM32::DMA
 {
     // CHANNEL
@@ -65,6 +72,12 @@ namespace STM32::DMA
     inline void __DMA_CHANNEL_DEF__::clrFlag()
     {
         tDriver::template clrChannelFlag<tChannel, tFlag>();
+    }
+
+    __DMA_CHANNEL_TPL__
+    inline void __DMA_CHANNEL_DEF__::clrFlagTC()
+    {
+        clrFlag<Flag::TRANSFER_COMPLETE>();
     }
 
     __DMA_CHANNEL_TPL__

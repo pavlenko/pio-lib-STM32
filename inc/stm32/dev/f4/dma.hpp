@@ -15,35 +15,7 @@
 
 namespace STM32::DMA
 {
-    __DMA_CHANNEL_TPL__
-    inline void __DMA_CHANNEL_DEF__::enable()
-    {
-        _regs()->CR |= DMA_SxCR_EN;
-    }
 
-    __DMA_CHANNEL_TPL__
-    inline void __DMA_CHANNEL_DEF__::disable()
-    {
-        _regs()->CR &= ~DMA_SxCR_EN;
-    }
-
-    __DMA_CHANNEL_TPL__
-    inline bool __DMA_CHANNEL_DEF__::isEnabled()
-    {
-        return (_regs()->CR & DMA_SxCR_EN) != 0u;
-    }
-
-    __DMA_CHANNEL_TPL__
-    inline bool __DMA_CHANNEL_DEF__::isCircular()
-    {
-        return (_regs()->CR & DMA_SxCR_CIRC) != 0u;
-    }
-
-    __DMA_CHANNEL_TPL__
-    inline uint32_t __DMA_CHANNEL_DEF__::getRemaining()
-    {
-        return _regs()->NDTR;
-    }
 
     __DMA_CHANNEL_TPL__
     inline void __DMA_CHANNEL_DEF__::transfer(Config config, const void* buffer, volatile void* periph, uint32_t size, uint8_t channel)
