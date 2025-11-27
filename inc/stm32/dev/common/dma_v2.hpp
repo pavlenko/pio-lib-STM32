@@ -49,34 +49,57 @@ namespace STM32::DMA
         ALL = TRANSFER_COMPLETE | HALF_TRANSFER | TRANSFER_ERROR | FIFO_ERROR | DIRECT_MODE_ERROR,
     };
 
+    // CHANNEL/STREAM
     __DMA_CHANNEL_TPL__
-    inline void __DMA_CHANNEL_DEF__::enable()
-    {
-        _regs()->CR |= DMA_SxCR_EN;
-    }
+    inline void __DMA_CHANNEL_DEF__::enable() { _regs()->CR |= DMA_SxCR_EN; }
 
     __DMA_CHANNEL_TPL__
-    inline void __DMA_CHANNEL_DEF__::disable()
-    {
-        _regs()->CR &= ~DMA_SxCR_EN;
-    }
+    inline void __DMA_CHANNEL_DEF__::disable() { _regs()->CR &= ~DMA_SxCR_EN; }
 
     __DMA_CHANNEL_TPL__
-    inline bool __DMA_CHANNEL_DEF__::isEnabled()
-    {
-        return (_regs()->CR & DMA_SxCR_EN) != 0u;
-    }
+    inline bool __DMA_CHANNEL_DEF__::isEnabled() { return (_regs()->CR & DMA_SxCR_EN) != 0u; }
 
     __DMA_CHANNEL_TPL__
-    inline bool __DMA_CHANNEL_DEF__::isCircular()
-    {
-        return (_regs()->CR & DMA_SxCR_CIRC) != 0u;
-    }
+    inline bool __DMA_CHANNEL_DEF__::isCircular() { return (_regs()->CR & DMA_SxCR_CIRC) != 0u; }
 
     __DMA_CHANNEL_TPL__
-    inline uint32_t __DMA_CHANNEL_DEF__::getRemaining()
+    inline uint32_t __DMA_CHANNEL_DEF__::getRemaining() { return _regs()->NDTR; }
+
+    // DRIVER
+    template <DriverRegsT _regs, typename tClock>
+    template <uint8_t tChannel, Flag tFlag>
+    inline bool Driver<_regs, tClock>::hasChannelFlag()
     {
-        return _regs()->NDTR;
+        static constexpr const uint8_t _6bit_pos = ((tChannel & 0x1) * 6) + (((tChannel & 0x2) >> 1) * 16);
+        if (tChannel < 4) {
+            return _regs()->LISR & (static_cast<uint32_t>(tFlag) << _6bit_pos);
+        } else {
+            return _regs()->HISR & (static_cast<uint32_t>(tFlag) << _6bit_pos);
+        }
+    }
+
+    template <DriverRegsT _regs, typename tClock>
+    template <uint8_t tChannel, Flag tFlag>
+    inline void Driver<_regs, tClock>::clrChannelFlag()
+    {
+        static constexpr const uint8_t _6bit_pos = ((tChannel & 0x1) * 6) + (((tChannel & 0x2) >> 1) * 16);
+        if (tChannel < 4) {
+            _regs()->LIFCR = (static_cast<uint32_t>(tFlag) << _6bit_pos);
+        } else {
+            _regs()->HIFCR = (static_cast<uint32_t>(tFlag) << _6bit_pos);
+        }
+    }
+
+    template <DriverRegsT _regs, typename tClock>
+    template <uint8_t tChannel>
+    inline void Driver<_regs, tClock>::clrChannelFlags()
+    {
+        static constexpr const uint8_t _6bit_pos = ((tChannel & 0x1) * 6) + (((tChannel & 0x2) >> 1) * 16);
+        if (tChannel < 4) {
+            _regs()->LIFCR = (static_cast<uint32_t>(Flag::ALL) << _6bit_pos);
+        } else {
+            _regs()->HIFCR = (static_cast<uint32_t>(Flag::ALL) << _6bit_pos);
+        }
     }
 }
 #endif

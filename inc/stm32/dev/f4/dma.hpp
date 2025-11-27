@@ -64,42 +64,6 @@ namespace STM32::DMA
         return Status::OK;
     }
 
-    __DMA_DRIVER_TPL__
-    template <uint8_t tChannel, Flag tFlag>
-    inline bool __DMA_DRIVER_DEF__::hasChannelFlag()
-    {
-        static constexpr const uint8_t _6bit_pos = ((tChannel & 0x1) * 6) + (((tChannel & 0x2) >> 1) * 16);
-        if (tChannel < 4) {
-            return _regs()->LISR & (static_cast<uint32_t>(tFlag) << _6bit_pos);
-        } else {
-            return _regs()->HISR & (static_cast<uint32_t>(tFlag) << _6bit_pos);
-        }
-    }
-
-    __DMA_DRIVER_TPL__
-    template <uint8_t tChannel, Flag tFlag>
-    inline void __DMA_DRIVER_DEF__::clrChannelFlag()
-    {
-        static constexpr const uint8_t _6bit_pos = ((tChannel & 0x1) * 6) + (((tChannel & 0x2) >> 1) * 16);
-        if (tChannel < 4) {
-            _regs()->LIFCR = (static_cast<uint32_t>(tFlag) << _6bit_pos);
-        } else {
-            _regs()->HIFCR = (static_cast<uint32_t>(tFlag) << _6bit_pos);
-        }
-    }
-
-    __DMA_DRIVER_TPL__
-    template <uint8_t tChannel>
-    inline void __DMA_DRIVER_DEF__::clrChannelFlags()
-    {
-        static constexpr const uint8_t _6bit_pos = ((tChannel & 0x1) * 6) + (((tChannel & 0x2) >> 1) * 16);
-        if (tChannel < 4) {
-            _regs()->LIFCR = (static_cast<uint32_t>(Flag::ALL) << _6bit_pos);
-        } else {
-            _regs()->HIFCR = (static_cast<uint32_t>(Flag::ALL) << _6bit_pos);
-        }
-    }
-
     template <typename tStream, uint8_t tChannel>
     class StreamChannel : public tStream
     {

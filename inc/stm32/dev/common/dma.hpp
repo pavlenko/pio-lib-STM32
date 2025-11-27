@@ -1,6 +1,6 @@
 #pragma once
 
-#include <stm32/dev/common/dma_definitions.hpp>
+#include <stm32/dev/common/_cmsis.hpp>
 
 #ifdef DMA_CCR_EN
 #include <stm32/dev/common/dma_v1.hpp>
@@ -125,14 +125,14 @@ namespace STM32::DMA
         }
     }
 
-    __DMA_DRIVER_TPL__
-    inline void __DMA_DRIVER_DEF__::enable()
+    template <DriverRegsT _regs, typename tClock>
+    inline void Driver<_regs, tClock>::enable()
     {
         tClock::enable();
     }
 
-    __DMA_DRIVER_TPL__
-    inline void __DMA_DRIVER_DEF__::disable()
+    template <DriverRegsT _regs, typename tClock>
+    inline void Driver<_regs, tClock>::disable()
     {
         tClock::disable();
     }

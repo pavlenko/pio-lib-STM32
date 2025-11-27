@@ -46,6 +46,7 @@ namespace STM32::DMA
         ALL = GLOBAL | TRANSFER_COMPLETE | HALF_TRANSFER | TRANSFER_ERROR,
     };
 
+    // CHANNEL/STREAM
     __DMA_CHANNEL_TPL__
     inline void __DMA_CHANNEL_DEF__::enable() { _regs()->CCR |= DMA_CCR_EN; }
 
@@ -60,6 +61,31 @@ namespace STM32::DMA
 
     __DMA_CHANNEL_TPL__
     inline uint32_t __DMA_CHANNEL_DEF__::getRemaining() { return _regs()->CNDTR; }
+
+    // DRIVER
+    template <DriverRegsT _regs, typename tClock>
+    template <uint8_t tChannel, Flag tFlag>
+    inline bool Driver<_regs, tClock>::hasChannelFlag()
+    {
+        static constexpr const uint8_t _4bit_pos = tChannel * 4;
+        return _regs()->ISR & (static_cast<uint32_t>(tFlag) << _4bit_pos);
+    }
+
+    template <DriverRegsT _regs, typename tClock>
+    template <uint8_t tChannel, Flag tFlag>
+    inline void Driver<_regs, tClock>::clrChannelFlag()
+    {
+        static constexpr const uint8_t _4bit_pos = tChannel * 4;
+        _regs()->IFCR = (static_cast<uint32_t>(tFlag) << _4bit_pos);
+    }
+
+    template <DriverRegsT _regs, typename tClock>
+    template <uint8_t tChannel>
+    inline void Driver<_regs, tClock>::clrChannelFlags()
+    {
+        static constexpr const uint8_t _4bit_pos = tChannel * 4;
+        _regs()->IFCR = (static_cast<uint32_t>(Flag::ALL) << _4bit_pos);
+    }
 }
 #endif
 

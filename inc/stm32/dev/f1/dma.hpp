@@ -54,30 +54,6 @@ namespace STM32::DMA
         return Status::OK;
     }
 
-    __DMA_DRIVER_TPL__
-    template <uint8_t tChannel, Flag tFlag>
-    inline bool __DMA_DRIVER_DEF__::hasChannelFlag()
-    {
-        static constexpr const uint8_t _4bit_pos = tChannel * 4;
-        return _regs()->ISR & (static_cast<uint32_t>(tFlag) << _4bit_pos);
-    }
-
-    __DMA_DRIVER_TPL__
-    template <uint8_t tChannel, Flag tFlag>
-    inline void __DMA_DRIVER_DEF__::clrChannelFlag()
-    {
-        static constexpr const uint8_t _4bit_pos = tChannel * 4;
-        _regs()->IFCR = (static_cast<uint32_t>(tFlag) << _4bit_pos);
-    }
-
-    __DMA_DRIVER_TPL__
-    template <uint8_t tChannel>
-    inline void __DMA_DRIVER_DEF__::clrChannelFlags()
-    {
-        static constexpr const uint8_t _4bit_pos = tChannel * 4;
-        _regs()->IFCR = (static_cast<uint32_t>(Flag::ALL) << _4bit_pos);
-    }
-
     using DMA1 = Driver<DriverRegs<DMA1_BASE>, Clock::DMA1Clock>;
     using DMA1Channel1 = Channel<DMA1, ChannelRegs<DMA1_Channel1_BASE>, 0, DMA1_Channel1_IRQn>;
     using DMA1Channel2 = Channel<DMA1, ChannelRegs<DMA1_Channel2_BASE>, 1, DMA1_Channel2_IRQn>;

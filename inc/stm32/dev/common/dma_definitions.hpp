@@ -174,15 +174,6 @@ namespace STM32::DMA
         static inline void dispatchIRQ();
     };
 
-#define __DMA_DRIVER_TPL__ template <DriverRegsT _regs, typename tClock>
-#define __DMA_DRIVER_DEF__ Driver<_regs, tClock>
-
-    /**
-     * @brief DMA bus APIs
-     *
-     * @tparam tRegsAddress Base address of bus registers
-     * @tparam tClock       Bus clock control
-     */
     template <DriverRegsT _regs, typename tClock>
     class Driver
     {
