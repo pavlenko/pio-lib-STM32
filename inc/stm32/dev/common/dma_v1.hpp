@@ -83,12 +83,11 @@ namespace STM32::DMA
     inline uint32_t __DMA_CHANNEL_DEF__::getRemaining() { return _regs()->CNDTR; }
 
     __DMA_CHANNEL_TPL__
-    inline void __DMA_CHANNEL_DEF__::transfer(Config config, const void* buffer, volatile void* periph, uint32_t size)
+    inline Status __DMA_CHANNEL_DEF__::transfer(Config config, const void* buffer, volatile void* periph, uint32_t size)
     {
+        if (_state != State::READY) return Status::BUSY;
+
         tDriver::enable();
-        if (!hasFlag<Flag::TRANSFER_ERROR>()) {
-            while (!isReady()) {}
-        }
 
         _regs()->CCR = 0;
         _regs()->CNDTR = size;
@@ -105,6 +104,8 @@ namespace STM32::DMA
 
         // TODO stream channel
         _regs()->CCR = static_cast<uint32_t>(config) | DMA_CCR_EN;
+        _state = State::TRANSFER;
+        return Status::OK;
     }
 
     __DMA_CHANNEL_TPL__

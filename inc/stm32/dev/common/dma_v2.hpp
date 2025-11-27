@@ -92,12 +92,11 @@ namespace STM32::DMA
     inline uint32_t __DMA_CHANNEL_DEF__::getRemaining() { return _regs()->NDTR; }
 
     __DMA_CHANNEL_TPL__
-    inline void __DMA_CHANNEL_DEF__::transfer(Config config, const void* buffer, volatile void* periph, uint32_t size, uint8_t channel)
+    inline Status __DMA_CHANNEL_DEF__::transfer(Config config, const void* buffer, volatile void* periph, uint32_t size, uint8_t channel)
     {
+        if (_state != State::READY) return Status::BUSY;
+
         tDriver::enable();
-        if (!hasFlag<Flag::TRANSFER_ERROR>()) {
-            while (!isReady()) {}
-        }
 
         _regs()->CR = 0;
         _regs()->NDTR = size;
@@ -114,6 +113,7 @@ namespace STM32::DMA
 
         _regs()->CR = static_cast<uint32_t>(config) | ((channel & 0x07) << 25) | DMA_SxCR_EN;
         _state = State::TRANSFER;
+        return Status::OK;
     }
 
     __DMA_CHANNEL_TPL__

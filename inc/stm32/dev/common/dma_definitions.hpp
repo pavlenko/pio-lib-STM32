@@ -148,9 +148,9 @@ namespace STM32::DMA
          * @param channel Stream channel
          */
 #if defined(DMA_SxCR_EN)
-        static inline void transfer(Config config, const void* buffer, volatile void* periph, uint32_t size, uint8_t channel = 0);
+        static inline Status transfer(Config config, const void* buffer, volatile void* periph, uint32_t size, uint8_t channel = 0);
 #else
-        static inline void transfer(Config config, const void* buffer, volatile void* periph, uint32_t size);
+        static inline Status transfer(Config config, const void* buffer, volatile void* periph, uint32_t size);
 #endif
         /**
          * @brief Abort DMA transfer
