@@ -54,7 +54,33 @@ namespace STM32::DMA
     inline void __DMA_CHANNEL_DEF__::enable() { _regs()->CR |= DMA_SxCR_EN; }
 
     __DMA_CHANNEL_TPL__
+    template <IRQEn tFlags>
+    inline void __DMA_CHANNEL_DEF__::enableIRQ()
+    {
+        static constexpr const uint32_t flags = static_cast<uint32_t>(tFlags & ~IRQEn::FIFO_ERROR);
+        if constexpr (flags != 0u) {
+            _regs()->CR |= flags;
+        }
+        if constexpr ((tFlags & IRQEn::FIFO_ERROR) == IRQEn::FIFO_ERROR) {
+            _regs()->FCR |= static_cast<uint32_t>(IRQEn::FIFO_ERROR);
+        }
+    }
+
+    __DMA_CHANNEL_TPL__
     inline void __DMA_CHANNEL_DEF__::disable() { _regs()->CR &= ~DMA_SxCR_EN; }
+
+    __DMA_CHANNEL_TPL__
+    template <IRQEn tFlags>
+    inline void __DMA_CHANNEL_DEF__::disableIRQ()
+    {
+        static constexpr const uint32_t flags = static_cast<uint32_t>(tFlags & ~IRQEn::FIFO_ERROR);
+        if constexpr (flags != 0u) {
+            _regs()->CR &= ~flags;
+        }
+        if constexpr ((tFlags & IRQEn::FIFO_ERROR) == IRQEn::FIFO_ERROR) {
+            _regs()->FCR &= ~(static_cast<uint32_t>(IRQEn::FIFO_ERROR));
+        }
+    }
 
     __DMA_CHANNEL_TPL__
     inline bool __DMA_CHANNEL_DEF__::isEnabled() { return (_regs()->CR & DMA_SxCR_EN) != 0u; }
@@ -64,6 +90,55 @@ namespace STM32::DMA
 
     __DMA_CHANNEL_TPL__
     inline uint32_t __DMA_CHANNEL_DEF__::getRemaining() { return _regs()->NDTR; }
+
+    __DMA_CHANNEL_TPL__
+    inline void __DMA_CHANNEL_DEF__::transfer(Config config, const void* buffer, volatile void* periph, uint32_t size, uint8_t channel)
+    {
+        tDriver::enable();
+        if (!hasFlag<Flag::TRANSFER_ERROR>()) {
+            while (!isReady()) {}
+        }
+
+        _regs()->CR = 0;
+        _regs()->NDTR = size;
+        _regs()->M0AR = reinterpret_cast<uint32_t>(buffer);
+        _regs()->PAR = reinterpret_cast<uint32_t>(periph);
+
+        _len = size;
+
+        if (_eventCallback || _errorCallback) {
+            enableIRQ<IRQEn::TRANSFER_COMPLETE | IRQEn::TRANSFER_ERROR>();
+        }
+
+        NVIC_EnableIRQ(tIRQn);
+
+        _regs()->CR = static_cast<uint32_t>(config) | ((channel & 0x07) << 25) | DMA_SxCR_EN;
+        _state = State::TRANSFER;
+    }
+
+    __DMA_CHANNEL_TPL__
+    inline Status __DMA_CHANNEL_DEF__::abort()
+    {
+        if (_state != State::TRANSFER) return Status::ERROR;
+
+        _state = State::ABORTING;
+
+        disableIRQ<IRQEn::ALL>();
+        disable();
+
+        uint32_t timeout = 5u;
+        while (isEnabled()) {
+            if (timeout == 0) {
+                return Status::TIMEOUT;
+            }
+            timeout--;
+        }
+
+        clrFlags();
+
+        _state = State::READY;
+        return Status::OK;
+    }
 
     // DRIVER
     template <DriverRegsT _regs, typename tClock>

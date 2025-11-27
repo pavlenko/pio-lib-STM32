@@ -15,45 +15,6 @@
 
 namespace STM32::DMA
 {
-    __DMA_CHANNEL_TPL__
-    inline void __DMA_CHANNEL_DEF__::transfer(Config config, const void* buffer, volatile void* periph, uint32_t size)
-    {
-        // TODO
-        tDriver::enable();
-        if (!hasFlag<Flag::TRANSFER_ERROR>()) {
-            while (!isReady()) {}
-        }
-
-        _regs()->CCR = 0;
-        _regs()->CNDTR = size;
-        _regs()->CMAR = reinterpret_cast<uint32_t>(buffer);
-        _regs()->CPAR = reinterpret_cast<uint32_t>(periph);
-
-        if (_eventCallback || _errorCallback) {
-            attachIRQ<IRQEn::TRANSFER_COMPLETE | IRQEn::TRANSFER_ERROR>();
-        }
-
-        NVIC_EnableIRQ(tIRQn);
-
-        // TODO stream channel
-        _regs()->CCR = static_cast<uint32_t>(config) | DMA_CCR_EN;
-    }
-
-    __DMA_CHANNEL_TPL__
-    inline Status __DMA_CHANNEL_DEF__::abort()
-    {
-        if (_state != State::TRANSFER) return Status::ERROR;
-
-        _state = State::ABORTING;
-
-        detachIRQ<IRQEn::ALL>();
-        disable();
-        clrFlags();
-
-        _state = State::READY;
-        return Status::OK;
-    }
-
     using DMA1 = Driver<DriverRegs<DMA1_BASE>, Clock::DMA1Clock>;
     using DMA1Channel1 = Channel<DMA1, ChannelRegs<DMA1_Channel1_BASE>, 0, DMA1_Channel1_IRQn>;
     using DMA1Channel2 = Channel<DMA1, ChannelRegs<DMA1_Channel2_BASE>, 1, DMA1_Channel2_IRQn>;

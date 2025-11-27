@@ -51,7 +51,27 @@ namespace STM32::DMA
     inline void __DMA_CHANNEL_DEF__::enable() { _regs()->CCR |= DMA_CCR_EN; }
 
     __DMA_CHANNEL_TPL__
+    template <IRQEn tFlags>
+    inline void __DMA_CHANNEL_DEF__::enableIRQ()
+    {
+        static constexpr const uint32_t flags = static_cast<uint32_t>(tFlags);
+        if constexpr (flags != 0u) {
+            _regs()->CCR |= flags;
+        }
+    }
+
+    __DMA_CHANNEL_TPL__
     inline void __DMA_CHANNEL_DEF__::disable() { _regs()->CCR &= ~DMA_CCR_EN; }
+
+    __DMA_CHANNEL_TPL__
+    template <IRQEn tFlags>
+    inline void __DMA_CHANNEL_DEF__::disableIRQ()
+    {
+        static constexpr const uint32_t flags = static_cast<uint32_t>(tFlags);
+        if constexpr (flags != 0u) {
+            _regs()->CCR &= ~flags;
+        }
+    }
 
     __DMA_CHANNEL_TPL__
     inline bool __DMA_CHANNEL_DEF__::isEnabled() { return (_regs()->CCR & DMA_CCR_EN) != 0u; }
@@ -61,6 +81,46 @@ namespace STM32::DMA
 
     __DMA_CHANNEL_TPL__
     inline uint32_t __DMA_CHANNEL_DEF__::getRemaining() { return _regs()->CNDTR; }
+
+    __DMA_CHANNEL_TPL__
+    inline void __DMA_CHANNEL_DEF__::transfer(Config config, const void* buffer, volatile void* periph, uint32_t size)
+    {
+        tDriver::enable();
+        if (!hasFlag<Flag::TRANSFER_ERROR>()) {
+            while (!isReady()) {}
+        }
+
+        _regs()->CCR = 0;
+        _regs()->CNDTR = size;
+        _regs()->CMAR = reinterpret_cast<uint32_t>(buffer);
+        _regs()->CPAR = reinterpret_cast<uint32_t>(periph);
+
+        _len = size;
+
+        if (_eventCallback || _errorCallback) {
+            enableIRQ<IRQEn::TRANSFER_COMPLETE | IRQEn::TRANSFER_ERROR>();
+        }
+
+        NVIC_EnableIRQ(tIRQn);
+
+        // TODO stream channel
+        _regs()->CCR = static_cast<uint32_t>(config) | DMA_CCR_EN;
+    }
+
+    __DMA_CHANNEL_TPL__
+    inline Status __DMA_CHANNEL_DEF__::abort()
+    {
+        if (_state != State::TRANSFER) return Status::ERROR;
+
+        _state = State::ABORTING;
+
+        disableIRQ<IRQEn::ALL>();
+        disable();
+        clrFlags();
+
+        _state = State::READY;
+        return Status::OK;
+    }
 
     // DRIVER
     template <DriverRegsT _regs, typename tClock>

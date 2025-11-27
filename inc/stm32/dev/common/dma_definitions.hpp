@@ -66,6 +66,7 @@ namespace STM32::DMA
         static_assert(tChannel < 8u, "Invalid channel number");
 
         static inline State _state;
+        static inline uint16_t _len;
 
         static inline EventCallbackT _eventCallback;
         static inline ErrorCallbackT _errorCallback;
@@ -77,15 +78,25 @@ namespace STM32::DMA
         static inline void enable();
 
         /**
+         * @brief Enable DMA channel IRQ
+         *
+         * @tparam tFlags IRQ signals to enable
+         */
+        template <IRQEn tFlags>
+        static inline void enableIRQ();
+
+        /**
          * @brief Disable DMA channel
          */
         static inline void disable();
 
+        /**
+         * @brief Disable DMA channel IRQ
+         *
+         * @tparam tFlags IRQ signals to disable
+         */
         template <IRQEn tFlags>
-        static inline void attachIRQ();
-
-        template <IRQEn tFlags>
-        static inline void detachIRQ();
+        static inline void disableIRQ();
 
         /**
          * @brief Check if DMA channel is enabled

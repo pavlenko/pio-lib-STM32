@@ -13,48 +13,6 @@ namespace STM32::DMA
 {
     // CHANNEL
     __DMA_CHANNEL_TPL__
-    template <IRQEn tFlags>
-    inline void __DMA_CHANNEL_DEF__::attachIRQ()
-    {
-#ifdef DMA_CCR_EN
-        static constexpr const uint32_t flags = static_cast<uint32_t>(tFlags);
-        if constexpr (flags != 0u) {
-            _regs()->CCR |= flags;
-        }
-#endif
-#ifdef DMA_SxCR_EN
-        static constexpr const uint32_t flags = static_cast<uint32_t>(tFlags & ~IRQEn::FIFO_ERROR);
-        if constexpr (flags != 0u) {
-            _regs()->CR |= flags;
-        }
-        if constexpr ((tFlags & IRQEn::FIFO_ERROR) == IRQEn::FIFO_ERROR) {
-            _regs()->FCR |= static_cast<uint32_t>(IRQEn::FIFO_ERROR);
-        }
-#endif
-    }
-
-    __DMA_CHANNEL_TPL__
-    template <IRQEn tFlags>
-    inline void __DMA_CHANNEL_DEF__::detachIRQ()
-    {
-#ifdef DMA_CCR_EN
-        static constexpr const uint32_t flags = static_cast<uint32_t>(tFlags);
-        if constexpr (flags != 0u) {
-            _regs()->CCR &= ~flags;
-        }
-#endif
-#ifdef DMA_SxCR_EN
-        static constexpr const uint32_t flags = static_cast<uint32_t>(tFlags & ~IRQEn::FIFO_ERROR);
-        if constexpr (flags != 0u) {
-            _regs()->CR &= ~flags;
-        }
-        if constexpr ((tFlags & IRQEn::FIFO_ERROR) == IRQEn::FIFO_ERROR) {
-            _regs()->FCR &= ~(static_cast<uint32_t>(IRQEn::FIFO_ERROR));
-        }
-#endif
-    }
-
-    __DMA_CHANNEL_TPL__
     inline bool __DMA_CHANNEL_DEF__::isReady()
     {
         return getRemaining() == 0 || !isEnabled() || hasFlag<Flag::TRANSFER_COMPLETE>();
@@ -109,7 +67,7 @@ namespace STM32::DMA
         if (hasFlag<Flag::HALF_TRANSFER>()) {
             clrFlag<Flag::HALF_TRANSFER>();
             if (!isCircular()) disable();
-            if (_eventCallback) _eventCallback(Event::PARTIAL, getRemaining());
+            if (_eventCallback) _eventCallback(Event::PARTIAL, _len - getRemaining());
         }
         if (hasFlag<Flag::TRANSFER_COMPLETE>()) {
             clrFlag<Flag::TRANSFER_COMPLETE>();
@@ -117,14 +75,15 @@ namespace STM32::DMA
                 disable();
                 _state = State::READY;
             }
-            if (_eventCallback) _eventCallback(Event::COMPLETE, getRemaining());
+            if (_eventCallback) _eventCallback(Event::COMPLETE, _len);
         }
         if (error != Error::NONE) {
             if ((error & Error::TRANSFER) == Error::TRANSFER) disable();
-            if (_errorCallback) _errorCallback(error, getRemaining());
+            if (_errorCallback) _errorCallback(error, _len - getRemaining());
         }
     }
 
+    // DRIVER
     template <DriverRegsT _regs, typename tClock>
     inline void Driver<_regs, tClock>::enable()
     {
