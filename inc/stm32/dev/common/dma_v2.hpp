@@ -49,13 +49,30 @@ namespace STM32::DMA
         ALL = TRANSFER_COMPLETE | HALF_TRANSFER | TRANSFER_ERROR | FIFO_ERROR | DIRECT_MODE_ERROR,
     };
 
-    // CHANNEL/STREAM
-    __DMA_CHANNEL_TPL__
-    inline void __DMA_CHANNEL_DEF__::enable() { _regs()->CR |= DMA_SxCR_EN; }
+    template <typename tStream, uint8_t tChannel>
+    class StreamChannel : public tStream
+    {
+    public:
+        static inline void transfer(Config config, const void* buffer, volatile void* periph, uint32_t size)
+        {
+            tStream::transfer(config, buffer, periph, size, tChannel);
+        }
+    };
 
-    __DMA_CHANNEL_TPL__
+    // Alias
+    template <typename tDriver, ChannelRegsT _regs, uint32_t tChannel, IRQn_Type tIRQn>
+    using Stream = Channel<tDriver, _regs, tChannel, tIRQn>;
+
+    // CHANNEL/STREAM
+    template <typename tDriver, ChannelRegsT _regs, uint32_t tChannel, IRQn_Type tIRQn>
+    inline void Channel<tDriver, _regs, tChannel, tIRQn>::enable()
+    {
+        _regs()->CR |= DMA_SxCR_EN;
+    }
+
+    template <typename tDriver, ChannelRegsT _regs, uint32_t tChannel, IRQn_Type tIRQn>
     template <IRQEn tFlags>
-    inline void __DMA_CHANNEL_DEF__::enableIRQ()
+    inline void Channel<tDriver, _regs, tChannel, tIRQn>::enableIRQ()
     {
         static constexpr const uint32_t flags = static_cast<uint32_t>(tFlags & ~IRQEn::FIFO_ERROR);
         if constexpr (flags != 0u) {
@@ -66,12 +83,15 @@ namespace STM32::DMA
         }
     }
 
-    __DMA_CHANNEL_TPL__
-    inline void __DMA_CHANNEL_DEF__::disable() { _regs()->CR &= ~DMA_SxCR_EN; }
+    template <typename tDriver, ChannelRegsT _regs, uint32_t tChannel, IRQn_Type tIRQn>
+    inline void Channel<tDriver, _regs, tChannel, tIRQn>::disable()
+    {
+        _regs()->CR &= ~DMA_SxCR_EN;
+    }
 
-    __DMA_CHANNEL_TPL__
+    template <typename tDriver, ChannelRegsT _regs, uint32_t tChannel, IRQn_Type tIRQn>
     template <IRQEn tFlags>
-    inline void __DMA_CHANNEL_DEF__::disableIRQ()
+    inline void Channel<tDriver, _regs, tChannel, tIRQn>::disableIRQ()
     {
         static constexpr const uint32_t flags = static_cast<uint32_t>(tFlags & ~IRQEn::FIFO_ERROR);
         if constexpr (flags != 0u) {
@@ -82,17 +102,26 @@ namespace STM32::DMA
         }
     }
 
-    __DMA_CHANNEL_TPL__
-    inline bool __DMA_CHANNEL_DEF__::isEnabled() { return (_regs()->CR & DMA_SxCR_EN) != 0u; }
+    template <typename tDriver, ChannelRegsT _regs, uint32_t tChannel, IRQn_Type tIRQn>
+    inline bool Channel<tDriver, _regs, tChannel, tIRQn>::isEnabled()
+    {
+        return (_regs()->CR & DMA_SxCR_EN) != 0u;
+    }
 
-    __DMA_CHANNEL_TPL__
-    inline bool __DMA_CHANNEL_DEF__::isCircular() { return (_regs()->CR & DMA_SxCR_CIRC) != 0u; }
+    template <typename tDriver, ChannelRegsT _regs, uint32_t tChannel, IRQn_Type tIRQn>
+    inline bool Channel<tDriver, _regs, tChannel, tIRQn>::isCircular()
+    {
+        return (_regs()->CR & DMA_SxCR_CIRC) != 0u;
+    }
 
-    __DMA_CHANNEL_TPL__
-    inline uint32_t __DMA_CHANNEL_DEF__::getRemaining() { return _regs()->NDTR; }
+    template <typename tDriver, ChannelRegsT _regs, uint32_t tChannel, IRQn_Type tIRQn>
+    inline uint32_t Channel<tDriver, _regs, tChannel, tIRQn>::getRemaining()
+    {
+        return _regs()->NDTR;
+    }
 
-    __DMA_CHANNEL_TPL__
-    inline Status __DMA_CHANNEL_DEF__::transfer(Config config, const void* buffer, volatile void* periph, uint32_t size, uint8_t channel)
+    template <typename tDriver, ChannelRegsT _regs, uint32_t tChannel, IRQn_Type tIRQn>
+    inline Status Channel<tDriver, _regs, tChannel, tIRQn>::transfer(Config config, const void* buffer, volatile void* periph, uint32_t size, uint8_t channel)
     {
         if (_state != State::READY) return Status::BUSY;
 
@@ -116,8 +145,8 @@ namespace STM32::DMA
         return Status::OK;
     }
 
-    __DMA_CHANNEL_TPL__
-    inline Status __DMA_CHANNEL_DEF__::abort()
+    template <typename tDriver, ChannelRegsT _regs, uint32_t tChannel, IRQn_Type tIRQn>
+    inline Status Channel<tDriver, _regs, tChannel, tIRQn>::abort()
     {
         if (_state != State::TRANSFER) return Status::ERROR;
 

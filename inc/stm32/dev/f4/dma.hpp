@@ -15,17 +15,6 @@
 
 namespace STM32::DMA
 {
-    template <typename tStream, uint8_t tChannel>
-    class StreamChannel : public tStream
-    {
-    public:
-        static inline void transfer(Config config, const void* buffer, volatile void* periph, uint32_t size) { tStream::transfer(config, buffer, periph, size, tChannel); }
-    };
-
-    // Alias
-    __DMA_CHANNEL_TPL__
-    using Stream = __DMA_CHANNEL_DEF__;
-
     using DMA1 = Driver<DriverRegs<DMA1_BASE>, Clock::DMA1Clock>;
     using DMA1Stream0 = Stream<DMA1, ChannelRegs<DMA1_Stream0_BASE>, 0, DMA1_Stream0_IRQn>;
     using DMA1Stream1 = Stream<DMA1, ChannelRegs<DMA1_Stream1_BASE>, 0, DMA1_Stream1_IRQn>;

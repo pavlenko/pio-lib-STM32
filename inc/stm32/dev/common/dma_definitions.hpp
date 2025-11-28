@@ -56,9 +56,6 @@ namespace STM32::DMA
     using EventCallbackT = std::add_pointer_t<void(Event, uint16_t)>;
     using ErrorCallbackT = std::add_pointer_t<void(Error, uint16_t)>;
 
-#define __DMA_CHANNEL_TPL__ template <typename tDriver, ChannelRegsT _regs, uint32_t tChannel, IRQn_Type tIRQn>
-#define __DMA_CHANNEL_DEF__ Channel<tDriver, _regs, tChannel, tIRQn>
-
     template <typename tDriver, ChannelRegsT _regs, uint32_t tChannel, IRQn_Type tIRQn>
     class Channel
     {

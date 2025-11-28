@@ -12,40 +12,40 @@
 namespace STM32::DMA
 {
     // CHANNEL
-    __DMA_CHANNEL_TPL__
-    inline bool __DMA_CHANNEL_DEF__::isReady()
+    template <typename tDriver, ChannelRegsT _regs, uint32_t tChannel, IRQn_Type tIRQn>
+    inline bool Channel<tDriver, _regs, tChannel, tIRQn>::isReady()
     {
         return getRemaining() == 0 || !isEnabled() || hasFlag<Flag::TRANSFER_COMPLETE>();
     }
 
-    __DMA_CHANNEL_TPL__
+    template <typename tDriver, ChannelRegsT _regs, uint32_t tChannel, IRQn_Type tIRQn>
     template <Flag tFlag>
-    inline bool __DMA_CHANNEL_DEF__::hasFlag()
+    inline bool Channel<tDriver, _regs, tChannel, tIRQn>::hasFlag()
     {
         return tDriver::template hasChannelFlag<tChannel, tFlag>();
     }
 
-    __DMA_CHANNEL_TPL__
+    template <typename tDriver, ChannelRegsT _regs, uint32_t tChannel, IRQn_Type tIRQn>
     template <Flag tFlag>
-    inline void __DMA_CHANNEL_DEF__::clrFlag()
+    inline void Channel<tDriver, _regs, tChannel, tIRQn>::clrFlag()
     {
         tDriver::template clrChannelFlag<tChannel, tFlag>();
     }
 
-    __DMA_CHANNEL_TPL__
-    inline void __DMA_CHANNEL_DEF__::clrFlagTC()
+    template <typename tDriver, ChannelRegsT _regs, uint32_t tChannel, IRQn_Type tIRQn>
+    inline void Channel<tDriver, _regs, tChannel, tIRQn>::clrFlagTC()
     {
         clrFlag<Flag::TRANSFER_COMPLETE>();
     }
 
-    __DMA_CHANNEL_TPL__
-    inline void __DMA_CHANNEL_DEF__::clrFlags()
+    template <typename tDriver, ChannelRegsT _regs, uint32_t tChannel, IRQn_Type tIRQn>
+    inline void Channel<tDriver, _regs, tChannel, tIRQn>::clrFlags()
     {
         tDriver::template clrChannelFlags<tChannel>();
     }
 
-    __DMA_CHANNEL_TPL__
-    inline void __DMA_CHANNEL_DEF__::dispatchIRQ()
+    template <typename tDriver, ChannelRegsT _regs, uint32_t tChannel, IRQn_Type tIRQn>
+    inline void Channel<tDriver, _regs, tChannel, tIRQn>::dispatchIRQ()
     {
         Error error = Error::NONE;
 
