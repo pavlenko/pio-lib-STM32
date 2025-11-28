@@ -85,6 +85,15 @@ namespace STM32::UART
     constexpr inline IRQEn operator | (IRQEn l, IRQEn r) { return IRQEn(static_cast<uint32_t>(l) | static_cast<uint32_t>(r)); }
     constexpr inline IRQEn operator & (IRQEn l, IRQEn r) { return IRQEn(static_cast<uint32_t>(l) & static_cast<uint32_t>(r)); }
 
+    enum class DMAEn : uint32_t {
+        TX = USART_CR3_DMAT,
+        RX = USART_CR3_DMAR,
+        ALL = TX | RX,
+    };
+
+    constexpr inline DMAEn operator | (DMAEn l, DMAEn r) { return DMAEn(static_cast<uint32_t>(l) | static_cast<uint32_t>(r)); }
+    constexpr inline DMAEn operator & (DMAEn l, DMAEn r) { return DMAEn(static_cast<uint32_t>(l) & static_cast<uint32_t>(r)); }
+
     enum class Flag : uint32_t {
         NONE = 0,
 #ifdef USART_SR_PE
@@ -175,7 +184,22 @@ namespace STM32::UART
          */
         static inline Status rx(void* data, uint16_t size, uint16_t* len);
 
+        /**
+         * @brief TX data via IRQ
+         *
+         * @param data Data pointer
+         * @param size Data size
+         * @param cb   Done callback
+         */
         static inline Status txIRQ(void* data, uint16_t size, CallbackT cb);
+
+        /**
+         * @brief RX data via IRQ
+         *
+         * @param data Data pointer
+         * @param size Data size
+         * @param cb   Done callback
+         */
         static inline Status rxIRQ(void* data, uint16_t size, CallbackT cb);
 
         /**
@@ -227,21 +251,5 @@ namespace STM32::UART
          */
         template <Flag tFlag>
         static inline void clrFlag();
-
-        /**
-         * @brief Enable interrupts
-         *
-         * @tparam tEnable Interrupts mask
-         */
-        template <IRQEn tEnable>
-        static inline void attachIRQ();
-
-        /**
-         * @brief Disable interrupts
-         *
-         * @tparam tEnable Interrupts mask
-         */
-        template <IRQEn tEnable>
-        static inline void detachIRQ();
     };
 }
