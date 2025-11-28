@@ -41,7 +41,10 @@ namespace STM32::UART
         CR3Mask = ENABLE_RTS_CTS,
     };
 
-    enum class IRQEnable {
+    constexpr inline Config operator | (Config l, Config r) { return Config(static_cast<uint32_t>(l) | static_cast<uint32_t>(r)); }
+    constexpr inline Config operator & (Config l, Config r) { return Config(static_cast<uint32_t>(l) & static_cast<uint32_t>(r)); }
+
+    enum class IRQEn {
         TX_COMPLETE = USART_CR1_TCIE,
         TX_EMPTY = USART_CR1_TXEIE,
         RX_NOT_EMPTY = USART_CR1_RXNEIE,
@@ -78,6 +81,9 @@ namespace STM32::UART
         CR2Mask = LINE_BREAK,
         CR3Mask = ERROR | CTS,
     };
+
+    constexpr inline IRQEn operator | (IRQEn l, IRQEn r) { return IRQEn(static_cast<uint32_t>(l) | static_cast<uint32_t>(r)); }
+    constexpr inline IRQEn operator & (IRQEn l, IRQEn r) { return IRQEn(static_cast<uint32_t>(l) & static_cast<uint32_t>(r)); }
 
     enum class Flag : uint32_t {
         NONE = 0,
@@ -129,9 +135,15 @@ namespace STM32::UART
     class Driver
     {
     private:
-        //static inline State _txState;
-        //static inline State _rxState;
-        // static inline USART_TypeDef* _regs();
+        static inline State _txState;
+        static inline uint8_t* _txBuf;
+        static inline uint16_t _txCnt;
+        static inline uint16_t _txLen;
+
+        static inline State _rxState;
+        static inline uint8_t* _rxBuf;
+        static inline uint16_t _rxCnt;
+        static inline uint16_t _rxLen;
 
     public:
         using DMATx = tDMATx;
@@ -144,7 +156,27 @@ namespace STM32::UART
          * @tparam tConfig Config
          */
         template <uint32_t tBaud, Config tConfig>
-        static inline void configure();
+        static inline Status configure();
+
+        /**
+         * @brief TX UART data in blocking mode
+         *
+         * @param data Data pointer
+         * @param size Data size
+         */
+        static inline Status tx(void* data, uint16_t size);
+
+        /**
+         * @brief RX UART data in blocking mode
+         *
+         * @param data  Data pointer
+         * @param size  Data size
+         * @param rxLen Received counter
+         */
+        static inline Status rx(void* data, uint16_t size, uint16_t* len);
+
+        static inline Status txIRQ(void* data, uint16_t size, CallbackT cb);
+        static inline Status rxIRQ(void* data, uint16_t size, CallbackT cb);
 
         /**
          * @brief Send data async
@@ -201,7 +233,7 @@ namespace STM32::UART
          *
          * @tparam tEnable Interrupts mask
          */
-        template <IRQEnable tEnable>
+        template <IRQEn tEnable>
         static inline void attachIRQ();
 
         /**
@@ -209,7 +241,7 @@ namespace STM32::UART
          *
          * @tparam tEnable Interrupts mask
          */
-        template <IRQEnable tEnable>
+        template <IRQEn tEnable>
         static inline void detachIRQ();
     };
 }

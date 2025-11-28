@@ -5,42 +5,108 @@
 
 namespace STM32::UART
 {
-    inline constexpr Config operator|(Config l, Config r)
+    namespace
     {
-        return Config(static_cast<uint32_t>(l) | static_cast<uint32_t>(r));
-    }
+        template <RegsT _regs>
+        static inline bool issetFlag(Flag flag)
+        {
+            return (_regs()->ISR & static_cast<uint32_t>(flag)) != 0u;
+        }
 
-    inline constexpr Config operator&(Config l, Config r)
-    {
-        return Config(static_cast<uint32_t>(l) & static_cast<uint32_t>(r));
-    }
+        template <RegsT _regs>
+        static inline void clearFlag(Flag flag)
+        {
+            _regs()->ICR = static_cast<uint32_t>(flag);
+        }
 
-    inline constexpr IRQEnable operator|(IRQEnable l, IRQEnable r)
-    {
-        return IRQEnable(static_cast<uint32_t>(l) | static_cast<uint32_t>(r));
-    }
+        static inline bool checkFlag(uint32_t reg, Flag flag) { return (reg & static_cast<uint32_t>(flag)) != 0u; }
 
-    inline constexpr IRQEnable operator&(IRQEnable l, IRQEnable r)
-    {
-        return IRQEnable(static_cast<uint32_t>(l) & static_cast<uint32_t>(r));
+        template <RegsT _regs, Flag tFlag, bool tState>
+        static inline bool waitFlag(uint32_t timeout)
+        {
+            while (issetFlag<_regs>(tFlag) == tState && timeout > 0) {
+                timeout--;
+            }
+            return issetFlag<_regs>(tFlag) != tState;
+        }
     }
-
-    // template <uint32_t tRegsAddr, IRQn_Type tIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    // inline USART_TypeDef* Driver<tRegsAddr, tIRQn, tClock, tDMATx, tDMARx>::_regs()
-    // {
-    //     return reinterpret_cast<USART_TypeDef*>(tRegsAddr);
-    // }
 
     template <RegsT _regs, IRQn_Type tIRQn, typename tClock, typename tDMATx, typename tDMARx>
     template <uint32_t tBaud, Config tConfig>
-    inline void Driver<_regs, tIRQn, tClock, tDMATx, tDMARx>::configure()
+    inline Status Driver<_regs, tIRQn, tClock, tDMATx, tDMARx>::configure()
     {
-        tClock::enable();
+        // TODO check state == reset || ready (for reconfigure)
+        tClock::enable(); //<-- execute only if state=reset
 
         _regs()->BRR = tClock::getFrequency() / tBaud;
         _regs()->CR1 = static_cast<uint32_t>(tConfig & Config::CR1Mask) | USART_CR1_UE;
         _regs()->CR2 = static_cast<uint32_t>(tConfig & Config::CR2Mask) >> 16;
         _regs()->CR3 = static_cast<uint32_t>(tConfig & Config::CR3Mask) >> 16;
+        // set state = ready
+        return Status::OK;
+    }
+
+    template <RegsT _regs, IRQn_Type tIRQn, typename tClock, typename tDMATx, typename tDMARx>
+    inline Status Driver<_regs, tIRQn, tClock, tDMATx, tDMARx>::tx(void* data, uint16_t size)
+    {
+        if (_txState != State::READY) return Status::BUSY;
+
+        _txState = State::BUSY;
+
+        _txBuf = data;
+        _txCnt = size;
+        _txLen = size;
+
+        while (_txCnt > 0) {
+            if (!waitFlag<_regs, Flag::TX_EMPTY, false>(10000)) {
+                _txState = State::READY;
+                return Status::TIMEOUT;
+            }
+            _regs()->TDR = static_cast<uint8_t>(*_txBuf);
+            _txBuf++;
+            _txCnt--;
+        }
+
+        if (!waitFlag<_regs, Flag::TX_COMPLETE, false>(10000)) {
+            _txState = State::READY;
+            return Status::TIMEOUT;
+        }
+
+        _txState = State::READY;
+        return Status::OK;
+    }
+
+    template <RegsT _regs, IRQn_Type tIRQn, typename tClock, typename tDMATx, typename tDMARx>
+    inline Status Driver<_regs, tIRQn, tClock, tDMATx, tDMARx>::rx(void* data, uint16_t size, uint16_t* rxLen)
+    {
+        if (_rxState != State::READY) return Status::BUSY;
+
+        _rxState = State::READY;
+
+        _rxBuf = data;
+        _rxCnt = size;
+        *rxLen = 0;
+
+        while (_rxCnt > 0) {
+            if (issetFlag<_regs>(Flag::IDLE)) {
+                clearFlag<_regs>(Flag::IDLE);
+                if (*rxLen > 0) {
+                    _rxState = State::READY;
+                    return Status::OK;
+                }
+            }
+            if (!waitFlag<_regs, Flag::RX_NOT_EMPTY, false>(10000)) {
+                _rxState = State::READY;
+                return Status::TIMEOUT;
+            }
+            *_rxBuf = static_cast<uint8_t>(_regs()->RDR);
+            _rxBuf++;
+            _rxCnt--;
+            *rxLen += 1;
+        }
+
+        _rxState = State::READY;
+        return Status::OK;
     }
 
     template <RegsT _regs, IRQn_Type tIRQn, typename tClock, typename tDMATx, typename tDMARx>
@@ -51,8 +117,8 @@ namespace STM32::UART
 
         DMATx::clrFlagTC();
         DMATx::setEventCallback(cb);
-        DMATx::setErrorCallback([](DMA::Error e, uint16_t n){
-            detachIRQ<IRQEnable::TX_EMPTY | IRQEnable::TX_COMPLETE>();
+        DMATx::setErrorCallback([](DMA::Error e, uint16_t n) {
+            detachIRQ<IRQEn::TX_EMPTY | IRQEn::TX_COMPLETE>();
             // state = ready
             // err callback
         });
@@ -75,8 +141,8 @@ namespace STM32::UART
 
         DMARx::clrFlagTC();
         DMARx::setEventCallback(cb);
-        DMARx::setErrorCallback([](DMA::Error e, uint16_t n){
-            detachIRQ<IRQEnable::RX_NOT_EMPTY | IRQEnable::IDLE | IRQEnable::PARITY_ERROR | IRQEnable::ERROR>();
+        DMARx::setErrorCallback([](DMA::Error e, uint16_t n) {
+            detachIRQ<IRQEn::RX_NOT_EMPTY | IRQEn::IDLE | IRQEn::PARITY_ERROR | IRQEn::ERROR>();
             // state = ready
             // err callback
         });
@@ -135,12 +201,12 @@ namespace STM32::UART
     }
 
     template <RegsT _regs, IRQn_Type tIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    template <IRQEnable tEnable>
+    template <IRQEn tEnable>
     inline void Driver<_regs, tIRQn, tClock, tDMATx, tDMARx>::attachIRQ()
     {
-        static constexpr uint32_t CR1 = static_cast<uint32_t>(tEnable & IRQEnable::CR1Mask);
-        static constexpr uint32_t CR2 = static_cast<uint32_t>(tEnable & IRQEnable::CR2Mask) >> 16u;
-        static constexpr uint32_t CR3 = static_cast<uint32_t>(tEnable & IRQEnable::CR3Mask) >> 16u;
+        static constexpr uint32_t CR1 = static_cast<uint32_t>(tEnable & IRQEn::CR1Mask);
+        static constexpr uint32_t CR2 = static_cast<uint32_t>(tEnable & IRQEn::CR2Mask) >> 16u;
+        static constexpr uint32_t CR3 = static_cast<uint32_t>(tEnable & IRQEn::CR3Mask) >> 16u;
 
         if constexpr (CR1 != 0u) _regs()->CR1 |= CR1;
         if constexpr (CR2 != 0u) _regs()->CR2 |= CR2;
@@ -149,12 +215,12 @@ namespace STM32::UART
     }
 
     template <RegsT _regs, IRQn_Type tIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    template <IRQEnable tEnable>
+    template <IRQEn tEnable>
     inline void Driver<_regs, tIRQn, tClock, tDMATx, tDMARx>::detachIRQ()
     {
-        static constexpr uint32_t CR1 = static_cast<uint32_t>(tEnable & IRQEnable::CR1Mask);
-        static constexpr uint32_t CR2 = static_cast<uint32_t>(tEnable & IRQEnable::CR2Mask) >> 16u;
-        static constexpr uint32_t CR3 = static_cast<uint32_t>(tEnable & IRQEnable::CR3Mask) >> 16u;
+        static constexpr uint32_t CR1 = static_cast<uint32_t>(tEnable & IRQEn::CR1Mask);
+        static constexpr uint32_t CR2 = static_cast<uint32_t>(tEnable & IRQEn::CR2Mask) >> 16u;
+        static constexpr uint32_t CR3 = static_cast<uint32_t>(tEnable & IRQEn::CR3Mask) >> 16u;
 
         if constexpr (CR1 != 0u) _regs()->CR1 &= ~CR1;
         if constexpr (CR2 != 0u) _regs()->CR2 &= ~CR2;
