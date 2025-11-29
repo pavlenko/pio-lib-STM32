@@ -3,6 +3,13 @@
 #include <stm32/dev/common/uart_definitions.hpp>
 #include <stm32/dev/dma.hpp>
 
+#if defined(USART_SR_PE)
+#include <stm32/dev/common/uart_v1.hpp>
+#endif
+#if defined(USART_ISR_PE)
+#include <stm32/dev/common/uart_v2.hpp>
+#endif
+
 namespace STM32::UART
 {
     namespace

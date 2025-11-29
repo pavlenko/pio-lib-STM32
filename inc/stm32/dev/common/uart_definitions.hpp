@@ -94,43 +94,7 @@ namespace STM32::UART
     constexpr inline DMAEn operator | (DMAEn l, DMAEn r) { return DMAEn(static_cast<uint32_t>(l) | static_cast<uint32_t>(r)); }
     constexpr inline DMAEn operator & (DMAEn l, DMAEn r) { return DMAEn(static_cast<uint32_t>(l) & static_cast<uint32_t>(r)); }
 
-    enum class Flag : uint32_t {
-        NONE = 0,
-#ifdef USART_SR_PE
-        PARITY_ERROR = USART_SR_PE,
-        TX_EMPTY = USART_SR_TXE,
-        TX_COMPLETE = USART_SR_TC,
-        RX_NOT_EMPTY = USART_SR_RXNE,
-        IDLE = USART_SR_IDLE,
-        LINE_BREAK = USART_SR_LBD,
-        CTS = USART_SR_CTS,
-        ERRORS = USART_SR_PE | USART_SR_FE | USART_SR_NE | USART_SR_ORE,
-#endif
-#ifdef USART_ISR_PE
-        PARITY_ERROR = USART_ISR_PE,
-        TX_EMPTY = USART_ISR_TXE,
-        TX_COMPLETE = USART_ISR_TC,
-        RX_NOT_EMPTY = USART_ISR_RXNE,
-        IDLE = USART_ISR_IDLE,
-#ifdef USART_ISR_LBD
-        LINE_BREAK = USART_ISR_LBD,
-#else
-        LINE_BREAK = 0,
-#endif
-        CTS = USART_ISR_CTS,
-        ERRORS = USART_ISR_PE | USART_ISR_FE | USART_ISR_NE | USART_ISR_ORE,
-#ifdef USART_CR1_FIFOEN
-        RX_FIFO_FULL = USART_ISR_RXFF,
-        TX_FIFO_EMPTY = USART_ISR_TXFE,
-        RX_FIFO_THRESHOLD = USART_ISR_RXFT,
-        TX_FIFO_THRESHOLD = USART_ISR_TXFT,
-#endif
-#ifdef USART_CR2_RTOEN
-        RX_TIMEOUT = USART_ISR_RTOF,
-#endif
-#endif
-        ALL = ERRORS | TX_EMPTY | TX_COMPLETE | RX_NOT_EMPTY | IDLE | LINE_BREAK | CTS
-    };
+    enum class Flag : uint32_t;
 
     enum class State {
         RESET,
@@ -140,8 +104,11 @@ namespace STM32::UART
 
     using CallbackT = DMA::EventCallbackT;
 
+    template <RegsT _regs>
+    class Private;
+
     template <RegsT _regs, IRQn_Type tIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    class Driver
+    class Driver : public Private<_regs>
     {
     private:
         static inline State _txState;
@@ -251,5 +218,10 @@ namespace STM32::UART
          */
         template <Flag tFlag>
         static inline void clrFlag();
+
+        /**
+         * @brief Dispatch all IRQ events
+         */
+        static inline void dispatchIRQ();
     };
 }
