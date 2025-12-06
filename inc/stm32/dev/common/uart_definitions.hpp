@@ -41,8 +41,8 @@ namespace STM32::UART
         CR3Mask = ENABLE_RTS_CTS,
     };
 
-    constexpr inline Config operator | (Config l, Config r) { return Config(static_cast<uint32_t>(l) | static_cast<uint32_t>(r)); }
-    constexpr inline Config operator & (Config l, Config r) { return Config(static_cast<uint32_t>(l) & static_cast<uint32_t>(r)); }
+    constexpr Config operator | (Config l, Config r) { return static_cast<Config>(static_cast<uint32_t>(l) | static_cast<uint32_t>(r)); }
+    constexpr Config operator & (Config l, Config r) { return static_cast<Config>(static_cast<uint32_t>(l) & static_cast<uint32_t>(r)); }
 
     enum class IRQEn {
         TX_COMPLETE = USART_CR1_TCIE,
@@ -82,8 +82,8 @@ namespace STM32::UART
         CR3Mask = ERROR | CTS,
     };
 
-    constexpr inline IRQEn operator | (IRQEn l, IRQEn r) { return IRQEn(static_cast<uint32_t>(l) | static_cast<uint32_t>(r)); }
-    constexpr inline IRQEn operator & (IRQEn l, IRQEn r) { return IRQEn(static_cast<uint32_t>(l) & static_cast<uint32_t>(r)); }
+    constexpr IRQEn operator | (IRQEn l, IRQEn r) { return static_cast<IRQEn>(static_cast<uint32_t>(l) | static_cast<uint32_t>(r)); }
+    constexpr IRQEn operator & (IRQEn l, IRQEn r) { return static_cast<IRQEn>(static_cast<uint32_t>(l) & static_cast<uint32_t>(r)); }
 
     enum class DMAEn : uint32_t {
         TX = USART_CR3_DMAT,
@@ -91,8 +91,8 @@ namespace STM32::UART
         ALL = TX | RX,
     };
 
-    constexpr inline DMAEn operator | (DMAEn l, DMAEn r) { return DMAEn(static_cast<uint32_t>(l) | static_cast<uint32_t>(r)); }
-    constexpr inline DMAEn operator & (DMAEn l, DMAEn r) { return DMAEn(static_cast<uint32_t>(l) & static_cast<uint32_t>(r)); }
+    constexpr DMAEn operator | (DMAEn l, DMAEn r) { return static_cast<DMAEn>(static_cast<uint32_t>(l) | static_cast<uint32_t>(r)); }
+    constexpr DMAEn operator & (DMAEn l, DMAEn r) { return static_cast<DMAEn>(static_cast<uint32_t>(l) & static_cast<uint32_t>(r)); }
 
     enum class Flag : uint32_t;
 
@@ -104,12 +104,13 @@ namespace STM32::UART
 
     using CallbackT = DMA::EventCallbackT;
 
-    template <RegsT _regs>
+    template <RegsT _regs, IRQn_Type tIRQn>
     class Private;
 
     template <RegsT _regs, IRQn_Type tIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    class Driver : public Private<_regs>
+    class Driver : public Private<_regs, tIRQn>
     {
+        using self = Driver;
     private:
         static inline State _txState;
         static inline uint8_t* _txBuf;

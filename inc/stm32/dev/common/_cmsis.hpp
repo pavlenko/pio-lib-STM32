@@ -50,4 +50,39 @@ namespace STM32
         BUSY,
         TIMEOUT,
     };
+
+    template <typename T>
+    class Singleton
+    {
+    public:
+        Singleton(const Singleton<T>&) = delete;
+        const Singleton<T>& operator = (const Singleton<T>&) = delete;
+
+        static constexpr T& instance() { return _instance; }
+
+    protected:
+        Singleton() = default;
+
+    private:
+        inline static constinit T _instance;
+    };
+
+    template <typename T>
+    class A;
+
+    template <typename T, typename TT>
+    class B : public A<T>
+    {
+    public:
+        void funcB1() { B::funcA1(); } //<-- solution for no-static functions
+        static void funcB2() { B::funcA2(); } //<-- solution for static functions
+    };
+
+    template <typename T>
+    class A
+    {
+    public:
+        void funcA1() {}
+        static void funcA2() {}
+    };
 }
