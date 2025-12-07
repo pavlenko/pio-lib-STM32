@@ -103,7 +103,7 @@ namespace STM32::UART
         _txLen = size;
 
         while (_txCnt > 0) {
-            if (!waitFlag<_regs, Flag::TX_EMPTY, false>(10000)) {
+            if (!waitFlag<_regs, Flag::TXE, false>(10000)) {
                 _txState = State::READY;
                 return Status::TIMEOUT;
             }
@@ -112,7 +112,7 @@ namespace STM32::UART
             _txCnt--;
         }
 
-        if (!waitFlag<_regs, Flag::TX_COMPLETE, false>(10000)) {
+        if (!waitFlag<_regs, Flag::TC, false>(10000)) {
             _txState = State::READY;
             return Status::TIMEOUT;
         }
@@ -140,7 +140,7 @@ namespace STM32::UART
                     return Status::OK;
                 }
             }
-            if (!waitFlag<_regs, Flag::RX_NOT_EMPTY, false>(10000)) {
+            if (!waitFlag<_regs, Flag::RXNE, false>(10000)) {
                 _rxState = State::READY;
                 return Status::TIMEOUT;
             }
@@ -164,7 +164,7 @@ namespace STM32::UART
         _txCnt = size;
         _txLen = size;
 
-        enableIRQ<_regs, IRQEn::TX_EMPTY>();
+        enableIRQ<_regs, IRQEn::TXE>();
         return Status::OK;
     }
 
@@ -178,7 +178,7 @@ namespace STM32::UART
         _rxCnt = size;
         _rxLen = size;
 
-        enableIRQ<_regs, IRQEn::RX_NOT_EMPTY | IRQEn::IDLE | IRQEn::ERROR | IRQEn::PARITY_ERROR>();
+        enableIRQ<_regs, IRQEn::RXNE | IRQEn::IDLE | IRQEn::ERR | IRQEn::PE>();
         return Status::OK;
     }
 
@@ -191,7 +191,7 @@ namespace STM32::UART
         DMATx::clrFlagTC();
         DMATx::setEventCallback(cb);
         DMATx::setErrorCallback([](DMA::Error e, uint16_t n) {
-            disableIRQ<_regs, IRQEn::TX_EMPTY | IRQEn::TX_COMPLETE>();
+            disableIRQ<_regs, IRQEn::TXE | IRQEn::TC>();
             // state = ready
             // err callback
         });
@@ -215,14 +215,14 @@ namespace STM32::UART
         DMARx::clrFlagTC();
         DMARx::setEventCallback(cb);
         DMARx::setErrorCallback([](DMA::Error e, uint16_t n) {
-            disableIRQ<_regs, IRQEn::RX_NOT_EMPTY | IRQEn::IDLE | IRQEn::PARITY_ERROR | IRQEn::ERROR>();
+            disableIRQ<_regs, IRQEn::RXNE | IRQEn::IDLE | IRQEn::PE | IRQEn::ERR>();
             // state = ready
             // err callback
         });
 
         _regs()->CR3 |= USART_CR3_DMAT;
 
-        clrFlag<Flag::TX_COMPLETE>();
+        clrFlag<Flag::TC>();
 
 #if defined(USART_SR_PE)
         DMATx::transfer(DMA::Config::MEM_2_PER | DMA::Config::MINC, data, &_regs()->DR, size);
@@ -237,16 +237,16 @@ namespace STM32::UART
     {
         if constexpr (!std::is_same_v<DMATx, void>) {
             bool dmaActive = (_regs()->CR3 & USART_CR3_DMAT) && DMATx::isEnabled();
-            return (!dmaActive || DMATx::template hasFlag<DMA::Flag::TRANSFER_COMPLETE>()) && hasFlag<Flag::TX_COMPLETE>();
+            return (!dmaActive || DMATx::template hasFlag<DMA::Flag::TRANSFER_COMPLETE>()) && hasFlag<Flag::TC>();
         } else {
-            return hasFlag<Flag::TX_COMPLETE>();
+            return hasFlag<Flag::TC>();
         }
     }
 
     template <RegsT _regs, IRQn_Type tIRQn, typename tClock, typename tDMATx, typename tDMARx>
     inline bool Driver<_regs, tIRQn, tClock, tDMATx, tDMARx>::readyRx()
     {
-        return hasFlag<Flag::RX_NOT_EMPTY>();
+        return hasFlag<Flag::RXNE>();
     }
 
     template <RegsT _regs, IRQn_Type tIRQn, typename tClock, typename tDMATx, typename tDMARx>

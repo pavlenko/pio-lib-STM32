@@ -45,16 +45,16 @@ namespace STM32::UART
     constexpr Config operator & (Config l, Config r) { return static_cast<Config>(static_cast<uint32_t>(l) & static_cast<uint32_t>(r)); }
 
     enum class IRQEn {
-        TX_COMPLETE = USART_CR1_TCIE,
-        TX_EMPTY = USART_CR1_TXEIE,
-        RX_NOT_EMPTY = USART_CR1_RXNEIE,
+        TC = USART_CR1_TCIE,
+        TXE = USART_CR1_TXEIE,
+        RXNE = USART_CR1_RXNEIE,
         IDLE = USART_CR1_IDLEIE,
-        PARITY_ERROR = USART_CR1_PEIE,
+        PE = USART_CR1_PEIE,
 #if defined(USART_CR1_EOBIE)
         END_OF_BLOCK = USART_CR1_EOBIE,
 #endif
 #if defined(USART_CR1_RTOIE)
-        RECEIVE_TIMEOUT = USART_CR1_RTOIE,
+        RTO = USART_CR1_RTOIE,
 #endif
 #if defined(USART_CR1_CMIE)
         CHARACTER_MATCH = USART_CR1_CMIE,
@@ -64,22 +64,22 @@ namespace STM32::UART
 #else
         LINE_BREAK = 0,
 #endif
-        ERROR = USART_CR3_EIE << 16u,
+        ERR = USART_CR3_EIE << 16u,
         CTS = USART_CR3_CTSIE << 16u,
 
-        CR1Mask = TX_COMPLETE | TX_EMPTY | RX_NOT_EMPTY | IDLE | PARITY_ERROR
+        CR1Mask = TC | TXE | RXNE | IDLE | PE
 #if defined(USART_CR1_EOBIE)
                   | END_OF_BLOCK
 #endif
 #if defined(USART_CR1_RTOIE)
-                  | RECEIVE_TIMEOUT
+                  | RTO
 #endif
 #if defined(USART_CR1_CMIE)
                   | CHARACTER_MATCH
 #endif
         ,
         CR2Mask = LINE_BREAK,
-        CR3Mask = ERROR | CTS,
+        CR3Mask = ERR | CTS,
     };
 
     constexpr IRQEn operator | (IRQEn l, IRQEn r) { return static_cast<IRQEn>(static_cast<uint32_t>(l) | static_cast<uint32_t>(r)); }
@@ -104,14 +104,9 @@ namespace STM32::UART
 
     using CallbackT = DMA::EventCallbackT;
 
-    template <RegsT _regs, IRQn_Type tIRQn>
-    class Private;
-
     template <RegsT _regs, IRQn_Type tIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    class Driver : public Private<_regs, tIRQn>
+    class Driver
     {
-        using self = Driver;
-    private:
         static inline State _txState;
         static inline uint8_t* _txBuf;
         static inline uint16_t _txCnt;
@@ -121,6 +116,23 @@ namespace STM32::UART
         static inline uint8_t* _rxBuf;
         static inline uint16_t _rxCnt;
         static inline uint16_t _rxLen;
+
+        static inline bool _checkFlag(uint32_t reg, Flag flag) { return (reg & static_cast<uint32_t>(flag)) != 0u; }
+
+        static inline bool _issetFlag(Flag flag);
+        static inline void _clearFlag(Flag flag);
+
+        template <IRQEn tFlags>
+        static inline void _enableIRQ();
+
+        template <DMAEn tFlags>
+        static inline void _enableDMA();
+
+        template <IRQEn tFlags>
+        static inline void _disableIRQ();
+
+        template <DMAEn tFlags>
+        static inline void _disableDMA();
 
     public:
         using DMATx = tDMATx;
