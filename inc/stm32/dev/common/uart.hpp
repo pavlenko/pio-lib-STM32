@@ -222,8 +222,6 @@ namespace STM32::UART
 
         _regs()->CR3 |= USART_CR3_DMAT;
 
-        clrFlag<Flag::TC>();
-
 #if defined(USART_SR_PE)
         DMATx::transfer(DMA::Config::MEM_2_PER | DMA::Config::MINC, data, &_regs()->DR, size);
 #endif
@@ -237,39 +235,15 @@ namespace STM32::UART
     {
         if constexpr (!std::is_same_v<DMATx, void>) {
             bool dmaActive = (_regs()->CR3 & USART_CR3_DMAT) && DMATx::isEnabled();
-            return (!dmaActive || DMATx::template hasFlag<DMA::Flag::TRANSFER_COMPLETE>()) && hasFlag<Flag::TC>();
+            return (!dmaActive || DMATx::template hasFlag<DMA::Flag::TRANSFER_COMPLETE>()) && _issetFlag(Flag::TC);
         } else {
-            return hasFlag<Flag::TC>();
+            return _issetFlag(Flag::TC);
         }
     }
 
     template <RegsT _regs, IRQn_Type tIRQn, typename tClock, typename tDMATx, typename tDMARx>
     inline bool Driver<_regs, tIRQn, tClock, tDMATx, tDMARx>::readyRx()
     {
-        return hasFlag<Flag::RXNE>();
-    }
-
-    template <RegsT _regs, IRQn_Type tIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    template <Flag tFlag>
-    inline bool Driver<_regs, tIRQn, tClock, tDMATx, tDMARx>::hasFlag()
-    {
-#if defined(USART_SR_PE)
-        return _regs()->SR & static_cast<uint32_t>(tFlag);
-#endif
-#if defined(USART_ISR_PE)
-        return _regs()->ISR & static_cast<uint32_t>(tFlag);
-#endif
-    }
-
-    template <RegsT _regs, IRQn_Type tIRQn, typename tClock, typename tDMATx, typename tDMARx>
-    template <Flag tFlag>
-    inline void Driver<_regs, tIRQn, tClock, tDMATx, tDMARx>::clrFlag()
-    {
-#if defined(USART_SR_PE)
-        _regs()->SR = static_cast<uint32_t>(tFlag);
-#endif
-#if defined(USART_ISR_PE)
-        _regs()->ISR = static_cast<uint32_t>(tFlag);
-#endif
+        return _issetFlag(Flag::RXNE);
     }
 }

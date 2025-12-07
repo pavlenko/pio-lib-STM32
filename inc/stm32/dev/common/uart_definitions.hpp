@@ -111,11 +111,16 @@ namespace STM32::UART
         static inline uint8_t* _txBuf;
         static inline uint16_t _txCnt;
         static inline uint16_t _txLen;
+        static inline std::add_pointer_t<bool(void)> _txISR;
 
         static inline State _rxState;
         static inline uint8_t* _rxBuf;
         static inline uint16_t _rxCnt;
         static inline uint16_t _rxLen;
+        static inline std::add_pointer_t<bool(void)> _rxISR;
+
+        // TODO error callback
+        // TODO DMA callbacks???
 
         static inline bool _checkFlag(uint32_t reg, Flag flag) { return (reg & static_cast<uint32_t>(flag)) != 0u; }
 
@@ -213,24 +218,6 @@ namespace STM32::UART
          * @return Busy or not
          */
         static inline bool readyRx();
-
-        /**
-         * @brief Check IRQ flag(s) is set
-         *
-         * @tparam tFlag Flag(s) to check
-         *
-         * @return Flag is set or not
-         */
-        template <Flag tFlag>
-        static inline bool hasFlag();
-
-        /**
-         * @brief Clear IRQ flag(s)
-         *
-         * @tparam tFlag Flag(s) to clear
-         */
-        template <Flag tFlag>
-        static inline void clrFlag();
 
         /**
          * @brief Dispatch all IRQ events
