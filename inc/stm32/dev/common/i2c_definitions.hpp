@@ -1,6 +1,6 @@
 #pragma once
 
-#include <stm32/dev/common/_cmsis.hpp>
+#include <stm32/_cmsis.hpp>
 #include <stm32/dev/dma.hpp>
 #include <concepts>
 #include <type_traits>

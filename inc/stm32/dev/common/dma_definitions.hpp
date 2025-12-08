@@ -1,7 +1,7 @@
 #pragma once
 
 #include <stdint.h>
-#include <stm32/dev/common/_cmsis.hpp>
+#include <stm32/_cmsis.hpp>
 #include <type_traits>
 
 namespace STM32::DMA

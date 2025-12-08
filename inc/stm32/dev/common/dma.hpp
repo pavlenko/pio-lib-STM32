@@ -1,6 +1,6 @@
 #pragma once
 
-#include <stm32/dev/common/_cmsis.hpp>
+#include <stm32/_cmsis.hpp>
 
 #ifdef DMA_CCR_EN
 #include <stm32/dev/common/dma_v1.hpp>

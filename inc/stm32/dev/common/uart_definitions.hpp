@@ -1,8 +1,7 @@
 #pragma once
 
 #include <stdint.h>
-#include <stm32/dev/common/_callback.hpp>
-#include <stm32/dev/common/_cmsis.hpp>
+#include <stm32/_cmsis.hpp>
 #include <stm32/dev/dma.hpp>
 #include <type_traits>
 
@@ -35,6 +34,9 @@ namespace STM32::UART
         ENABLE_RTS = USART_CR3_RTSE << 16,
         ENABLE_CTS = USART_CR3_CTSE << 16,
         ENABLE_RTS_CTS = ENABLE_RTS | ENABLE_CTS,
+        // Wire bits
+        FULL_DUPLEX = 0x00000000,
+        HALF_DUPLEX = USART_CR3_HDSEL,
 
         CR1Mask = ENABLE_RX_TX | DATA_9BIT | USART_CR1_PCE | USART_CR1_PS,
         CR2Mask = USART_CR2_STOP << 16u,

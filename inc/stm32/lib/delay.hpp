@@ -1,9 +1,9 @@
 #pragma once
 
 #include <stdint.h>
-#include <stm32/dev/common/_cmsis.hpp>
+#include <stm32/_cmsis.hpp>
 
-//TODO refactor delay to more stability
+// TODO refactor delay to more stability
 __IO uint32_t __ticks{0};
 
 class Delay
