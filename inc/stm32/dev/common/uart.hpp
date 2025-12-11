@@ -10,9 +10,11 @@
 #include <stm32/dev/common/uart_v2.hpp>
 #endif
 
+#include <stm32/sys/dma.hpp>
+
 namespace STM32::UART
 {
-    namespace
+    /*namespace
     {
         template <RegsT _regs>
         static inline bool issetFlag(Flag flag)
@@ -72,7 +74,7 @@ namespace STM32::UART
         {
             _regs()->CR3 &= ~static_cast<uint32_t>(tFlags);
         }
-    }
+    }*/
 
     template <RegsT _regs, IRQn_Type tIRQn, typename tClock, typename tDMATx, typename tDMARx>
     template <uint32_t tBaud, Config tConfig>
@@ -107,7 +109,7 @@ namespace STM32::UART
                 _txState = State::READY;
                 return Status::TIMEOUT;
             }
-            _regs()->TDR = static_cast<uint8_t>(*_txBuf);
+            //_regs()->TDR = static_cast<uint8_t>(*_txBuf);
             _txBuf++;
             _txCnt--;
         }
@@ -144,7 +146,7 @@ namespace STM32::UART
                 _rxState = State::READY;
                 return Status::TIMEOUT;
             }
-            *_rxBuf = static_cast<uint8_t>(_regs()->RDR);
+            //*_rxBuf = static_cast<uint8_t>(_regs()->RDR);
             _rxBuf++;
             _rxCnt--;
             *rxLen += 1;
@@ -164,7 +166,7 @@ namespace STM32::UART
         _txCnt = size;
         _txLen = size;
 
-        enableIRQ<_regs, IRQEn::TXE>();
+        _enableIRQ<IRQEn::TXE>();
         return Status::OK;
     }
 
@@ -178,7 +180,7 @@ namespace STM32::UART
         _rxCnt = size;
         _rxLen = size;
 
-        enableIRQ<_regs, IRQEn::RXNE | IRQEn::IDLE | IRQEn::ERR | IRQEn::PE>();
+        _enableIRQ<IRQEn::RXNE | IRQEn::IDLE | IRQEn::ERR | IRQEn::PE>();
         return Status::OK;
     }
 
@@ -191,7 +193,7 @@ namespace STM32::UART
         DMATx::clrFlagTC();
         DMATx::setEventCallback(cb);
         DMATx::setErrorCallback([](DMA::Error e, uint16_t n) {
-            disableIRQ<_regs, IRQEn::TXE | IRQEn::TC>();
+            _disableIRQ<IRQEn::TXE | IRQEn::TC>();
             // state = ready
             // err callback
         });
@@ -215,7 +217,7 @@ namespace STM32::UART
         DMARx::clrFlagTC();
         DMARx::setEventCallback(cb);
         DMARx::setErrorCallback([](DMA::Error e, uint16_t n) {
-            disableIRQ<_regs, IRQEn::RXNE | IRQEn::IDLE | IRQEn::PE | IRQEn::ERR>();
+            _disableIRQ<IRQEn::RXNE | IRQEn::IDLE | IRQEn::PE | IRQEn::ERR>();
             // state = ready
             // err callback
         });
