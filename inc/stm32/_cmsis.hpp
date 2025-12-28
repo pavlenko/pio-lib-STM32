@@ -42,6 +42,10 @@ extern "C" {
 
 #define CLR_BIT CLEAR_BIT
 
+#define INLINE __attribute__((always_inline)) inline
+#define WEAK __attribute__((weak))
+#define USED __attribute__((used))
+
 namespace STM32
 {
     enum class Status : uint8_t {
@@ -50,4 +54,6 @@ namespace STM32
         BUSY,
         TIMEOUT,
     };
+
+    enum class Async : uint8_t { IRQ, DMA };
 }

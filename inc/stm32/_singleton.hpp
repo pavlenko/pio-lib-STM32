@@ -28,9 +28,6 @@ private:
 };
 
 // Example access function
-[[maybe_unused]] static SingletonImpl& SingletonF()
-{
-    return SingletonImpl::instance();
-}
+[[maybe_unused]] static SingletonImpl& SingletonF() { return SingletonImpl::instance(); }
 
 #endif // __SINGLETON__

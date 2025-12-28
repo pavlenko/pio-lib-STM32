@@ -62,7 +62,7 @@ namespace STM32::_DMA
     };
 
     template <BusRegsT tBusRegs, RegsT tRegs, IRQn_Type tIRQn, uint8_t tStream, uint8_t tChannel>
-    class Channel final : public ChannelT
+    class Channel final : public IChannel, public Singleton<Channel<tBusRegs, tRegs, tIRQn, tChannel>>
     {
         static constexpr const auto _6bit_pos = ((tStream & 0x01) * 6u) + ((tStream & 0x02) * 16u);
 
@@ -78,6 +78,16 @@ namespace STM32::_DMA
 
             _state = State::READY;
             return Status::OK;
+        }
+
+        bool isCircular() override
+        {
+            return (tRegs()->CR & DMA_SxCR_CIRC) != 0u;
+        }
+
+        uint32_t getRemaining() override
+        {
+            return tRegs()->NDTR;
         }
 
         Status transfer(const void* buf, volatile void* reg, uint16_t size) override

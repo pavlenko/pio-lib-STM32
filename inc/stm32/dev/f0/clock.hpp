@@ -52,11 +52,11 @@ namespace STM32::Clock
         static_assert(0 == tConfig::PLLDiv || (2 <= tConfig::PLLDiv && tConfig::PLLDiv <= 16), "Divider can be equal 0,2...16!");
         static_assert(2 <= tConfig::PLLMul && tConfig::PLLMul <= 16, "Multiplier can be equal 2..16!");
 
-        static constexpr uint32_t clrMask = ~(RCC_CFGR_PLLXTPRE | RCC_CFGR_PLLMUL | RCC_CFGR_USBPRE | RCC_CFGR_PLLSRC);
+        static constexpr uint32_t clrMask = ~(RCC_CFGR_PLLXTPRE | RCC_CFGR_PLLMUL /*| RCC_CFGR_USBPRE*/ | RCC_CFGR_PLLSRC);
         static constexpr uint32_t divMask = ((tConfig::PLLDiv == 0) ? 0 : tConfig::PLLDiv - 1) & RCC_CFGR2_PREDIV;
 
         static constexpr uint32_t mulMask = (tConfig::PLLMul - 2) << RCC_CFGR_PLLMUL_Pos;
-        static constexpr uint32_t usbMask = tConfig::USBPre ? 0u : RCC_CFGR_USBPRE;
+        static constexpr uint32_t usbMask = 0u;//tConfig::USBPre ? 0u : RCC_CFGR_USBPRE;
         static constexpr uint32_t setMask = mulMask | usbMask;
 
         if constexpr (tSource == PLLClock::Source::HSI_DIV2)
@@ -270,6 +270,12 @@ namespace STM32::Clock
     using UART5Clock = ClockControl<APBClock, &RCC_TypeDef::APB1ENR, RCC_APB1ENR_USART5EN>;
 #endif
 #if defined(USART6_BASE)
-    using UART6Clock = ClockControl<APBClock, &RCC_TypeDef::APB2ENR, RCC_APB1ENR_USART6EN>;
+    using UART6Clock = ClockControl<APBClock, &RCC_TypeDef::APB2ENR, RCC_APB2ENR_USART6EN>;
+#endif
+#if defined(USART7_BASE)
+    using UART7Clock = ClockControl<APBClock, &RCC_TypeDef::APB2ENR, RCC_APB2ENR_USART7EN>;
+#endif
+#if defined(USART8_BASE)
+    using UART8Clock = ClockControl<APBClock, &RCC_TypeDef::APB2ENR, RCC_APB2ENR_USART8EN>;
 #endif
 }

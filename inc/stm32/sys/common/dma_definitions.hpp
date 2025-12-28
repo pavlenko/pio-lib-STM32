@@ -2,7 +2,6 @@
 #define __STM32_SYS_COMMON_DMA_DEFINITIONS__
 
 #include <stm32/_cmsis.hpp>
-#include <stm32/_singleton.hpp>
 #include <type_traits>
 
 namespace STM32::_DMA
@@ -36,12 +35,13 @@ namespace STM32::_DMA
     using EventCallbackT = std::add_pointer_t<void(Event, uint16_t)>;
     using ErrorCallbackT = std::add_pointer_t<void(Error, uint16_t)>;
 
-    class ChannelT
+    class IChannel
     {
     public:
-        virtual ~ChannelT() = default;
-
+        virtual ~IChannel() = default;
         virtual inline Status configure(Config config) = 0;
+        virtual inline bool isCircular() = 0;
+        virtual inline uint32_t getRemaining() = 0;
         virtual inline Status transfer(const void* buf, volatile void* reg, uint16_t size) = 0;
         virtual inline Status abort() = 0;
         virtual inline void setEventCallback(EventCallbackT cb) = 0;
@@ -49,10 +49,12 @@ namespace STM32::_DMA
         virtual inline void dispatchIRQ() = 0;
     };
 
+    using ChannelT = std::add_pointer_t<IChannel*()>;
+
     template <class T>
-    static ChannelT& ChannelF()
+    static IChannel* ChannelF()
     {
-        return T::instance();
+        return &T::instance();
     }
 }
 

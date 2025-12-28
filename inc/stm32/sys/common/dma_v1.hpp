@@ -3,6 +3,8 @@
 
 #include <stm32/sys/common/dma_definitions.hpp>
 
+#include <stm32/_singleton.hpp>
+
 #if defined(DMA_CCR_EN)
 namespace STM32::_DMA
 {
@@ -57,9 +59,9 @@ namespace STM32::_DMA
     };
 
     template <BusRegsT tBusRegs, RegsT tRegs, IRQn_Type tIRQn, uint8_t tChannel>
-    class Channel final : public ChannelT
+    class Channel final : public IChannel, public Singleton<Channel<tBusRegs, tRegs, tIRQn, tChannel>>
     {
-        static constexpr const auto _4bit_pos = tChannel * 4;
+        static constexpr const uint32_t _4bit_pos = tChannel * 4;
     public:
         Status configure(Config config) override
         {
@@ -72,6 +74,16 @@ namespace STM32::_DMA
 
             _state = State::READY;
             return Status::OK;
+        }
+
+        bool isCircular() override
+        {
+            return (tRegs()->CCR & DMA_CCR_CIRC) != 0u;
+        }
+
+        uint32_t getRemaining() override
+        {
+            return tRegs()->CNDTR;
         }
 
         Status transfer(const void* buf, volatile void* reg, const uint16_t size) override
@@ -152,17 +164,17 @@ namespace STM32::_DMA
         static inline EventCallbackT _eventCallback;
         static inline ErrorCallbackT _errorCallback;
 
-        static inline bool _issetFlag(Flag flag)
+        static INLINE bool _issetFlag(Flag flag)
         {
             return (tBusRegs()->ISR & (static_cast<uint32_t>(flag) << _4bit_pos)) != 0u;
         }
 
-        static inline void _clearFlag(Flag flag)
+        static INLINE void _clearFlag(Flag flag)
         {
             tBusRegs()->IFCR = (static_cast<uint32_t>(flag) << _4bit_pos);
         }
 
-        static inline void _clearFlags()
+        static INLINE void _clearFlags()
         {
             tBusRegs()->IFCR = (0x0F << _4bit_pos);
         }
