@@ -3,16 +3,14 @@
 
 #include <stm32/sys/common/dma_definitions.hpp>
 
-#include <stm32/_singleton.hpp>
-
 #if defined(DMA_CCR_EN)
 namespace STM32::_DMA
 {
     using BusRegsT = std::add_pointer_t<DMA_TypeDef*()>;
     using RegsT = std::add_pointer_t<DMA_Channel_TypeDef*()>;
 
-    template <uint32_t tRegsAddr> inline DMA_TypeDef* BusRegsF() { return reinterpret_cast<DMA_TypeDef*>(tRegsAddr); }
-    template <uint32_t tRegsAddr> inline DMA_Channel_TypeDef* RegsF() { return reinterpret_cast<DMA_Channel_TypeDef*>(tRegsAddr); }
+    template <uint32_t tRegsAddr> DMA_TypeDef* BusRegsF() { return reinterpret_cast<DMA_TypeDef*>(tRegsAddr); }
+    template <uint32_t tRegsAddr> DMA_Channel_TypeDef* RegsF() { return reinterpret_cast<DMA_Channel_TypeDef*>(tRegsAddr); }
 
     enum class Config : uint32_t {
         // Direction
@@ -134,7 +132,8 @@ namespace STM32::_DMA
                 }
                 return;
             }
-            if (_issetFlag(Flag::HT)) { //<-- not used for now
+#if DMA_USE_HALF_TRANSFER == 1
+            if (_issetFlag(Flag::HT)) {
                 _clearFlag(Flag::HT);
                 if ((tRegs()->CCR & DMA_CCR_CIRC) == 0u) {
                     tRegs()->CCR &= ~static_cast<uint32_t>(IRQEn::HT);
@@ -144,6 +143,7 @@ namespace STM32::_DMA
                 }
                 return;
             }
+#endif
             if (_issetFlag(Flag::TC)) {
                 _clearFlag(Flag::TC);
                 if ((tRegs()->CCR & DMA_CCR_CIRC) == 0u) {
@@ -171,12 +171,12 @@ namespace STM32::_DMA
 
         static INLINE void _clearFlag(Flag flag)
         {
-            tBusRegs()->IFCR = (static_cast<uint32_t>(flag) << _4bit_pos);
+            tBusRegs()->IFCR = static_cast<uint32_t>(flag) << _4bit_pos;
         }
 
         static INLINE void _clearFlags()
         {
-            tBusRegs()->IFCR = (0x0F << _4bit_pos);
+            tBusRegs()->IFCR = 0x0F << _4bit_pos;
         }
     };
 }

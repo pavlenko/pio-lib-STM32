@@ -10,6 +10,12 @@ namespace STM32
     using _DMA1Channel3 = _DMA::Channel<_DMA::BusRegsF<DMA1_BASE>, _DMA::RegsF<DMA1_Channel3_BASE>, DMA1_Channel2_3_IRQn, 2>;
     using _DMA1Channel4 = _DMA::Channel<_DMA::BusRegsF<DMA1_BASE>, _DMA::RegsF<DMA1_Channel4_BASE>, DMA1_Channel4_5_IRQn, 3>;
     using _DMA1Channel5 = _DMA::Channel<_DMA::BusRegsF<DMA1_BASE>, _DMA::RegsF<DMA1_Channel5_BASE>, DMA1_Channel4_5_IRQn, 4>;
+#if defined(DMA1_Channel6_BASE)
+    using _DMA1Channel6 = _DMA::Channel<_DMA::BusRegsF<DMA1_BASE>, _DMA::RegsF<DMA1_Channel6_BASE>, DMA1_Channel4_5_6_7_IRQn, 4>;
+#endif
+#if defined(DMA1_Channel7_BASE)
+    using _DMA1Channel7 = _DMA::Channel<_DMA::BusRegsF<DMA1_BASE>, _DMA::RegsF<DMA1_Channel7_BASE>, DMA1_Channel4_5_6_7_IRQn, 4>;
+#endif
 }
 
 #endif // __STM32_SYS_F0_DMA__

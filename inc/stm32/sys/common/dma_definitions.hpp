@@ -4,6 +4,10 @@
 #include <stm32/_cmsis.hpp>
 #include <type_traits>
 
+#ifndef DMA_USE_HALF_TRANSFER
+#define DMA_USE_HALF_TRANSFER 0
+#endif
+
 namespace STM32::_DMA
 {
     enum class Config : uint32_t;
@@ -39,14 +43,14 @@ namespace STM32::_DMA
     {
     public:
         virtual ~IChannel() = default;
-        virtual inline Status configure(Config config) = 0;
-        virtual inline bool isCircular() = 0;
-        virtual inline uint32_t getRemaining() = 0;
-        virtual inline Status transfer(const void* buf, volatile void* reg, uint16_t size) = 0;
-        virtual inline Status abort() = 0;
-        virtual inline void setEventCallback(EventCallbackT cb) = 0;
-        virtual inline void setErrorCallback(ErrorCallbackT cb) = 0;
-        virtual inline void dispatchIRQ() = 0;
+        virtual Status configure(Config config) = 0;
+        virtual bool isCircular() = 0;
+        virtual uint32_t getRemaining() = 0;
+        virtual Status transfer(const void* buf, volatile void* reg, uint16_t size) = 0;
+        virtual Status abort() = 0;
+        virtual void setEventCallback(EventCallbackT cb) = 0;
+        virtual void setErrorCallback(ErrorCallbackT cb) = 0;
+        virtual void dispatchIRQ() = 0;
     };
 
     template <class T>

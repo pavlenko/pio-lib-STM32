@@ -9,8 +9,8 @@ namespace STM32::_DMA
     using BusRegsT = std::add_pointer_t<DMA_TypeDef*()>;
     using RegsT = std::add_pointer_t<DMA_Stream_TypeDef*()>;
 
-    template <uint32_t tRegsAddr> inline DMA_TypeDef* BusRegsF() { return reinterpret_cast<DMA_TypeDef*>(tRegsAddr); }
-    template <uint32_t tRegsAddr> inline DMA_Stream_TypeDef* RegsF() { return reinterpret_cast<DMA_Stream_TypeDef*>(tRegsAddr); }
+    template <uint32_t tRegsAddr> DMA_TypeDef* BusRegsF() { return reinterpret_cast<DMA_TypeDef*>(tRegsAddr); }
+    template <uint32_t tRegsAddr> DMA_Stream_TypeDef* RegsF() { return reinterpret_cast<DMA_Stream_TypeDef*>(tRegsAddr); }
 
     enum class Config : uint32_t {
         // Direction
@@ -67,7 +67,7 @@ namespace STM32::_DMA
         static constexpr const auto _6bit_pos = ((tStream & 0x01) * 6u) + ((tStream & 0x02) * 16u);
 
     public:
-        Status configure(Config config) override
+        INLINE Status configure(Config config) override
         {
             if (_state != State::READY) return Status::ERROR;
 
@@ -80,17 +80,17 @@ namespace STM32::_DMA
             return Status::OK;
         }
 
-        bool isCircular() override
+        INLINE bool isCircular() override
         {
             return (tRegs()->CR & DMA_SxCR_CIRC) != 0u;
         }
 
-        uint32_t getRemaining() override
+        INLINE uint32_t getRemaining() override
         {
             return tRegs()->NDTR;
         }
 
-        Status transfer(const void* buf, volatile void* reg, uint16_t size) override
+        INLINE Status transfer(const void* buf, volatile void* reg, uint16_t size) override
         {
             if (_state != State::READY) return Status::BUSY;
 
@@ -108,7 +108,7 @@ namespace STM32::_DMA
             return Status::OK;
         }
 
-        Status abort() override
+        INLINE Status abort() override
         {
             if (_state != State::BUSY) return Status::ERROR;
 
@@ -123,10 +123,10 @@ namespace STM32::_DMA
             return Status::OK;
         }
 
-        void setEventCallback(const EventCallbackT cb) override { _eventCallback = cb; }
-        void setErrorCallback(const ErrorCallbackT cb) override { _errorCallback = cb; }
+        INLINE void setEventCallback(const EventCallbackT cb) override { _eventCallback = cb; }
+        INLINE void setErrorCallback(const ErrorCallbackT cb) override { _errorCallback = cb; }
 
-        void dispatchIRQ() override
+        INLINE void dispatchIRQ() override
         {
             if (_issetFlag(Flag::TE)) {
                 _clearFlag(Flag::TE);
@@ -139,7 +139,8 @@ namespace STM32::_DMA
                 }
                 return;
             }
-            if (_issetFlag(Flag::HT)) { //<-- not used for now
+#if DMA_USE_HALF_TRANSFER == 1
+            if (_issetFlag(Flag::HT)) {
                 _clearFlag(Flag::HT);
                 if ((tRegs()->CR & DMA_SxCR_CIRC) == 0u) {
                     tRegs()->CR &= ~static_cast<uint32_t>(IRQEn::HT);
@@ -149,6 +150,7 @@ namespace STM32::_DMA
                 }
                 return;
             }
+#endif
             if (_issetFlag(Flag::TC)) {
                 _clearFlag(Flag::TC);
                 if ((tRegs()->CR & DMA_SxCR_CIRC) == 0u) {
@@ -170,32 +172,30 @@ namespace STM32::_DMA
         static inline EventCallbackT _eventCallback;
         static inline ErrorCallbackT _errorCallback;
 
-        static inline bool _issetFlag(Flag flag)
+        static INLINE bool _issetFlag(Flag flag)
         {
-            static constexpr const auto mask = (static_cast<uint32_t>(flag) << _6bit_pos);
-            if constexpr (tStream >= 0 && tStream <= 3) {
-                return (tBusRegs()->LISR & mask) != 0u;
+            if constexpr (tStream <= 3) {
+                return (tBusRegs()->LISR & (static_cast<uint32_t>(flag) << _6bit_pos)) != 0u;
             } else {
-                return (tBusRegs()->HISR & mask) != 0u;
+                return (tBusRegs()->HISR & (static_cast<uint32_t>(flag) << _6bit_pos)) != 0u;
             }
         }
 
-        static inline void _clearFlag(Flag flag)
+        static INLINE void _clearFlag(Flag flag)
         {
-            static constexpr const auto mask = (static_cast<uint32_t>(flag) << _6bit_pos);
-            if constexpr (tStream >= 0 && tStream <= 3) {
-                tBusRegs()->LIFCR = mask;
+            if constexpr (tStream <= 3) {
+                tBusRegs()->LIFCR = static_cast<uint32_t>(flag) << _6bit_pos;
             } else {
-                tBusRegs()->HIFCR = mask;
+                tBusRegs()->HIFCR = static_cast<uint32_t>(flag) << _6bit_pos;
             }
         }
 
-        static inline void _clearFlags()
+        static INLINE void _clearFlags()
         {
-            if constexpr (tStream >= 0 && tStream <= 3) {
-                tBusRegs()->LIFCR = (0x3F << _6bit_pos);
+            if constexpr (tStream <= 3) {
+                tBusRegs()->LIFCR = 0x3F << _6bit_pos;
             } else {
-                tBusRegs()->HIFCR = (0x3F << _6bit_pos);
+                tBusRegs()->HIFCR = 0x3F << _6bit_pos;
             }
         }
     };
