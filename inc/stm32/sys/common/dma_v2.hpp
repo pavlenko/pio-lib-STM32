@@ -62,7 +62,7 @@ namespace STM32::_DMA
     };
 
     template <BusRegsT tBusRegs, RegsT tRegs, IRQn_Type tIRQn, uint8_t tStream, uint8_t tChannel>
-    class Channel final : public IChannel, public Singleton<Channel<tBusRegs, tRegs, tIRQn, tChannel>>
+    class Channel final : public IChannel
     {
         static constexpr const auto _6bit_pos = ((tStream & 0x01) * 6u) + ((tStream & 0x02) * 16u);
 

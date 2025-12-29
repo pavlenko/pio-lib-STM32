@@ -59,11 +59,11 @@ namespace STM32::_DMA
     };
 
     template <BusRegsT tBusRegs, RegsT tRegs, IRQn_Type tIRQn, uint8_t tChannel>
-    class Channel final : public IChannel, public Singleton<Channel<tBusRegs, tRegs, tIRQn, tChannel>>
+    class Channel final : public IChannel
     {
         static constexpr const uint32_t _4bit_pos = tChannel * 4;
     public:
-        Status configure(Config config) override
+        INLINE Status configure(Config config) override
         {
             if (_state != State::READY) return Status::ERROR;
 
@@ -76,17 +76,17 @@ namespace STM32::_DMA
             return Status::OK;
         }
 
-        bool isCircular() override
+        INLINE bool isCircular() override
         {
             return (tRegs()->CCR & DMA_CCR_CIRC) != 0u;
         }
 
-        uint32_t getRemaining() override
+        INLINE uint32_t getRemaining() override
         {
             return tRegs()->CNDTR;
         }
 
-        Status transfer(const void* buf, volatile void* reg, const uint16_t size) override
+        INLINE Status transfer(const void* buf, volatile void* reg, const uint16_t size) override
         {
             if (_state != State::READY) return Status::BUSY;
 
@@ -105,7 +105,7 @@ namespace STM32::_DMA
             return Status::OK;
         }
 
-        Status abort() override
+        INLINE Status abort() override
         {
             if (_state != State::BUSY) return Status::ERROR;
 
@@ -119,10 +119,10 @@ namespace STM32::_DMA
             return Status::OK;
         }
 
-        void setEventCallback(const EventCallbackT cb) override { _eventCallback = cb; }
-        void setErrorCallback(const ErrorCallbackT cb) override { _errorCallback = cb; }
+        INLINE void setEventCallback(const EventCallbackT cb) override { _eventCallback = cb; }
+        INLINE void setErrorCallback(const ErrorCallbackT cb) override { _errorCallback = cb; }
 
-        void dispatchIRQ() override
+        INLINE void dispatchIRQ() override
         {
             if (_issetFlag(Flag::TE)) {
                 _clearFlag(Flag::TE);

@@ -49,13 +49,8 @@ namespace STM32::_DMA
         virtual inline void dispatchIRQ() = 0;
     };
 
-    using ChannelT = std::add_pointer_t<IChannel*()>;
-
     template <class T>
-    static IChannel* ChannelF()
-    {
-        return &T::instance();
-    }
+    concept ChannelT = std::is_base_of_v<IChannel, T> || std::is_same_v<void, T>;
 }
 
 #endif // __STM32_SYS_COMMON_DMA_DEFINITIONS__
