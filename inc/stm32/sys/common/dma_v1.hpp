@@ -74,15 +74,9 @@ namespace STM32::_DMA
             return Status::OK;
         }
 
-        INLINE bool isCircular() override
-        {
-            return (tRegs()->CCR & DMA_CCR_CIRC) != 0u;
-        }
+        INLINE bool isCircular() override { return (tRegs()->CCR & DMA_CCR_CIRC) != 0u; }
 
-        INLINE uint32_t getRemaining() override
-        {
-            return tRegs()->CNDTR;
-        }
+        INLINE uint32_t getRemaining() override { return tRegs()->CNDTR; }
 
         INLINE Status transfer(const void* buf, volatile void* reg, const uint16_t size) override
         {
@@ -164,20 +158,11 @@ namespace STM32::_DMA
         static inline EventCallbackT _eventCallback;
         static inline ErrorCallbackT _errorCallback;
 
-        static INLINE bool _issetFlag(Flag flag)
-        {
-            return (tBusRegs()->ISR & (static_cast<uint32_t>(flag) << _4bit_pos)) != 0u;
-        }
+        static INLINE bool _issetFlag(Flag flag) { return (tBusRegs()->ISR & (static_cast<uint32_t>(flag) << _4bit_pos)) != 0u; }
 
-        static INLINE void _clearFlag(Flag flag)
-        {
-            tBusRegs()->IFCR = static_cast<uint32_t>(flag) << _4bit_pos;
-        }
+        static INLINE void _clearFlag(Flag flag) { tBusRegs()->IFCR = static_cast<uint32_t>(flag) << _4bit_pos; }
 
-        static INLINE void _clearFlags()
-        {
-            tBusRegs()->IFCR = 0x0F << _4bit_pos;
-        }
+        static INLINE void _clearFlags() { tBusRegs()->IFCR = 0x0F << _4bit_pos; }
     };
 }
 #endif

@@ -54,7 +54,7 @@ namespace STM32::_DMA
     };
 
     template <class T>
-    concept ChannelT = std::is_base_of_v<IChannel, T> || std::is_same_v<void, T>;
+    concept ChannelT = std::is_base_of_v<IChannel, T>;
 }
 
 #endif // __STM32_SYS_COMMON_DMA_DEFINITIONS__

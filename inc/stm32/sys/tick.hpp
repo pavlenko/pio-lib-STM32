@@ -17,7 +17,7 @@ namespace STM32::SYS
         WEAK static void inc() { _ticks++; }
 
     private:
-        static uint32_t _ticks;
+        static inline uint32_t _ticks;
     };
 
     USED static void delayMs(const uint32_t ms)

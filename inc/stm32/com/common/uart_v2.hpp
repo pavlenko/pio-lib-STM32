@@ -11,7 +11,6 @@
 
 #include <stm32/sys/dma.hpp>
 #include <stm32/sys/tick.hpp>
-#include <stm32/_singleton.hpp>
 
 #if defined(USART_ISR_PE)
 namespace STM32::_UART
@@ -61,8 +60,11 @@ namespace STM32::_UART
     class Driver final : public IDriver
     {
     public:
-        Status configure(uint32_t baud, const Config config /* = Config::DEFAULT*/) override
+        using DMATx = tDMATx;
+        INLINE Status configure(uint32_t baud, const Config config /* = Config::DEFAULT*/) override
         {
+            tClock::enable();
+
             tRegs()->BRR = tClock::getFrequency() / baud;
             tRegs()->CR1 = static_cast<uint32_t>(config & Config::CR1Mask) | USART_CR1_UE;
             tRegs()->CR2 = static_cast<uint32_t>(config & Config::CR2Mask) >> 16;
@@ -71,11 +73,11 @@ namespace STM32::_UART
             return Status::OK;
         }
 
-        void setTxEventCallback(const EventCallbackT cb) override { _txData.callback = cb; }
-        void setRxEventCallback(const EventCallbackT cb) override { _rxData.callback = cb; }
-        void setErrorCallback(const ErrorCallbackT cb) override { _errorCallback = cb; }
+        INLINE void setTxEventCallback(const EventCallbackT cb) override { _txData.callback = cb; }
+        INLINE void setRxEventCallback(const EventCallbackT cb) override { _rxData.callback = cb; }
+        INLINE void setErrorCallback(const ErrorCallbackT cb) override { _errorCallback = cb; }
 
-        Status tx(uint8_t* data, uint16_t size, const uint32_t timeout) override
+        INLINE Status tx(uint8_t* data, uint16_t size, const uint32_t timeout) override
         {
             if ((_state & State::TxMask) != State::READY) return Status::BUSY;
             _state |= State::BUSY_TX;
@@ -105,7 +107,7 @@ namespace STM32::_UART
             return Status::OK;
         }
 
-        Status rx(uint8_t* data, uint16_t size, const uint32_t timeout) override
+        INLINE Status rx(uint8_t* data, uint16_t size, const uint32_t timeout) override
         {
             if ((_state & State::RxMask) != State::READY) return Status::BUSY;
             _state |= State::BUSY_RX;
@@ -137,78 +139,78 @@ namespace STM32::_UART
             return Status::OK;
         }
 
-        uint16_t getRxLength() override { return _rxData.len; }
+        INLINE uint16_t getRxLength() override { return _rxData.len; }
 
-        Status asyncTx(uint8_t* data, const uint16_t size) override
+        INLINE Status asyncTx(uint8_t* data, const uint16_t size) override
         {
             if ((_state & State::TxMask) != State::READY) return Status::BUSY;
             _state |= State::BUSY_TX;
 
-            tDMATx()->setEventCallback([](_DMA::Event, const uint16_t n) {
-                if (!tDMATx()->isCircular()) {
+            tDMATx().setEventCallback([](_DMA::Event, const uint16_t n) {
+                if (!tDMATx().isCircular()) {
                     tRegs()->CR3 &= ~(USART_CR3_DMAT);
                     _state &= State::BUSY_TX;
                 }
                 if (_txData.callback) _txData.callback(Event::TX_DONE, n);
             });
-            tDMATx()->setErrorCallback([](_DMA::Error, const uint16_t n) {
+            tDMATx().setErrorCallback([](_DMA::Error, const uint16_t n) {
                 tRegs()->CR3 &= ~(USART_CR3_DMAT);
                 _state &= State::BUSY_TX;
                 if (_errorCallback) _errorCallback(Error::DMA, n);
             });
-            tDMARx()->transfer(data, &tRegs()->TDR, size);
+            tDMARx().transfer(data, &tRegs()->TDR, size);
 
             tRegs()->CR3 |= USART_CR3_DMAT;
             return Status::OK;
         }
 
-        Status asyncRx(uint8_t* data, const uint16_t size) override
+        INLINE Status asyncRx(uint8_t* data, const uint16_t size) override
         {
             if ((_state & State::RxMask) != State::READY) return Status::BUSY;
             _state |= State::BUSY_RX;
 
-            tDMARx()->setEventCallback([](_DMA::Event, const uint16_t n) {
-                if (!tDMATx()->isCircular()) {
+            tDMARx().setEventCallback([](_DMA::Event, const uint16_t n) {
+                if (!tDMATx().isCircular()) {
                     tRegs()->CR1 &= ~(USART_CR1_IDLEIE);
                     tRegs()->CR3 &= ~(USART_CR3_DMAR | USART_CR3_EIE);
                     _state &= State::BUSY_RX;
                 }
                 if (_rxData.callback) _rxData.callback(Event::RX_DONE, n);
             });
-            tDMARx()->setErrorCallback([](_DMA::Error, const uint16_t n) {
+            tDMARx().setErrorCallback([](_DMA::Error, const uint16_t n) {
                 tRegs()->CR1 &= ~(USART_CR1_IDLEIE);
                 tRegs()->CR3 &= ~(USART_CR3_DMAR | USART_CR3_EIE);
                 _state &= State::BUSY_RX;
                 if (_errorCallback) _errorCallback(Error::DMA, n);
             });
-            tDMARx()->transfer(data, &tRegs()->RDR, size);
+            tDMARx().transfer(data, &tRegs()->RDR, size);
 
             tRegs()->CR1 |= USART_CR1_IDLEIE;
             tRegs()->CR3 |= USART_CR3_DMAR | USART_CR3_EIE;
             return Status::OK;
         }
 
-        Status abortTx() override
+        INLINE Status abortTx() override
         {
             tRegs()->CR1 &= ~(USART_CR1_TXEIE | USART_CR1_TCIE);
 
             if ((tRegs()->CR3 & USART_CR3_DMAT) != 0u) {
                 tRegs()->CR3 &= ~(USART_CR3_DMAT);
-                tDMATx()->abort();
+                tDMATx().abort();
             }
 
             _state &= State::BUSY_TX;
             return Status::OK;
         }
 
-        Status abortRx() override
+        INLINE Status abortRx() override
         {
             tRegs()->CR1 &= ~(USART_CR1_RXNEIE | USART_CR1_PEIE | USART_CR1_IDLEIE);
             tRegs()->CR3 &= ~(USART_CR3_EIE);
 
             if ((tRegs()->CR3 & USART_CR3_DMAR) != 0u) {
                 tRegs()->CR3 &= ~(USART_CR3_DMAR);
-                tDMARx()->abort();
+                tDMARx().abort();
             }
 
             tRegs()->ICR = USART_ICR_ORECF | USART_ICR_NCF | USART_ICR_PECF | USART_ICR_FECF;
@@ -217,7 +219,7 @@ namespace STM32::_UART
             return Status::OK;
         }
 
-        void dispatchIRQ() override
+        INLINE void dispatchIRQ() override
         {
             const auto flags = tRegs()->ISR;
             const auto error = static_cast<Error>(static_cast<uint32_t>(Flag::ERRORS) & flags);
@@ -229,9 +231,9 @@ namespace STM32::_UART
                 tRegs()->CR3 &= ~(USART_CR3_EIE);
 
                 if ((tRegs()->CR3 & USART_CR3_DMAR) != 0u) {
-                    _rxData.cnt = tDMARx()->getRemaining();
+                    _rxData.cnt = tDMARx().getRemaining();
                     tRegs()->CR3 &= ~(USART_CR3_DMAR);
-                    tDMARx()->abort();
+                    tDMARx().abort();
                 }
 
                 _state &= State::BUSY_RX;
@@ -239,14 +241,14 @@ namespace STM32::_UART
             } else if (_checkFlag(Flag::IDLE, flags)) {
                 _clearFlag(Flag::IDLE);
 
-                if ((tRegs()->CR3 & USART_CR3_DMAR) != 0u) _rxData.cnt = tDMARx()->getRemaining();
+                if ((tRegs()->CR3 & USART_CR3_DMAR) != 0u) _rxData.cnt = tDMARx().getRemaining();
                 if (_rxData.len != _rxData.cnt) {
                     tRegs()->CR3 &= ~(USART_CR1_RXNEIE | USART_CR1_PEIE | USART_CR1_IDLEIE);
                     tRegs()->CR3 &= ~(USART_CR3_EIE);
 
                     if ((tRegs()->CR3 & USART_CR3_DMAR) != 0u) {
                         tRegs()->CR3 &= ~(USART_CR3_DMAR);
-                        tDMARx()->abort();
+                        tDMARx().abort();
                     }
 
                     _state &= State::BUSY_RX;
@@ -271,16 +273,16 @@ namespace STM32::_UART
         {
             // clear IDLE flag
             // if DMAR
-            //   nReceived = _rxData.len - tDMARx()->getRemaining()
+            //   nReceived = _rxData.len - tDMARx().getRemaining()
             //   if nReceived > 0
-            //     _rxData.cnt = tDMARx()->getRemaining()
+            //     _rxData.cnt = tDMARx().getRemaining()
             //     if not DMA.CIRC
             //       disable CR1: PEIE
             //       disable CR3: EIE
             //       disable CR3: DMAR
             //       rxState = READY
             //       disable CR1: IDLEIE
-            //       tDMARx()->abort()
+            //       tDMARx().abort()
             //     endif
             //     execute callback
             //   endif
@@ -298,14 +300,14 @@ namespace STM32::_UART
             // OPTIMIZED 1:
             // clear IDLE flag
             // if DMAR
-            //   nReceived = _rxData.len - tDMARx()->getRemaining()
+            //   nReceived = _rxData.len - tDMARx().getRemaining()
             //   if nReceived > 0
-            //     _rxData.cnt = tDMARx()->getRemaining()
+            //     _rxData.cnt = tDMARx().getRemaining()
             //     if not DMA.CIRC - ??? how to use this ??? -> maybe just do not check for CIRC
             //       disable CR1: PEIE | IDLEIE -> RXNEIE | PEIE | IDLEIE
             //       disable CR3: EIE | DMAR
             //       rxState = READY
-            //       tDMARx()->abort()
+            //       tDMARx().abort()
             //     endif
             //     execute callback
             //   endif
@@ -321,13 +323,13 @@ namespace STM32::_UART
 
             // OPTIMIZED 2:
             // clear IDLE flag
-            // if ((tRegs()->CR3 & USART_CR3_DMAR) != 0u) _rxData.cnt = tDMARx()->getRemaining();
+            // if ((tRegs()->CR3 & USART_CR3_DMAR) != 0u) _rxData.cnt = tDMARx().getRemaining();
             // if (_rxData.len != _rxData.cnt) {
             //     tRegs()->CR3 &= ~(USART_CR1_RXNEIE | USART_CR1_PEIE | USART_CR1_IDLEIE);
             //     tRegs()->CR3 &= ~(USART_CR3_EIE);
             //     if ((tRegs()->CR3 & USART_CR3_DMAR) != 0u) {
             //         tRegs()->CR3 &= ~(USART_CR3_DMAR);
-            //         tDMARx()->abort();
+            //         tDMARx().abort();
             //     }
             //     _state &= State::BUSY_RX;
             //     if (_rxData.callback) _rxData.callback(Event::IDLE, _rxData.len - _rxData.cnt)

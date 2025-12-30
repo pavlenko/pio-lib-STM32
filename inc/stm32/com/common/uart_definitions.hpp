@@ -99,25 +99,25 @@ namespace STM32::_UART
     {
     public:
         virtual ~IDriver() = default;
-        virtual inline Status configure(uint32_t baud, Config config) = 0;
+        virtual Status configure(uint32_t baud, Config config) = 0;
 
-        virtual inline void setTxEventCallback(EventCallbackT cb) = 0;
-        virtual inline void setRxEventCallback(EventCallbackT cb) = 0;
+        virtual void setTxEventCallback(EventCallbackT cb) = 0;
+        virtual void setRxEventCallback(EventCallbackT cb) = 0;
 
-        virtual inline void setErrorCallback(ErrorCallbackT cb) = 0;
+        virtual void setErrorCallback(ErrorCallbackT cb) = 0;
 
-        virtual inline Status tx(uint8_t* data, uint16_t size, uint32_t timeout) = 0;
-        virtual inline Status rx(uint8_t* data, uint16_t size, uint32_t timeout) = 0;
+        virtual Status tx(uint8_t* data, uint16_t size, uint32_t timeout) = 0;
+        virtual Status rx(uint8_t* data, uint16_t size, uint32_t timeout) = 0;
 
-        virtual inline uint16_t getRxLength() = 0;
+        virtual uint16_t getRxLength() = 0;
 
-        virtual inline Status asyncTx(uint8_t* data, uint16_t size) = 0;
-        virtual inline Status asyncRx(uint8_t* data, uint16_t size) = 0;
+        virtual Status asyncTx(uint8_t* data, uint16_t size) = 0;
+        virtual Status asyncRx(uint8_t* data, uint16_t size) = 0;
 
-        virtual inline Status abortTx() = 0;
-        virtual inline Status abortRx() = 0;
+        virtual Status abortTx() = 0;
+        virtual Status abortRx() = 0;
 
-        virtual inline void dispatchIRQ() = 0;
+        virtual void dispatchIRQ() = 0;
     };
 
     using DriverT = std::add_pointer_t<IDriver*()>;
