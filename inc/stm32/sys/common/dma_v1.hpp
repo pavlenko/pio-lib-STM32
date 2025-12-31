@@ -61,6 +61,8 @@ namespace STM32::_DMA
     {
         static constexpr const uint32_t _4bit_pos = tChannel * 4;
     public:
+        static constexpr auto IRQn = tIRQn;
+
         INLINE Status configure(Config config) override
         {
             if (_state != State::READY) return Status::ERROR;

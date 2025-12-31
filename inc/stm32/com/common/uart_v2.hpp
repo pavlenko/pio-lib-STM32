@@ -60,16 +60,20 @@ namespace STM32::_UART
     class Driver final : public IDriver
     {
     public:
+        static constexpr auto IRQn = tIRQn;
         using DMATx = tDMATx;
-        INLINE Status configure(uint32_t baud, const Config config /* = Config::DEFAULT*/) override
+        using DMARx = tDMARx;
+
+        INLINE Status configure(uint32_t baud, const Config config) override
         {
-            tClock::enable();
+            _state = State::BUSY;
 
             tRegs()->BRR = tClock::getFrequency() / baud;
             tRegs()->CR1 = static_cast<uint32_t>(config & Config::CR1Mask) | USART_CR1_UE;
             tRegs()->CR2 = static_cast<uint32_t>(config & Config::CR2Mask) >> 16;
             tRegs()->CR3 = static_cast<uint32_t>(config & Config::CR3Mask) >> 16;
-            NVIC_EnableIRQ(tIRQn);
+
+            _state = State::READY;
             return Status::OK;
         }
 
@@ -268,73 +272,6 @@ namespace STM32::_UART
         static INLINE bool _issetFlag(Flag flag) { return (tRegs()->ISR & static_cast<uint32_t>(flag)) != 0u; }
 
         static INLINE void _clearFlag(Flag flag) { tRegs()->ICR = static_cast<uint32_t>(flag); }
-
-        static INLINE void _onIDLE()
-        {
-            // clear IDLE flag
-            // if DMAR
-            //   nReceived = _rxData.len - tDMARx().getRemaining()
-            //   if nReceived > 0
-            //     _rxData.cnt = tDMARx().getRemaining()
-            //     if not DMA.CIRC
-            //       disable CR1: PEIE
-            //       disable CR3: EIE
-            //       disable CR3: DMAR
-            //       rxState = READY
-            //       disable CR1: IDLEIE
-            //       tDMARx().abort()
-            //     endif
-            //     execute callback
-            //   endif
-            // else (IRQ)
-            //   nReceived = _rxData.len - _rxData.cnt
-            //   if nReceived > 0 // here HAL also check cnt but if we call this before rx check - that not need
-            //     disable CR1: RXNEIE|PEIE
-            //     disable CR3: EIE
-            //     rxState = READY
-            //     disable CR1: IDLEIE
-            //     execute callback
-            //   endif
-            // endif
-
-            // OPTIMIZED 1:
-            // clear IDLE flag
-            // if DMAR
-            //   nReceived = _rxData.len - tDMARx().getRemaining()
-            //   if nReceived > 0
-            //     _rxData.cnt = tDMARx().getRemaining()
-            //     if not DMA.CIRC - ??? how to use this ??? -> maybe just do not check for CIRC
-            //       disable CR1: PEIE | IDLEIE -> RXNEIE | PEIE | IDLEIE
-            //       disable CR3: EIE | DMAR
-            //       rxState = READY
-            //       tDMARx().abort()
-            //     endif
-            //     execute callback
-            //   endif
-            // else (IRQ)
-            //   nReceived = _rxData.len - _rxData.cnt
-            //   if nReceived > 0 // here HAL also check cnt but if we call this before rx check - that not need
-            //     disable CR1: RXNEIE | PEIE | IDLEIE
-            //     disable CR3: EIE -> EIE | DMAR
-            //     rxState = READY
-            //     execute callback
-            //   endif
-            // endif
-
-            // OPTIMIZED 2:
-            // clear IDLE flag
-            // if ((tRegs()->CR3 & USART_CR3_DMAR) != 0u) _rxData.cnt = tDMARx().getRemaining();
-            // if (_rxData.len != _rxData.cnt) {
-            //     tRegs()->CR3 &= ~(USART_CR1_RXNEIE | USART_CR1_PEIE | USART_CR1_IDLEIE);
-            //     tRegs()->CR3 &= ~(USART_CR3_EIE);
-            //     if ((tRegs()->CR3 & USART_CR3_DMAR) != 0u) {
-            //         tRegs()->CR3 &= ~(USART_CR3_DMAR);
-            //         tDMARx().abort();
-            //     }
-            //     _state &= State::BUSY_RX;
-            //     if (_rxData.callback) _rxData.callback(Event::IDLE, _rxData.len - _rxData.cnt)
-            // }
-        }
     };
 }
 #endif
