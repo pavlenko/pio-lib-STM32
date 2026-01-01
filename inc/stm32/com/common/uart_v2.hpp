@@ -13,7 +13,7 @@
 #include <stm32/sys/tick.hpp>
 
 #if defined(USART_ISR_PE)
-namespace STM32::_UART
+namespace STM32::UART
 {
     enum class Flag : uint32_t {
         // Events

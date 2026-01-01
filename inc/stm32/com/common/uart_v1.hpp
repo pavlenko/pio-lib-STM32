@@ -10,10 +10,9 @@
 
 #include <stm32/sys/dma.hpp>
 #include <stm32/sys/tick.hpp>
-#include <stm32/_singleton.hpp>
 
 #if defined(USART_SR_PE)
-namespace STM32::_UART
+namespace STM32::UART
 {
     enum class Flag : uint32_t {
         // Events
@@ -46,7 +45,7 @@ namespace STM32::_UART
     class Driver final : public IDriver
     {
     public:
-        Status configure(uint32_t baud, const Config config /* = Config::DEFAULT*/) override
+        Status configure(uint32_t baud, const Config config) override
         {
             tRegs()->BRR = tClock::getFrequency() / baud;
             tRegs()->CR1 = static_cast<uint32_t>(config & Config::CR1Mask) | USART_CR1_UE;

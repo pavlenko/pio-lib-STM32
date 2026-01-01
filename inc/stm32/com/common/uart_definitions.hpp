@@ -4,7 +4,7 @@
 #include <stm32/_cmsis.hpp>
 #include <type_traits>
 
-namespace STM32::_UART
+namespace STM32::UART
 {
     using RegsT = std::add_pointer_t<USART_TypeDef*()>;
 
