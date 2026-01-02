@@ -32,7 +32,7 @@ namespace STM32::UART
         ALL = ERRORS | TXE | TC | RXNE | IDLE | LINE_BREAK | CTS
     };
 
-    enum class Error : uint8_t {
+    enum class Error : uint32_t {
         NONE = 0x00,
         PE = USART_SR_PE,   // rx, separate enable
         NE = USART_SR_NE,   // rx
@@ -45,21 +45,28 @@ namespace STM32::UART
     class Driver final : public IDriver
     {
     public:
-        Status configure(uint32_t baud, const Config config) override
+        static constexpr auto IRQn = tIRQn;
+        using DMATx = tDMATx;
+        using DMARx = tDMARx;
+
+        INLINE Status configure(uint32_t baud, const Config config) override
         {
+            _state = State::BUSY;
+
             tRegs()->BRR = tClock::getFrequency() / baud;
             tRegs()->CR1 = static_cast<uint32_t>(config & Config::CR1Mask) | USART_CR1_UE;
             tRegs()->CR2 = static_cast<uint32_t>(config & Config::CR2Mask) >> 16;
             tRegs()->CR3 = static_cast<uint32_t>(config & Config::CR3Mask) >> 16;
-            NVIC_EnableIRQ(tIRQn);
+
+            _state = State::READY;
             return Status::OK;
         }
 
-        void setTxEventCallback(const EventCallbackT cb) override { _txData.callback = cb; }
-        void setRxEventCallback(const EventCallbackT cb) override { _rxData.callback = cb; }
-        void setErrorCallback(const ErrorCallbackT cb) override { _errorCallback = cb; }
+        INLINE void setTxEventCallback(const EventCallbackT cb) override { _txData.callback = cb; }
+        INLINE void setRxEventCallback(const EventCallbackT cb) override { _rxData.callback = cb; }
+        INLINE void setErrorCallback(const ErrorCallbackT cb) override { _errorCallback = cb; }
 
-        Status tx(uint8_t* data, uint16_t size, const uint32_t timeout) override
+        INLINE Status tx(uint8_t* data, uint16_t size, const uint32_t timeout) override
         {
             if ((_state & State::TxMask) != State::READY) return Status::BUSY;
             _state |= State::BUSY_TX;
@@ -89,7 +96,7 @@ namespace STM32::UART
             return Status::OK;
         }
 
-        Status rx(uint8_t* data, uint16_t size, const uint32_t timeout) override
+        INLINE Status rx(uint8_t* data, uint16_t size, const uint32_t timeout) override
         {
             if ((_state & State::RxMask) != State::READY) return Status::BUSY;
             _state |= State::BUSY_RX;
@@ -121,66 +128,119 @@ namespace STM32::UART
             return Status::OK;
         }
 
-        uint16_t getRxLength() override { return _rxData.len; }
+        INLINE uint16_t getRxLength() override { return _rxData.len; }
 
-        Status asyncTx(uint8_t* data, uint16_t size) override
+        INLINE Status asyncTx(uint8_t* data, uint16_t size) override
         {
             if ((_state & State::TxMask) != State::READY) return Status::BUSY;
             _state |= State::BUSY_TX;
 
-            tDMATx()->setEventCallback([](Event e, uint16_t n) {});
-            tDMATx()->setErrorCallback([](Error e, uint16_t n) {});
-
-            tDMARx()->transfer(data, &tRegs()->DR, size);
+            tDMATx().setEventCallback([](_DMA::Event, const uint16_t n) {
+                if (!tDMATx().isCircular()) {
+                    tRegs()->CR3 &= ~(USART_CR3_DMAT);
+                    _state &= State::BUSY_TX;
+                }
+                if (_txData.callback) _txData.callback(Event::TX_DONE, n);
+            });
+            tDMATx().setErrorCallback([](_DMA::Error, const uint16_t n) {
+                tRegs()->CR3 &= ~(USART_CR3_DMAT);
+                _state &= State::BUSY_TX;
+                if (_errorCallback) _errorCallback(Error::DMA, n);
+            });
+            tDMARx().transfer(data, &tRegs()->DR, size);
 
             tRegs()->CR3 |= USART_CR3_DMAT;
             return Status::OK;
         }
 
-        Status asyncRx(uint8_t* data, uint16_t size) override
+        INLINE Status asyncRx(uint8_t* data, uint16_t size) override
         {
             if ((_state & State::RxMask) != State::READY) return Status::BUSY;
             _state |= State::BUSY_TX;
 
-            tDMATx()->setEventCallback([](Event e, uint16_t n) {});
-            tDMATx()->setErrorCallback([](Error e, uint16_t n) {});
-
-            tDMARx()->transfer(data, &tRegs()->DR, size);
+            tDMARx().setEventCallback([](_DMA::Event, const uint16_t n) {
+                if (!tDMATx().isCircular()) {
+                    tRegs()->CR1 &= ~(USART_CR1_IDLEIE);
+                    tRegs()->CR3 &= ~(USART_CR3_DMAR | USART_CR3_EIE);
+                    _state &= State::BUSY_RX;
+                }
+                if (_rxData.callback) _rxData.callback(Event::RX_DONE, n);
+            });
+            tDMARx().setErrorCallback([](_DMA::Error, const uint16_t n) {
+                tRegs()->CR1 &= ~(USART_CR1_IDLEIE);
+                tRegs()->CR3 &= ~(USART_CR3_DMAR | USART_CR3_EIE);
+                _state &= State::BUSY_RX;
+                if (_errorCallback) _errorCallback(Error::DMA, n);
+            });
+            tDMARx().transfer(data, &tRegs()->DR, size);
 
             tRegs()->CR3 |= USART_CR3_DMAR;
             return Status::OK;
         }
 
-        Status abortTx() override
+        INLINE Status abortTx() override
         {
             tRegs()->CR1 &= ~(USART_CR1_TXEIE | USART_CR1_TCIE);
 
             if ((tRegs()->CR3 & USART_CR3_DMAT) != 0u) {
                 tRegs()->CR3 &= ~USART_CR3_DMAT;
-                tDMATx()->abort();
+                tDMATx().abort();
             }
 
             _state &= State::BUSY_TX;
             return Status::OK;
         }
 
-        Status abortRx() override
+        INLINE Status abortRx() override
         {
             tRegs()->CR1 &= ~(USART_CR1_RXNEIE | USART_CR1_PEIE | USART_CR1_IDLEIE);
             tRegs()->CR3 &= ~(USART_CR3_EIE);
 
             if ((tRegs()->CR3 & USART_CR3_DMAR) != 0u) {
                 tRegs()->CR3 &= ~USART_CR3_DMAR;
-                tDMARx()->abort();
+                tDMARx().abort();
             }
 
             _state &= State::BUSY_RX;
             return Status::OK;
         }
 
-        void dispatchIRQ() override
+        INLINE void dispatchIRQ() override
         {
-            // TODO ... how to avoid check irq enabled flags???, maybe check if handler is set and then execute check sr
+            const auto flags = tRegs()->SR;
+            const auto error = static_cast<Error>(static_cast<uint32_t>(Flag::ERRORS) & flags);
+
+            if (_checkFlag(Flag::ERRORS, flags)) {
+                _clearFlag(Flag::ERRORS);
+
+                tRegs()->CR1 &= ~(USART_CR1_RXNEIE | USART_CR1_PEIE | USART_CR1_IDLEIE);
+                tRegs()->CR3 &= ~(USART_CR3_EIE);
+
+                if ((tRegs()->CR3 & USART_CR3_DMAR) != 0u) {
+                    _rxData.cnt = tDMARx().getRemaining();
+                    tRegs()->CR3 &= ~(USART_CR3_DMAR);
+                    tDMARx().abort();
+                }
+
+                _state &= State::BUSY_RX;
+                if (_errorCallback) _errorCallback(error, _rxData.len - _rxData.cnt);
+            } else if (_checkFlag(Flag::IDLE, flags)) {
+                _clearFlag(Flag::IDLE);
+
+                if ((tRegs()->CR3 & USART_CR3_DMAR) != 0u) _rxData.cnt = tDMARx().getRemaining();
+                if (_rxData.len != _rxData.cnt) {
+                    tRegs()->CR3 &= ~(USART_CR1_RXNEIE | USART_CR1_PEIE | USART_CR1_IDLEIE);
+                    tRegs()->CR3 &= ~(USART_CR3_EIE);
+
+                    if ((tRegs()->CR3 & USART_CR3_DMAR) != 0u) {
+                        tRegs()->CR3 &= ~(USART_CR3_DMAR);
+                        tDMARx().abort();
+                    }
+
+                    _state &= State::BUSY_RX;
+                    if (_rxData.callback) _rxData.callback(Event::RX_IDLE, _rxData.len - _rxData.cnt);
+                }
+            }
         }
 
     private:
@@ -190,6 +250,8 @@ namespace STM32::UART
         static inline std::add_pointer_t<void()> _txISR;
         static inline Data _rxData;
         static inline std::add_pointer_t<void()> _rxISR;
+
+        static INLINE bool _checkFlag(Flag flag, const uint32_t reg) { return (reg & static_cast<uint32_t>(flag)) != 0u; }
 
         static INLINE bool _issetFlag(Flag flag) { return (tRegs()->SR & static_cast<uint32_t>(flag)) != 0u; }
 

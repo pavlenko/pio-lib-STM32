@@ -17,8 +17,8 @@ namespace STM32
     using DMA2Channel1 = _DMA::Channel<_DMA::BusRegsF<DMA2_BASE>, _DMA::RegsF<DMA2_Channel1_BASE>, DMA2_Channel1_IRQn, 0>;
     using DMA2Channel2 = _DMA::Channel<_DMA::BusRegsF<DMA2_BASE>, _DMA::RegsF<DMA2_Channel2_BASE>, DMA2_Channel2_IRQn, 1>;
     using DMA2Channel3 = _DMA::Channel<_DMA::BusRegsF<DMA2_BASE>, _DMA::RegsF<DMA2_Channel3_BASE>, DMA2_Channel3_IRQn, 2>;
-    using DMA2Channel4 = _DMA::Channel<_DMA::BusRegsF<DMA2_BASE>, _DMA::RegsF<DMA2_Channel4_BASE>, DMA2_Channel4_IRQn, 3>;
-    using DMA2Channel5 = _DMA::Channel<_DMA::BusRegsF<DMA2_BASE>, _DMA::RegsF<DMA2_Channel5_BASE>, DMA2_Channel5_IRQn, 5>;
+    using DMA2Channel4 = _DMA::Channel<_DMA::BusRegsF<DMA2_BASE>, _DMA::RegsF<DMA2_Channel4_BASE>, DMA2_Channel4_5_IRQn, 3>;
+    using DMA2Channel5 = _DMA::Channel<_DMA::BusRegsF<DMA2_BASE>, _DMA::RegsF<DMA2_Channel5_BASE>, DMA2_Channel4_5_IRQn, 5>;
 #endif
 }
 

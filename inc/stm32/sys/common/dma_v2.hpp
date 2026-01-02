@@ -64,9 +64,11 @@ namespace STM32::_DMA
     template <BusRegsT tBusRegs, RegsT tRegs, IRQn_Type tIRQn, uint8_t tStream, uint8_t tChannel>
     class Channel final : public IChannel
     {
-        static constexpr const auto _6bit_pos = ((tStream & 0x01) * 6u) + ((tStream & 0x02) * 16u);
+        static constexpr uint8_t _6bit_pos = ((tStream & 0x01) * 6u) + ((tStream & 0x02) * 8u);
 
     public:
+        static constexpr auto IRQn = tIRQn;
+
         INLINE Status configure(Config config) override
         {
             if (_state != State::READY) return Status::ERROR;

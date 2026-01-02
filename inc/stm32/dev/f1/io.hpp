@@ -1,7 +1,8 @@
 #pragma once
 
-#include <stm32/dev/common/clock.hpp>
 #include <stm32/dev/common/io.hpp>
+
+#include <stm32/dev/clock.hpp>
 
 namespace STM32::IO
 {
